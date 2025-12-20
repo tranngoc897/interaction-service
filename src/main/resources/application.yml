@@ -1,0 +1,49 @@
+# Temporal Configuration
+temporal:
+  server:
+    host: localhost
+    port: 7233
+  namespace: default
+  connection:
+    timeout: 10s
+
+# Spring Configuration
+spring:
+  application:
+    name: interaction-service
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/interaction_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+
+# Server Configuration
+server:
+  port: 8080
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.ngoctran.interactionservice: DEBUG
+    io.temporal: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+# Jackson Configuration
+spring.jackson:
+  serialization:
+    write-dates-as-timestamps: false
+  time-zone: UTC
