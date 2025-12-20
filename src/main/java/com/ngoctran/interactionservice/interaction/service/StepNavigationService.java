@@ -9,14 +9,9 @@ import com.ngoctran.interactionservice.interaction.InteractionDefinitionReposito
 import com.ngoctran.interactionservice.interaction.InteractionEntity;
 import com.ngoctran.interactionservice.interaction.InteractionRepository;
 import com.ngoctran.interactionservice.interaction.dto.*;
+import com.ngoctran.interactionservice.temporal.service.TemporalWorkflowService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Instant;
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Service demonstrating how to work with 3 types of "steps":
@@ -35,6 +30,7 @@ public class StepNavigationService {
     private final CaseRepository caseRepo;
     private final ObjectMapper objectMapper;
     private final com.ngoctran.interactionservice.task.TaskService taskService;
+    private final TemporalWorkflowService temporalWorkflowService;
 
     /**
      * Get current step information for an interaction
@@ -346,7 +342,17 @@ public class StepNavigationService {
             switch (actionType) {
                 case "startWorkflow":
                     String workflowName = (String) action.get("workflow");
-                    log.info("Would start workflow: {}", workflowName);
+                    log.info("Starting Temporal workflow: {}", workflowName);
+                    
+                    Map<String, Object> initialData = parseCaseData(caseEntity.getCaseData());
+                    
+                    temporalWorkflowService.startKYCOnboardingWorkflow(
+                            caseEntity.getId().toString(),
+                            interaction.getId(),
+                            interaction.getUserId(),
+                            initialData
+                    );
+                    
                     interaction.setStatus("WAITING_SYSTEM");
                     break;
                 case "createTask":
