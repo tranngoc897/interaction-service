@@ -1,12 +1,11 @@
 package com.ngoctran.interactionservice.cases;
 
-
 import com.ngoctran.interactionservice.NextStepResponse;
 import com.ngoctran.interactionservice.StepSubmissionDto;
-import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -36,3 +35,4 @@ public class CaseController {
         return ResponseEntity.ok(caseService.submitStep(caseId, submission));
     }
 }
+

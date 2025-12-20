@@ -1,145 +1,124 @@
 package com.ngoctran.interactionservice.interaction.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ngoctran.interactionservice.activity.onboarding.OnboardingWorkflow;
+import com.ngoctran.interactionservice.StepSubmissionDto;
 import com.ngoctran.interactionservice.cases.CaseEntity;
 import com.ngoctran.interactionservice.cases.CaseRepository;
-import com.ngoctran.interactionservice.interaction.InteractionDefinitionEntity;
-import com.ngoctran.interactionservice.interaction.InteractionDefinitionId;
-import com.ngoctran.interactionservice.interaction.InteractionDefinitionRepository;
-import com.ngoctran.interactionservice.interaction.InteractionDto;
-import com.ngoctran.interactionservice.interaction.InteractionEntity;
-import com.ngoctran.interactionservice.interaction.InteractionRepository;
-import com.ngoctran.interactionservice.interaction.InteractionStartRequest;
+import com.ngoctran.interactionservice.interaction.*;
+import com.ngoctran.interactionservice.interaction.dto.StepDefinition;
+import com.ngoctran.interactionservice.interaction.dto.StepResponse;
 import io.temporal.client.WorkflowClient;
-import io.temporal.client.WorkflowOptions;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InteractionService {
 
     private final InteractionDefinitionRepository intDefRepo;
     private final InteractionRepository intRepo;
-
-
     private final CaseRepository caseRepo;
     private final WorkflowClient workflowClient;
     private final ObjectMapper mapper;
-
-    private final WorkflowClient workflowClient;
-    private final InteractionRepository interactionRepo;
-
-    public InteractionService(InteractionDefinitionRepository intDefRepo, InteractionRepository intRepo, CaseRepository caseRepo, WorkflowClient workflowClient, ObjectMapper mapper, InteractionRepository interactionRepo) {
-      this.intDefRepo = intDefRepo;
-      this.intRepo = intRepo;
-      this.caseRepo = caseRepo;
-      this.workflowClient = workflowClient;
-      this.mapper = mapper;
-      this.interactionRepo = interactionRepo;
-    }
-
-    public InteractionEntity startOnboarding(InteractionEntity interaction, CaseData caseData) {
-        // Save InteractionEntity & Case vào DB
-        interaction.setStatus("WAITING_SYSTEM");
-        interactionRepo.save(interaction);
-
-        // Trigger Temporal Workflow
-        WorkflowOptions options = WorkflowOptions.newBuilder()
-            .setTaskQueue("ONBOARDING_TASK_QUEUE")
-            .setWorkflowId("onboarding-" + interaction.getId())
-            .build();
-
-        OnboardingWorkflow workflow = workflowClient.newWorkflowStub(OnboardingWorkflow.class, options);
-        WorkflowClient.start(workflow::start, caseData.getId(), interaction.getId());
-
-        return interaction;
-    }
+    private final StepNavigationService stepNavigationService;
 
 
+    @Transactional
     public InteractionDto startInteraction(InteractionStartRequest req) {
-        // Load definition
-        InteractionDefinitionEntity def = intDefRepo.findById(
-            new InteractionDefinitionId(req.interactionDefinitionKey(), req.interactionDefinitionVersion())
-        ).orElseThrow(() -> new RuntimeException("Definition not found"));
+        log.info("Starting interaction: key={}, version={}", req.interactionDefinitionKey(), req.interactionDefinitionVersion());
 
-        // Create Case
+        // 1. Load Definition
+        InteractionDefinitionEntity def = intDefRepo.findByInteractionDefinitionKeyAndInteractionDefinitionVersion(
+                req.interactionDefinitionKey(),
+                req.interactionDefinitionVersion()
+        ).orElseThrow(() -> new RuntimeException("Interaction Definition not found"));
+
+        // 2. Create a new Case
         CaseEntity caseEntity = new CaseEntity();
-        caseEntity.setId(UUID.randomUUID().toString());
-        caseEntity.setCaseDefinitionKey(def.getCaseDefinitionKey());
-        caseEntity.setCaseDefinitionVersion(def.getCaseDefinitionVersion());
-        caseEntity.setCaseData(def.getDefaultValue()); // init with default
-        caseEntity.setPreliminary(true);
-        caseEntity.setVersion(1L);
-        caseRepo.save(caseEntity);
+        caseEntity.setCaseDefinitionKey(def.getInteractionDefinitionKey());
+        caseEntity.setStatus("ACTIVE");
+        caseEntity = caseRepo.save(caseEntity);
 
-        // Create InteractionEntity Instance
-        InteractionInstanceEntity inst = new InteractionInstanceEntity();
-        inst.setId(UUID.randomUUID().toString());
-        inst.setUserId(req.userId());
-        inst.setInteractionDefinitionKey(def.getInteractionDefinitionKey());
-        inst.setInteractionDefinitionVersion(def.getInteractionDefinitionVersion());
-        inst.setCaseDefinitionKey(def.getCaseDefinitionKey());
-        inst.setCaseDefinitionVersion(def.getCaseDefinitionVersion());
-        inst.setCaseId(caseEntity.getId());
-        inst.setCaseVersion(caseEntity.getVersion());
-        inst.setStepName("start");
-        inst.setStepStatus("PENDING");
-        inst.setStatus("ACTIVE");
-        inst.setResumable(true);
-        inst.setVersion(1L);
-        intRepo.save(inst);
+        // 3. Create Interaction Instance
+        InteractionEntity interaction = new InteractionEntity();
+        interaction.setId(UUID.randomUUID().toString());
+        interaction.setUserId(req.userId());
+        interaction.setInteractionDefinitionKey(req.interactionDefinitionKey());
+        interaction.setInteractionDefinitionVersion(req.interactionDefinitionVersion());
+        interaction.setCaseId(caseEntity.getId().toString());
 
-        return toDto(inst, caseEntity);
-    }
-
-    public InteractionDto submitStep(String interactionId, StepSubmissionDto dto) {
-        InteractionInstanceEntity inst = intRepo.findById(interactionId)
-                .orElseThrow(() -> new RuntimeException("InteractionEntity not found"));
-
-        CaseEntity caseEntity = caseRepo.findById(inst.getCaseId())
-                .orElseThrow(() -> new RuntimeException("Case not found"));
-
-        // Save step data temporarily
-        inst.setStepName(dto.stepName());
-        inst.setStepStatus("COMPLETED");
-        inst.setTempData(writeJson(dto.data()));
-
-        // Update case data (merge)
-        caseEntity.setCaseData(writeJson(dto.data())); // simplified
-        caseEntity.setVersion(caseEntity.getVersion() + 1);
-
-        // Example: if step == "personal-info", trigger workflow
-        if ("personal-info".equals(dto.stepName())) {
-            workflowClient.startOnboardingWorkflow(interactionId, inst.getCaseId(), caseEntity.getCaseData());
-            inst.setStatus("WAITING_SYSTEM");
+        // Find initial step from blueprint
+        List<StepDefinition> steps = loadSteps(def.getSteps());
+        if (!steps.isEmpty()) {
+            interaction.setStepName(steps.get(0).getName());
+            interaction.setStepStatus("PENDING");
         }
 
-        caseRepo.save(caseEntity);
-        intRepo.save(inst);
-        return toDto(inst, caseEntity);
+        interaction.setStatus("ACTIVE");
+        interaction.setResumable(true);
+
+        interaction = intRepo.save(interaction);
+
+        return mapToDto(interaction);
     }
 
-    private InteractionDto toDto(InteractionInstanceEntity inst, CaseEntity caseEntity) {
+    @Transactional
+    public InteractionDto submitStep(String interactionId, StepSubmissionDto dto) {
+        log.info("Submitting step for interaction {}: {}", interactionId, dto.stepName());
+
+        // Delegate to StepNavigationService for the heavy lifting
+        stepNavigationService.submitStep(interactionId, dto.stepName(), dto.stepData());
+
+        // Load the updated interaction
+        InteractionEntity interaction = intRepo.findById(interactionId)
+                .orElseThrow(() -> new RuntimeException("Interaction not found"));
+
+        return mapToDto(interaction);
+    }
+
+    private List<StepDefinition> loadSteps(String stepsJson) {
+        try {
+            return mapper.readValue(stepsJson, new TypeReference<List<StepDefinition>>() {});
+        } catch (Exception e) {
+            log.error("Failed to parse steps JSON", e);
+            return List.of();
+        }
+    }
+
+    private InteractionDto mapToDto(InteractionEntity entity) {
         return new InteractionDto(
-                inst.getId(),
-                inst.getStatus(),
-                inst.getStepName(),
-                inst.getStepStatus(),
-                inst.getResumable(),
-                readJson(inst.getTempData()),
-                readJson(caseEntity.getCaseData())
+                entity.getId(),
+                entity.getStatus(),
+                entity.getStepName(),
+                entity.getStepStatus(),
+                entity.getResumable(),
+                readJson(entity.getTempData()),
+                Map.of()
         );
     }
 
-    private Map<String,Object> readJson(String json) {
-        try { return json == null ? Map.of() : mapper.readValue(json, Map.class); }
-        catch (Exception e) { return Map.of(); }
+    private Map<String, Object> readJson(String json) {
+        try {
+            return json == null ? Map.of() : mapper.readValue(json, Map.class);
+        } catch (Exception e) {
+            return Map.of();
+        }
     }
 
     private String writeJson(Object obj) {
-        try { return mapper.writeValueAsString(obj); }
-        catch (Exception e) { throw new RuntimeException(e); }
+        try {
+            return mapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
+

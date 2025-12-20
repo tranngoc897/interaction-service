@@ -1,5 +1,6 @@
 package com.ngoctran.interactionservice.interaction;
 
+import com.ngoctran.interactionservice.ApiResponse;
 import com.ngoctran.interactionservice.StepSubmissionDto;
 import com.ngoctran.interactionservice.interaction.service.InteractionService;
 import lombok.RequiredArgsConstructor;
@@ -16,9 +17,9 @@ public class InteractionController {
 
     private final InteractionService interactionService;
 
-/*    @PostMapping("/start")
+    @PostMapping("/start")
     public ApiResponse<InteractionDto> start(@RequestBody InteractionStartRequest req) {
-        return new ApiResponse<>("InteractionEntity started", interactionService.startInteraction(req));
+        return new ApiResponse<>("Interaction started", interactionService.startInteraction(req));
     }
 
     @PostMapping("/{interactionId}/steps")
@@ -26,6 +27,7 @@ public class InteractionController {
             @PathVariable String interactionId,
             @RequestBody StepSubmissionDto dto) {
         return new ApiResponse<>("Step submitted", interactionService.submitStep(interactionId, dto));
-    }*/
+    }
 
 }
+
