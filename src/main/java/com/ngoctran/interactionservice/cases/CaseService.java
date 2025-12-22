@@ -112,7 +112,7 @@ public class CaseService {
 
         try {
             if ("document-upload".equalsIgnoreCase(stepName)) {
-                temporalWorkflowService.signalDocumentsUploaded(signalWorkflowId, (Map<String, String>) data);
+                //temporalWorkflowService.signalDocumentsUploaded(signalWorkflowId, (Map<String, String>) data);
             } else if ("personal-info".equalsIgnoreCase(stepName)) {
                 temporalWorkflowService.signalUserDataUpdated(signalWorkflowId, data);
             } else if ("manual-review".equalsIgnoreCase(stepName)) {
