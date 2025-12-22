@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.workflow.onboarding;
+package com.ngoctran.interactionservice.workflow;
 
 import io.temporal.workflow.WorkflowInterface;
 import io.temporal.workflow.WorkflowMethod;

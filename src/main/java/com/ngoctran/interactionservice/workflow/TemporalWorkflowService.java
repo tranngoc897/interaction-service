@@ -1,11 +1,9 @@
-package com.ngoctran.interactionservice.workflow.service;
+package com.ngoctran.interactionservice.workflow;
 
 import com.ngoctran.interactionservice.mapping.ProcessMappingEntity;
 import com.ngoctran.interactionservice.mapping.ProcessMappingRepository;
 import com.ngoctran.interactionservice.mapping.enums.EngineType;
 import com.ngoctran.interactionservice.mapping.enums.ProcessStatus;
-import com.ngoctran.interactionservice.workflow.config.WorkerConfiguration;
-import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflow;
 import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;

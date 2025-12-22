@@ -9,7 +9,7 @@ import com.ngoctran.interactionservice.interaction.InteractionDefinitionReposito
 import com.ngoctran.interactionservice.interaction.InteractionEntity;
 import com.ngoctran.interactionservice.interaction.InteractionRepository;
 import com.ngoctran.interactionservice.interaction.dto.*;
-import com.ngoctran.interactionservice.workflow.service.TemporalWorkflowService;
+import com.ngoctran.interactionservice.workflow.TemporalWorkflowService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;

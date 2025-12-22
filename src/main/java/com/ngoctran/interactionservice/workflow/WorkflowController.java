@@ -1,7 +1,5 @@
-package com.ngoctran.interactionservice.workflow.controller;
+package com.ngoctran.interactionservice.workflow;
 
-import com.ngoctran.interactionservice.workflow.service.TemporalWorkflowService;
-import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

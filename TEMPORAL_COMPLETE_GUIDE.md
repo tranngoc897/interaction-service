@@ -450,8 +450,8 @@ package com.ngoctran.interactionservice.workflow.service;
 
 import com.ngoctran.interactionservice.mapping.ProcessMappingEntity;
 import com.ngoctran.interactionservice.mapping.ProcessMappingRepository;
-import com.ngoctran.interactionservice.workflow.config.WorkerConfiguration;
-import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflow;
+import com.ngoctran.interactionservice.workflow.WorkerConfiguration;
+import com.ngoctran.interactionservice.workflow.KYCOnboardingWorkflow;
 import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;

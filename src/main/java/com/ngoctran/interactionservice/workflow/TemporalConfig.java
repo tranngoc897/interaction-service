@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.workflow.config;
+package com.ngoctran.interactionservice.workflow;
 
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowClientOptions;

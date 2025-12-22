@@ -1,7 +1,6 @@
-package com.ngoctran.interactionservice.workflow.config;
+package com.ngoctran.interactionservice.workflow;
 
 import com.ngoctran.interactionservice.workflow.activity.*;
-import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflowImpl;
 import io.temporal.client.WorkflowClient;
 import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;

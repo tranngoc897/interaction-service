@@ -21,7 +21,6 @@ import java.util.UUID;
     @Index(name = "idx_process_mapping_user_id", columnList = "user_id"),
     @Index(name = "idx_process_mapping_process_instance_id", columnList = "process_instance_id"),
     @Index(name = "idx_process_mapping_status", columnList = "status"),
-    // Composite index for finding latest process of a specific type for a case
     @Index(name = "idx_process_mapping_case_def", columnList = "case_id, process_definition_key")
 })
 @NoArgsConstructor
