@@ -1,9 +1,8 @@
-package com.ngoctran.interactionservice.interaction.controller;
+package com.ngoctran.interactionservice.interaction.controllerservice;
 
 import com.ngoctran.interactionservice.interaction.dto.StepDefinition;
 import com.ngoctran.interactionservice.interaction.dto.StepHistoryEntry;
 import com.ngoctran.interactionservice.interaction.dto.StepResponse;
-import com.ngoctran.interactionservice.interaction.service.StepNavigationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -31,9 +30,9 @@ import java.util.Map;
 @RequestMapping("/api/interactions")
 @RequiredArgsConstructor
 @Slf4j
-public class StepController {
+public class InteractionController {
 
-    private final StepNavigationService stepNavigationService;
+    private final InteractionService interactionService;
 
     /**
      * Get current step information for an interaction
@@ -65,7 +64,7 @@ public class StepController {
     public ResponseEntity<StepResponse> getCurrentStep(@PathVariable String interactionId) {
         log.info("GET /api/interactions/{}/current-step", interactionId);
         
-        StepResponse response = stepNavigationService.getCurrentStep(interactionId);
+        StepResponse response = interactionService.getCurrentStep(interactionId);
         
         log.info("Current step: {} (status: {})", 
                 response.getStepName(), 
@@ -102,7 +101,7 @@ public class StepController {
                 interactionId, 
                 request.getStepName());
         
-        StepResponse response = stepNavigationService.submitStep(
+        StepResponse response = interactionService.submitStep(
                 interactionId,
                 request.getStepName(),
                 request.getData()
@@ -136,7 +135,7 @@ public class StepController {
         
         log.info("GET /api/interactions/definitions/{}/steps?version={}", key, version);
         
-        List<StepDefinition> steps = stepNavigationService.getStepBlueprint(key, version);
+        List<StepDefinition> steps = interactionService.getStepBlueprint(key, version);
         
         log.info("Found {} steps in blueprint", steps.size());
         
@@ -177,7 +176,7 @@ public class StepController {
     public ResponseEntity<List<StepHistoryEntry>> getStepHistory(@PathVariable String caseId) {
         log.info("GET /api/interactions/cases/{}/step-history", caseId);
         
-        List<StepHistoryEntry> history = stepNavigationService.getStepHistory(caseId);
+        List<StepHistoryEntry> history = interactionService.getStepHistory(caseId);
         
         log.info("Found {} steps in history", history.size());
         
@@ -192,4 +191,5 @@ public class StepController {
         private String stepName;
         private Map<String, Object> data;
     }
+
 }

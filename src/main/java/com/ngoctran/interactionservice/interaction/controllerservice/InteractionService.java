@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.interaction.service;
+package com.ngoctran.interactionservice.interaction.controllerservice;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,9 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
-public class StepNavigationService {
+public class InteractionService {
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(StepNavigationService.class);
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(InteractionService.class);
 
     private final InteractionDefinitionRepository intDefRepo;
     private final InteractionRepository intRepo;
