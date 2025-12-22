@@ -10,8 +10,17 @@ import com.ngoctran.interactionservice.interaction.InteractionEntity;
 import com.ngoctran.interactionservice.interaction.InteractionRepository;
 import com.ngoctran.interactionservice.interaction.dto.*;
 import com.ngoctran.interactionservice.temporal.service.TemporalWorkflowService;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service demonstrating how to work with 3 types of "steps":

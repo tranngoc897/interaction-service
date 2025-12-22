@@ -14,7 +14,7 @@ public class IDVerificationActivityImpl implements IDVerificationActivity {
         try {
             // TODO: Integrate with actual ID verification service
             // Examples: Jumio, Onfido, Trulioo, etc.
-            
+
             // Mock verification logic
             boolean isValid = idNumber != null && idNumber.length() >= 9;
             double confidenceScore = isValid ? 0.92 : 0.45;

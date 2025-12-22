@@ -16,7 +16,6 @@ public class OCRActivityImpl implements OCRActivity {
         try {
             // TODO: Integrate with actual OCR service (Google Vision, AWS Textract, etc.)
             // For now, return mock data
-            
             Map<String, Object> extractedData = new HashMap<>();
             
             switch (documentType) {
