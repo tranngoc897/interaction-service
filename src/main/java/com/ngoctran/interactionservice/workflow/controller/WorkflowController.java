@@ -23,18 +23,14 @@ public class WorkflowController {
      * Start KYC Onboarding Workflow
      */
     @PostMapping("/kyc/start")
-    public ResponseEntity<WorkflowStartResponse> startKYCWorkflow(
-            @RequestBody KYCStartRequest request) {
-        
+    public ResponseEntity<WorkflowStartResponse> startKYCWorkflow(@RequestBody KYCStartRequest request) {
         log.info("Starting KYC onboarding for case: {}", request.getCaseId());
-        
         String processInstanceId = workflowService.startKYCOnboardingWorkflow(
                 request.getCaseId(),
                 request.getInteractionId(),
                 request.getUserId(),
                 request.getInitialData()
         );
-        
         return ResponseEntity.ok(new WorkflowStartResponse(
                 processInstanceId,
                 "kyc-onboarding-" + request.getCaseId(),

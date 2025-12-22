@@ -290,7 +290,6 @@ public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {
                     errorMessage,
                     null
             );
-            
             notificationActivity.sendNotification(
                     caseId,
                     "KYC_FAILED",

@@ -38,35 +38,26 @@ public class TemporalWorkflowService {
             Map<String, Object> initialData) {
         
         log.info("Starting KYC Onboarding Workflow: caseId={}, interactionId={}", caseId, interactionId);
-        
         // Create onboarding options
         String workflowId = "kyc-onboarding-" + caseId;
-        
         WorkflowOptions options = WorkflowOptions.newBuilder()
                 .setWorkflowId(workflowId)
                 .setTaskQueue(WorkerConfiguration.KYC_ONBOARDING_QUEUE)
                 .setWorkflowExecutionTimeout(Duration.ofDays(7))
                 .build();
-        
         // Create onboarding stub
         KYCOnboardingWorkflow workflow = workflowClient.newWorkflowStub(
                 KYCOnboardingWorkflow.class,
                 options
         );
-        
         // Start onboarding asynchronously
-        WorkflowExecution execution = WorkflowClient.start(
-                () -> workflow.execute(caseId, interactionId, initialData)
+        WorkflowExecution execution = WorkflowClient.start(() -> workflow.execute(caseId, interactionId, initialData)
         );
-        
         String processInstanceId = execution.getWorkflowId() + ":" + execution.getRunId();
-        
         log.info("Workflow started: workflowId={}, runId={}", 
                 execution.getWorkflowId(), execution.getRunId());
-        
         // Save process mapping
         saveProcessMapping(caseId, userId, processInstanceId, "kyc-onboarding");
-        
         return processInstanceId;
     }
     
@@ -80,9 +71,7 @@ public class TemporalWorkflowService {
                 KYCOnboardingWorkflow.class,
                 workflowId
         );
-        
         workflow.documentsUploaded(documents);
-        
         log.info("Signal sent successfully");
     }
     
@@ -96,9 +85,7 @@ public class TemporalWorkflowService {
                 KYCOnboardingWorkflow.class,
                 workflowId
         );
-        
         workflow.userDataUpdated(updatedData);
-        
         log.info("Signal sent successfully");
     }
     
@@ -112,9 +99,7 @@ public class TemporalWorkflowService {
                 KYCOnboardingWorkflow.class,
                 workflowId
         );
-        
         workflow.manualReview(approved, reason);
-        
         log.info("Signal sent successfully");
     }
     
@@ -123,12 +108,10 @@ public class TemporalWorkflowService {
      */
     public String queryWorkflowStatus(String workflowId) {
         log.info("Querying onboarding status: {}", workflowId);
-        
         KYCOnboardingWorkflow workflow = workflowClient.newWorkflowStub(
                 KYCOnboardingWorkflow.class,
                 workflowId
         );
-        
         return workflow.getStatus();
     }
     
