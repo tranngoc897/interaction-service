@@ -30,7 +30,6 @@ public class InteractionService {
     private final ObjectMapper mapper;
     private final StepNavigationService stepNavigationService;
 
-
     @Transactional
     public InteractionDto startInteraction(InteractionStartRequest req) {
         log.info("Starting interaction: key={}, version={}", req.interactionDefinitionKey(), req.interactionDefinitionVersion());
