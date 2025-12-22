@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 /**
  * Service for managing Process Mappings
  * 
- * Handles the lifecycle of process mappings between business processes and workflow engines
+ * Handles the lifecycle of process mappings between business processes and onboarding engines
  */
 @Service
 @RequiredArgsConstructor
@@ -202,7 +202,7 @@ public class ProcessMappingService {
     }
     
     /**
-     * Check if a specific workflow type is running for a case
+     * Check if a specific onboarding type is running for a case
      */
     public boolean hasRunningProcess(String caseId, String processDefinitionKey) {
         return processMappingRepo.existsByCaseIdAndProcessDefinitionKey(caseId, processDefinitionKey);

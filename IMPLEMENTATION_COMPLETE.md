@@ -69,7 +69,7 @@
 docker run -p 7233:7233 -p 8233:8233 temporalio/auto-setup:latest
 
 # Or using Temporal CLI
-temporal server start-dev
+onboarding server start-dev
 ```
 
 ### **Step 2: Start PostgreSQL**

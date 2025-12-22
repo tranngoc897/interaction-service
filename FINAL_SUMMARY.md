@@ -127,7 +127,7 @@ Copy từng file vào project của bạn.
 docker run -p 7233:7233 -p 8233:8233 temporalio/auto-setup:latest
 
 # Option 2: Temporal CLI
-temporal server start-dev
+onboarding server start-dev
 ```
 
 ### **Step 3: Configure Application**
@@ -143,7 +143,7 @@ Copy `application.yml` từ guide vào `src/main/resources/`
 ### **Step 5: Test**
 
 ```bash
-# Start workflow
+# Start onboarding
 curl -X POST http://localhost:8080/api/workflows/kyc/start \
   -H "Content-Type: application/json" \
   -d '{"caseId":"case-123","interactionId":"int-456","userId":"user-789","initialData":{"fullName":"Nguyen Van A","dob":"1990-01-01","idNumber":"123456789"}}'

@@ -1,10 +1,9 @@
-package com.ngoctran.interactionservice.temporal.config;
+package com.ngoctran.interactionservice.workflow.config;
 
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowClientOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.serviceclient.WorkflowServiceStubsOptions;
-import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

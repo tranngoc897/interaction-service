@@ -1,10 +1,9 @@
-package com.ngoctran.interactionservice.temporal.workflow;
+package com.ngoctran.interactionservice.workflow.onboarding;
 
-import com.ngoctran.interactionservice.temporal.activity.*;
+import com.ngoctran.interactionservice.workflow.activity.*;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.common.RetryOptions;
 import io.temporal.workflow.Workflow;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 
 import java.time.Duration;
@@ -14,7 +13,7 @@ import java.util.Map;
 /**
  * KYC Onboarding Workflow Implementation
  * 
- * Complete working implementation of KYC onboarding workflow
+ * Complete working implementation of KYC onboarding onboarding
  * This serves as the EXAMPLE implementation (Option C)
  */
 public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {

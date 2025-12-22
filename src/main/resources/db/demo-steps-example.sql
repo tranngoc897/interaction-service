@@ -143,7 +143,7 @@ INSERT INTO flw_int_def (
             "onSubmit": [
                 {
                     "action": "startWorkflow",
-                    "workflow": "ocr-verification-workflow"
+                    "onboarding": "ocr-verification-onboarding"
                 }
             ],
             "uiSchema": {
@@ -162,7 +162,7 @@ INSERT INTO flw_int_def (
             "onSubmit": [
                 {
                     "action": "startWorkflow",
-                    "workflow": "kyc-approval-workflow"
+                    "onboarding": "kyc-approval-onboarding"
                 }
             ],
             "uiSchema": {
@@ -519,7 +519,7 @@ INSERT INTO flw_process_mapping (
     'pm-003',
     'TEMPORAL',
     'wf-kyc-approval-12345',
-    'kyc-approval-workflow',
+    'kyc-approval-onboarding',
     'user-003-kyc',
     'c3333333-3333-3333-3333-333333333333',
     'user-003',

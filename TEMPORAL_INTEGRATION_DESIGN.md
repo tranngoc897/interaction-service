@@ -144,7 +144,7 @@ User                Interaction Service         Temporal            External Ser
 CREATE TABLE flw_process_mapping (
     id VARCHAR(36) PRIMARY KEY,
     engine_type VARCHAR(50) NOT NULL,              -- 'TEMPORAL'
-    process_instance_id VARCHAR(128) NOT NULL,     -- Temporal workflow ID
+    process_instance_id VARCHAR(128) NOT NULL,     -- Temporal onboarding ID
     process_definition_key VARCHAR(255) NOT NULL,  -- Workflow name
     business_key VARCHAR(255),                     -- User-defined key
     case_id VARCHAR(36) NOT NULL,                  -- FK to flow_case

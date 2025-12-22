@@ -13,7 +13,7 @@ import java.util.UUID;
 /**
  * Process Mapping Entity
  * 
- * Maps business processes (Cases/Interactions) to workflow engine instances (Temporal, Camunda, etc.)
+ * Maps business processes (Cases/Interactions) to onboarding engine instances (Temporal, Camunda, etc.)
  */
 @Entity
 @Table(name = "flw_process_mapping", indexes = {

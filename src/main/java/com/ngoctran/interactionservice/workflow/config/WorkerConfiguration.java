@@ -1,7 +1,7 @@
-package com.ngoctran.interactionservice.temporal.config;
+package com.ngoctran.interactionservice.workflow.config;
 
-import com.ngoctran.interactionservice.temporal.activity.*;
-import com.ngoctran.interactionservice.temporal.workflow.KYCOnboardingWorkflowImpl;
+import com.ngoctran.interactionservice.workflow.activity.*;
+import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflowImpl;
 import io.temporal.client.WorkflowClient;
 import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;
@@ -42,16 +42,12 @@ public class WorkerConfiguration {
     @PostConstruct
     public void registerWorkersAndActivities() {
         log.info("Registering Temporal Workers and Activities...");
-
         // Register KYC Onboarding Worker
         registerKYCOnboardingWorker();
-
         // Register Document Verification Worker
         registerDocumentVerificationWorker();
-
         // Register General Worker
         registerGeneralWorker();
-
         // Start all workers
         workerFactory.start();
         
@@ -64,12 +60,9 @@ public class WorkerConfiguration {
      */
     private void registerKYCOnboardingWorker() {
         log.info("Registering KYC Onboarding Worker on queue: {}", KYC_ONBOARDING_QUEUE);
-        
         Worker worker = workerFactory.newWorker(KYC_ONBOARDING_QUEUE);
-
-        // Register workflow implementations
+        // Register onboarding implementations
         worker.registerWorkflowImplementationTypes(KYCOnboardingWorkflowImpl.class);
-
         // Register activity implementations
         worker.registerActivitiesImplementations(
                 ocrActivity,
@@ -87,12 +80,9 @@ public class WorkerConfiguration {
      */
     private void registerDocumentVerificationWorker() {
         log.info("Registering Document Verification Worker on queue: {}", DOCUMENT_VERIFICATION_QUEUE);
-        
         Worker worker = workerFactory.newWorker(DOCUMENT_VERIFICATION_QUEUE);
-
-        // Register workflow implementations
+        // Register onboarding implementations
         // worker.registerWorkflowImplementationTypes(DocumentVerificationWorkflowImpl.class);
-
         // Register activity implementations
         worker.registerActivitiesImplementations(
                 ocrActivity,
@@ -112,7 +102,6 @@ public class WorkerConfiguration {
         log.info("Registering General Worker on queue: {}", GENERAL_QUEUE);
         
         Worker worker = workerFactory.newWorker(GENERAL_QUEUE);
-
         // Register activity implementations
         worker.registerActivitiesImplementations(
                 notificationActivity,

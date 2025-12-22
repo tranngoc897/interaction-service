@@ -1,7 +1,7 @@
-package com.ngoctran.interactionservice.temporal.controller;
+package com.ngoctran.interactionservice.workflow.controller;
 
-import com.ngoctran.interactionservice.temporal.service.TemporalWorkflowService;
-import com.ngoctran.interactionservice.temporal.workflow.KYCOnboardingWorkflow;
+import com.ngoctran.interactionservice.workflow.service.TemporalWorkflowService;
+import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +26,7 @@ public class WorkflowController {
     public ResponseEntity<WorkflowStartResponse> startKYCWorkflow(
             @RequestBody KYCStartRequest request) {
         
-        log.info("Starting KYC workflow for case: {}", request.getCaseId());
+        log.info("Starting KYC onboarding for case: {}", request.getCaseId());
         
         String processInstanceId = workflowService.startKYCOnboardingWorkflow(
                 request.getCaseId(),
@@ -50,10 +50,8 @@ public class WorkflowController {
             @PathVariable String workflowId,
             @RequestBody Map<String, String> documents) {
         
-        log.info("Signaling documents uploaded to workflow: {}", workflowId);
-        
+        log.info("Signaling documents uploaded to onboarding: {}", workflowId);
         workflowService.signalDocumentsUploaded(workflowId, documents);
-        
         return ResponseEntity.ok().build();
     }
     
@@ -65,10 +63,8 @@ public class WorkflowController {
             @PathVariable String workflowId,
             @RequestBody Map<String, Object> updatedData) {
         
-        log.info("Signaling user data updated to workflow: {}", workflowId);
-        
+        log.info("Signaling user data updated to onboarding: {}", workflowId);
         workflowService.signalUserDataUpdated(workflowId, updatedData);
-        
         return ResponseEntity.ok().build();
     }
     
@@ -80,52 +76,38 @@ public class WorkflowController {
             @PathVariable String workflowId,
             @RequestBody ManualReviewRequest request) {
         
-        log.info("Signaling manual review to workflow: {}, approved={}", 
-                workflowId, request.isApproved());
-        
+        log.info("Signaling manual review to onboarding: {}, approved={}", workflowId, request.isApproved());
         workflowService.signalManualReview(workflowId, request.isApproved(), request.getReason());
-        
         return ResponseEntity.ok().build();
     }
-    
-    /**
-     * Query workflow status
-     */
+
     @GetMapping("/{workflowId}/status")
     public ResponseEntity<WorkflowStatusResponse> getWorkflowStatus(
             @PathVariable String workflowId) {
         
-        log.info("Getting workflow status: {}", workflowId);
-        
+        log.info("Getting onboarding status: {}", workflowId);
         String status = workflowService.queryWorkflowStatus(workflowId);
-        
         return ResponseEntity.ok(new WorkflowStatusResponse(workflowId, status));
     }
     
     /**
-     * Query workflow progress
+     * Query onboarding progress
      */
     @GetMapping("/{workflowId}/progress")
     public ResponseEntity<KYCOnboardingWorkflow.WorkflowProgress> getWorkflowProgress(
             @PathVariable String workflowId) {
-        
-        log.info("Getting workflow progress: {}", workflowId);
-        
-        KYCOnboardingWorkflow.WorkflowProgress progress = 
-                workflowService.queryWorkflowProgress(workflowId);
-        
+        log.info("Getting onboarding progress: {}", workflowId);
+        KYCOnboardingWorkflow.WorkflowProgress progress = workflowService.queryWorkflowProgress(workflowId);
         return ResponseEntity.ok(progress);
     }
     
     /**
-     * Cancel workflow
+     * Cancel onboarding
      */
     @PostMapping("/{workflowId}/cancel")
     public ResponseEntity<Void> cancelWorkflow(@PathVariable String workflowId) {
-        log.info("Cancelling workflow: {}", workflowId);
-        
+        log.info("Cancelling onboarding: {}", workflowId);
         workflowService.cancelWorkflow(workflowId);
-        
         return ResponseEntity.ok().build();
     }
     

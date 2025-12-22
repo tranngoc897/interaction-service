@@ -9,7 +9,7 @@ import com.ngoctran.interactionservice.interaction.InteractionDefinitionReposito
 import com.ngoctran.interactionservice.interaction.InteractionEntity;
 import com.ngoctran.interactionservice.interaction.InteractionRepository;
 import com.ngoctran.interactionservice.interaction.dto.*;
-import com.ngoctran.interactionservice.temporal.service.TemporalWorkflowService;
+import com.ngoctran.interactionservice.workflow.service.TemporalWorkflowService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -350,8 +349,8 @@ public class StepNavigationService {
             // Handle different action types
             switch (actionType) {
                 case "startWorkflow":
-                    String workflowName = (String) action.get("workflow");
-                    log.info("Starting Temporal workflow: {}", workflowName);
+                    String workflowName = (String) action.get("onboarding");
+                    log.info("Starting Temporal onboarding: {}", workflowName);
                     
                     Map<String, Object> initialData = parseCaseData(caseEntity.getCaseData());
                     

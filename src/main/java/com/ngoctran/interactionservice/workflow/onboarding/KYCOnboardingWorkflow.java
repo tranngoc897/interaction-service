@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.temporal.workflow;
+package com.ngoctran.interactionservice.workflow.onboarding;
 
 import io.temporal.workflow.WorkflowInterface;
 import io.temporal.workflow.WorkflowMethod;
@@ -10,7 +10,7 @@ import java.util.Map;
 /**
  * KYC Onboarding Workflow Interface
  * 
- * This workflow orchestrates the complete KYC onboarding journey:
+ * This onboarding orchestrates the complete KYC onboarding journey:
  * 1. User submits personal information
  * 2. User uploads documents (ID front, ID back, selfie)
  * 3. System performs OCR on documents
@@ -25,7 +25,7 @@ import java.util.Map;
 public interface KYCOnboardingWorkflow {
 
     /**
-     * Main workflow method
+     * Main onboarding method
      * 
      * @param caseId The case ID from flow_case table
      * @param interactionId The interaction ID from flw_int table
@@ -64,15 +64,15 @@ public interface KYCOnboardingWorkflow {
     void manualReview(boolean approved, String reason);
 
     /**
-     * Query: Get current workflow status
+     * Query: Get current onboarding status
      * 
-     * @return Current status of the workflow
+     * @return Current status of the onboarding
      */
     @QueryMethod
     String getStatus();
 
     /**
-     * Query: Get workflow progress
+     * Query: Get onboarding progress
      * 
      * @return Progress information
      */

@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.temporal.activity;
+package com.ngoctran.interactionservice.workflow.activity;
 
 import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityMethod;

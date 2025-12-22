@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.temporal.activity;
+package com.ngoctran.interactionservice.workflow.activity;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

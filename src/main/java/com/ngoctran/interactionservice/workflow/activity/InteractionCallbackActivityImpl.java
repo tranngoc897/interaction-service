@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.temporal.activity;
+package com.ngoctran.interactionservice.workflow.activity;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ngoctran.interactionservice.cases.CaseEntity;
@@ -6,7 +6,6 @@ import com.ngoctran.interactionservice.cases.CaseRepository;
 import com.ngoctran.interactionservice.interaction.InteractionEntity;
 import com.ngoctran.interactionservice.interaction.InteractionRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -37,7 +36,7 @@ public class InteractionCallbackActivityImpl implements InteractionCallbackActiv
             
             interaction.setStatus(status);
             
-            // Update temp data with workflow result
+            // Update temp data with onboarding result
             if (data != null) {
                 String jsonData = objectMapper.writeValueAsString(data);
                 interaction.setTempData(jsonData);
