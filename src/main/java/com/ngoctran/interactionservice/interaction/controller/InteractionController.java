@@ -1,7 +1,9 @@
-package com.ngoctran.interactionservice.interaction;
+package com.ngoctran.interactionservice.interaction.controller;
 
 import com.ngoctran.interactionservice.ApiResponse;
 import com.ngoctran.interactionservice.StepSubmissionDto;
+import com.ngoctran.interactionservice.interaction.InteractionDto;
+import com.ngoctran.interactionservice.interaction.InteractionStartRequest;
 import com.ngoctran.interactionservice.interaction.service.InteractionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PathVariable;

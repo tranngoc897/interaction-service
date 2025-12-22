@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.interaction;
+package com.ngoctran.interactionservice.interaction.controller;
 
 import com.ngoctran.interactionservice.interaction.dto.StepDefinition;
 import com.ngoctran.interactionservice.interaction.dto.StepHistoryEntry;
