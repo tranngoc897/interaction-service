@@ -13,18 +13,19 @@ import java.util.UUID;
 /**
  * Process Mapping Entity
  * 
- * Maps business processes (Cases/Interactions) to onboarding engine instances (Temporal, Camunda, etc.)
+ * Maps business processes (Cases/Interactions) to onboarding engine instances
+ * (Temporal, Camunda, etc.)
  */
 @Entity
-@Table(name = "flw_process_mapping", indexes = {
-    @Index(name = "idx_process_mapping_case_id", columnList = "case_id"),
-    @Index(name = "idx_process_mapping_user_id", columnList = "user_id"),
-    @Index(name = "idx_process_mapping_process_instance_id", columnList = "process_instance_id"),
-    @Index(name = "idx_process_mapping_status", columnList = "status"),
-    @Index(name = "idx_process_mapping_case_def", columnList = "case_id, process_definition_key")
+@Table(name = "process_mapping", indexes = {
+        @Index(name = "idx_process_mapping_case_id", columnList = "case_id"),
+        @Index(name = "idx_process_mapping_user_id", columnList = "user_id"),
+        @Index(name = "idx_process_mapping_process_instance_id", columnList = "process_instance_id"),
+        @Index(name = "idx_process_mapping_status", columnList = "status"),
 })
 @NoArgsConstructor
 @AllArgsConstructor
+@Data
 public class ProcessMappingEntity {
 
     @Id
@@ -48,8 +49,8 @@ public class ProcessMappingEntity {
     @Column(name = "business_key", length = 255)
     private String businessKey;
 
-    @Column(name = "case_id", length = 36, nullable = false)
-    private String caseId;
+    @Column(name = "case_id", nullable = false)
+    private UUID caseId;
 
     @Column(name = "user_id", length = 36, nullable = false)
     private String userId;
@@ -102,7 +103,7 @@ public class ProcessMappingEntity {
     public boolean isRunning() {
         return ProcessStatus.RUNNING.equals(status);
     }
-    
+
     public boolean isCompleted() {
         return ProcessStatus.COMPLETED.equals(status);
     }
@@ -135,49 +136,5 @@ public class ProcessMappingEntity {
         this.completedAt = LocalDateTime.now();
     }
 
-    // Getters and Setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-
-    public EngineType getEngineType() { return engineType; }
-    public void setEngineType(EngineType engineType) { this.engineType = engineType; }
-
-    public String getProcessInstanceId() { return processInstanceId; }
-    public void setProcessInstanceId(String processInstanceId) { this.processInstanceId = processInstanceId; }
-
-    public String getProcessDefinitionKey() { return processDefinitionKey; }
-    public void setProcessDefinitionKey(String processDefinitionKey) { this.processDefinitionKey = processDefinitionKey; }
-
-    public String getBusinessKey() { return businessKey; }
-    public void setBusinessKey(String businessKey) { this.businessKey = businessKey; }
-
-    public String getCaseId() { return caseId; }
-    public void setCaseId(String caseId) { this.caseId = caseId; }
-
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
-
-    public ProcessStatus getStatus() { return status; }
-    public void setStatus(ProcessStatus status) { this.status = status; }
-
-    public LocalDateTime getStartedAt() { return startedAt; }
-    public void setStartedAt(LocalDateTime startedAt) { this.startedAt = startedAt; }
-
-    public LocalDateTime getCompletedAt() { return completedAt; }
-    public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
-
-    public String getMetadata() { return metadata; }
-    public void setMetadata(String metadata) { this.metadata = metadata; }
-
-    public String getErrorMessage() { return errorMessage; }
-    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-
-    public Long getVersion() { return version; }
-    public void setVersion(Long version) { this.version = version; }
+    // Getters and setters handled by Lombok @Data
 }

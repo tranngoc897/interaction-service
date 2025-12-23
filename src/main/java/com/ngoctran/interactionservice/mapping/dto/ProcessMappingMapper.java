@@ -14,7 +14,7 @@ public class ProcessMappingMapper {
                 .processInstanceId(entity.getProcessInstanceId())
                 .processDefinitionKey(entity.getProcessDefinitionKey())
                 .businessKey(entity.getBusinessKey())
-                .caseId(entity.getCaseId())
+                .caseId(entity.getCaseId() != null ? entity.getCaseId().toString() : null)
                 .userId(entity.getUserId())
                 .status(entity.getStatus())
                 .startedAt(entity.getStartedAt())

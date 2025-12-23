@@ -113,7 +113,7 @@ public class CaseService {
 
         // 4. Find and Handle Workflow Signals (Temporal)
         if (caseEntity.getWorkflowInstanceId() == null) {
-            processMappingRepo.findRunningProcessesByCaseId(caseId.toString())
+            processMappingRepo.findRunningProcessesByCaseId(caseId)
                     .stream().findFirst()
                     .ifPresent(p -> caseEntity.setWorkflowInstanceId(p.getProcessInstanceId()));
         }
@@ -155,7 +155,8 @@ public class CaseService {
 
         try {
             if ("document-upload".equalsIgnoreCase(stepName)) {
-                //temporalWorkflowService.signalDocumentsUploaded(signalWorkflowId, (Map<String, String>) data);
+                // temporalWorkflowService.signalDocumentsUploaded(signalWorkflowId,
+                // (Map<String, String>) data);
             } else if ("personal-info".equalsIgnoreCase(stepName)) {
                 temporalWorkflowService.signalUserDataUpdated(signalWorkflowId, data);
             } else if ("manual-review".equalsIgnoreCase(stepName)) {

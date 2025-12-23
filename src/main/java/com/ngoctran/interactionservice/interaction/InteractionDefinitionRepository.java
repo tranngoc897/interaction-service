@@ -6,10 +6,10 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface InteractionDefinitionRepository extends JpaRepository<InteractionDefinitionEntity, String> {
-    
+public interface InteractionDefinitionRepository
+        extends JpaRepository<InteractionDefinitionEntity, InteractionDefinitionId> {
+
     Optional<InteractionDefinitionEntity> findByInteractionDefinitionKeyAndInteractionDefinitionVersion(
-            String key, 
-            Long version
-    );
+            String key,
+            Long version);
 }

@@ -61,8 +61,7 @@ public class InteractionService {
         // 2. Load BLUEPRINT to get step configuration
         List<StepDefinition> allSteps = loadStepBlueprint(
                 interaction.getInteractionDefinitionKey(),
-                interaction.getInteractionDefinitionVersion()
-        );
+                interaction.getInteractionDefinitionVersion());
 
         // 3. Find current step definition in BLUEPRINT
         StepDefinition currentStepDef = allSteps.stream()
@@ -70,11 +69,11 @@ public class InteractionService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Step definition not found: " + currentStepName));
 
-        log.info("Found step definition: type={}, title={}", 
+        log.info("Found step definition: type={}, title={}",
                 currentStepDef.getType(), currentStepDef.getTitle());
 
         // 4. Load case to get HISTORY and pre-filled data
-        CaseEntity caseEntity = caseRepo.findById(UUID.fromString(interaction.getCaseId()))
+        CaseEntity caseEntity = caseRepo.findById(interaction.getCaseId())
                 .orElseThrow(() -> new RuntimeException("Case not found"));
 
         // 5. Get step data from history (if user is resuming/editing)
@@ -85,8 +84,7 @@ public class InteractionService {
         StepResponse.ProgressInfo progress = new StepResponse.ProgressInfo(
                 currentIndex + 1,
                 allSteps.size(),
-                (int) ((currentIndex + 1) * 100.0 / allSteps.size())
-        );
+                (int) ((currentIndex + 1) * 100.0 / allSteps.size()));
 
         // 6.5 Calculate SLA Status
         String slaStatus = calculateSLAStatus(interaction, currentStepDef);
@@ -102,12 +100,12 @@ public class InteractionService {
                 interaction.getResumable(),
                 interaction.getCaseId(),
                 slaStatus,
-                progress
-        );
+                progress);
     }
 
     private String calculateSLAStatus(InteractionEntity interaction, StepDefinition stepDef) {
-        if (stepDef.getEstimatedTime() == null) return "ON_TIME";
+        if (stepDef.getEstimatedTime() == null)
+            return "ON_TIME";
 
         try {
             // Very simple parser: "24h", "10m"
@@ -122,13 +120,16 @@ public class InteractionService {
             }
 
             Instant startedAt = interaction.getUpdatedAt(); // Last time the record was touched
-            if (startedAt == null) startedAt = Instant.now();
+            if (startedAt == null)
+                startedAt = Instant.now();
 
             long minutesElapsed = java.time.Duration.between(startedAt, Instant.now()).toMinutes();
 
-            if (minutesElapsed > durationMinutes) return "OVERDUE";
-            if (minutesElapsed > (durationMinutes * 0.8)) return "NEARLY_OVERDUE";
-            
+            if (minutesElapsed > durationMinutes)
+                return "OVERDUE";
+            if (minutesElapsed > (durationMinutes * 0.8))
+                return "NEARLY_OVERDUE";
+
             return "ON_TIME";
         } catch (Exception e) {
             log.warn("Failed to calculate SLA", e);
@@ -152,15 +153,14 @@ public class InteractionService {
                 .orElseThrow(() -> new RuntimeException("Interaction not found"));
 
         if (!interaction.getStepName().equals(stepName)) {
-            throw new RuntimeException("Step mismatch. Expected: " + interaction.getStepName() 
+            throw new RuntimeException("Step mismatch. Expected: " + interaction.getStepName()
                     + ", got: " + stepName);
         }
 
         // 2. Load BLUEPRINT
         List<StepDefinition> allSteps = loadStepBlueprint(
                 interaction.getInteractionDefinitionKey(),
-                interaction.getInteractionDefinitionVersion()
-        );
+                interaction.getInteractionDefinitionVersion());
 
         StepDefinition currentStepDef = allSteps.stream()
                 .filter(s -> s.getName().equals(stepName))
@@ -171,7 +171,7 @@ public class InteractionService {
         validateStepData(currentStepDef, data);
 
         // 4. Load case
-        CaseEntity caseEntity = caseRepo.findById(UUID.fromString(interaction.getCaseId()))
+        CaseEntity caseEntity = caseRepo.findById(interaction.getCaseId())
                 .orElseThrow();
 
         // 5. Update HISTORY in audit_trail
@@ -183,8 +183,7 @@ public class InteractionService {
                 Instant.now(),
                 data,
                 null, // no errors
-                Map.of("userAgent", "Mozilla/5.0", "ipAddress", "192.168.1.1")
-        );
+                Map.of("userAgent", "Mozilla/5.0", "ipAddress", "192.168.1.1"));
         history.add(newEntry);
         saveStepHistory(caseEntity, history);
 
@@ -231,7 +230,7 @@ public class InteractionService {
     public List<StepHistoryEntry> getStepHistory(String caseId) {
         CaseEntity caseEntity = caseRepo.findById(UUID.fromString(caseId))
                 .orElseThrow(() -> new RuntimeException("Case not found"));
-        
+
         return loadStepHistory(caseEntity);
     }
 
@@ -250,14 +249,15 @@ public class InteractionService {
      * Load step blueprint from flw_int_def.steps (JSONB)
      */
     private List<StepDefinition> loadStepBlueprint(String key, Long version) {
-        InteractionDefinitionEntity def = intDefRepo.findByInteractionDefinitionKeyAndInteractionDefinitionVersion(key, version)
+        InteractionDefinitionEntity def = intDefRepo
+                .findByInteractionDefinitionKeyAndInteractionDefinitionVersion(key, version)
                 .orElseThrow(() -> new RuntimeException("Definition not found: " + key + " v" + version));
 
         try {
             return objectMapper.readValue(
                     def.getSteps(),
-                    new TypeReference<List<StepDefinition>>() {}
-            );
+                    new TypeReference<List<StepDefinition>>() {
+                    });
         } catch (Exception e) {
             log.error("Failed to parse step definitions", e);
             throw new RuntimeException("Invalid step definitions", e);
@@ -275,12 +275,12 @@ public class InteractionService {
         try {
             Map<String, Object> auditTrail = objectMapper.readValue(
                     caseEntity.getAuditTrail(),
-                    new TypeReference<Map<String, Object>>() {}
-            );
-            
-            List<Map<String, Object>> stepsHistory = (List<Map<String, Object>>) 
-                    auditTrail.getOrDefault("steps", new ArrayList<>());
-            
+                    new TypeReference<Map<String, Object>>() {
+                    });
+
+            List<Map<String, Object>> stepsHistory = (List<Map<String, Object>>) auditTrail.getOrDefault("steps",
+                    new ArrayList<>());
+
             return stepsHistory.stream()
                     .map(this::mapToStepHistoryEntry)
                     .collect(Collectors.toList());
@@ -298,7 +298,7 @@ public class InteractionService {
             Map<String, Object> auditTrail = new HashMap<>();
             auditTrail.put("steps", history);
             auditTrail.put("lastUpdated", Instant.now());
-            
+
             caseEntity.setAuditTrail(objectMapper.writeValueAsString(auditTrail));
         } catch (Exception e) {
             log.error("Failed to save audit trail", e);
@@ -311,7 +311,7 @@ public class InteractionService {
      */
     private Map<String, Object> getStepDataFromHistory(CaseEntity caseEntity, String stepName) {
         List<StepHistoryEntry> history = loadStepHistory(caseEntity);
-        
+
         return history.stream()
                 .filter(entry -> entry.getStepName().equals(stepName))
                 .findFirst()
@@ -339,39 +339,37 @@ public class InteractionService {
         }
     }
 
-    private void executeStepActions(List<Map<String, Object>> actions, 
-                                    InteractionEntity interaction, 
-                                    CaseEntity caseEntity) {
+    private void executeStepActions(List<Map<String, Object>> actions,
+            InteractionEntity interaction,
+            CaseEntity caseEntity) {
         for (Map<String, Object> action : actions) {
             String actionType = (String) action.get("action");
             log.info("Executing action: {}", actionType);
-            
+
             // Handle different action types
             switch (actionType) {
                 case "startWorkflow":
                     String workflowName = (String) action.get("onboarding");
                     log.info("Starting Temporal onboarding: {}", workflowName);
-                    
+
                     Map<String, Object> initialData = parseCaseData(caseEntity.getCaseData());
-                    
+
                     temporalWorkflowService.startKYCOnboardingWorkflow(
                             caseEntity.getId().toString(),
                             interaction.getId(),
                             interaction.getUserId(),
-                            initialData
-                    );
-                    
+                            initialData);
+
                     interaction.setStatus("WAITING_SYSTEM");
                     break;
                 case "createTask":
                     String taskType = (String) action.get("taskType");
                     log.info("Creating manual task: {}", taskType);
                     taskService.createTask(
-                            interaction.getCaseId(),
+                            interaction.getCaseId().toString(),
                             interaction.getId(),
                             taskType != null ? taskType : "MANUAL_REVIEW",
-                            toJson(action.getOrDefault("metadata", Map.of()))
-                    );
+                            toJson(action.getOrDefault("metadata", Map.of())));
                     interaction.setStatus("AWAITING_REVIEW");
                     break;
                 default:
@@ -385,7 +383,8 @@ public class InteractionService {
             return new HashMap<>();
         }
         try {
-            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
+            });
         } catch (Exception e) {
             return new HashMap<>();
         }
