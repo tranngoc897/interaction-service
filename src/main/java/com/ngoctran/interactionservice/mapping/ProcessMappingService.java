@@ -1,6 +1,5 @@
 package com.ngoctran.interactionservice.mapping;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ngoctran.interactionservice.mapping.enums.EngineType;
 import com.ngoctran.interactionservice.mapping.enums.ProcessStatus;
 import com.ngoctran.interactionservice.mapping.exception.ProcessMappingNotFoundException;
@@ -29,7 +28,6 @@ import java.util.stream.Collectors;
 public class ProcessMappingService {
 
     private final ProcessMappingRepository processMappingRepo;
-    private final ObjectMapper objectMapper;
 
     @Transactional
     public ProcessMappingEntity createProcessMapping(

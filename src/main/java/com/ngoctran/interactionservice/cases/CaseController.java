@@ -1,7 +1,7 @@
 package com.ngoctran.interactionservice.cases;
 
-import com.ngoctran.interactionservice.NextStepResponse;
-import com.ngoctran.interactionservice.StepSubmissionDto;
+import com.ngoctran.interactionservice.dto.NextStepResponse;
+import com.ngoctran.interactionservice.dto.StepSubmissionDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

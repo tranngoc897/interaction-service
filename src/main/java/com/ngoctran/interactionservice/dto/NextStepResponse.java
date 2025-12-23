@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice;
+package com.ngoctran.interactionservice.dto;
 
 import java.util.Map;
 

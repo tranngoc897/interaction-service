@@ -2,8 +2,8 @@ package com.ngoctran.interactionservice.cases;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ngoctran.interactionservice.NextStepResponse;
-import com.ngoctran.interactionservice.StepSubmissionDto;
+import com.ngoctran.interactionservice.dto.NextStepResponse;
+import com.ngoctran.interactionservice.dto.StepSubmissionDto;
 import com.ngoctran.interactionservice.mapping.ProcessMappingRepository;
 import com.ngoctran.interactionservice.workflow.TemporalWorkflowService;
 import com.ngoctran.interactionservice.task.TaskRepository;
