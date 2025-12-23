@@ -66,7 +66,8 @@ public class WorkerConfiguration {
         worker.registerWorkflowImplementationTypes(
                 KYCOnboardingWorkflowImpl.class,
                 DocumentProcessingWorkflowImpl.class,
-                CaseMonitorWorkflowImpl.class);
+                CaseMonitorWorkflowImpl.class,
+                DynamicStepWorkflowImpl.class);
         // Register activity implementations
         worker.registerActivitiesImplementations(
                 ocrActivity,
