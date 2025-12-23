@@ -36,6 +36,11 @@ public class InteractionCallbackActivityImpl implements InteractionCallbackActiv
                     .orElseThrow(() -> new RuntimeException("Interaction not found: " + interactionId));
 
             interaction.setStatus(status);
+            if ("APPROVED".equals(status) || "COMPLETED".equals(status)) {
+                interaction.setStepStatus("COMPLETED");
+            } else if ("FAILED".equals(status) || "REJECTED".equals(status)) {
+                interaction.setStepStatus("FAILED");
+            }
 
             // Update temp data with onboarding result
             if (data != null) {

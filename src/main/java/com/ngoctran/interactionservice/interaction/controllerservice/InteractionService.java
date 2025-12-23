@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Service demonstrating how to work with 3 types of "steps":
@@ -403,11 +405,31 @@ public class InteractionService {
 
                     Map<String, Object> initialData = parseCaseData(caseEntity.getCaseData());
 
-                    temporalWorkflowService.startKYCOnboardingWorkflow(
-                            caseEntity.getId().toString(),
-                            interaction.getId(),
-                            interaction.getUserId(),
-                            initialData);
+                    String caseIdStr = caseEntity.getId().toString();
+                    String interactionIdStr = interaction.getId();
+                    String userIdStr = interaction.getUserId();
+
+                    // CRITICAL: Defer starting workflow until DB transaction commits
+                    // This prevents the callback activity from finishing before this transaction
+                    // and being overwritten by Hibernate's flush.
+                    if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                            @Override
+                            public void afterCommit() {
+                                temporalWorkflowService.startKYCOnboardingWorkflow(
+                                        caseIdStr,
+                                        interactionIdStr,
+                                        userIdStr,
+                                        initialData);
+                            }
+                        });
+                    } else {
+                        temporalWorkflowService.startKYCOnboardingWorkflow(
+                                caseIdStr,
+                                interactionIdStr,
+                                userIdStr,
+                                initialData);
+                    }
 
                     interaction.setStatus("WAITING_SYSTEM");
                     break;

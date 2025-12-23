@@ -66,30 +66,27 @@ public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {
             updateProgress("VALIDATING_DATA", 1);
             validateInitialData(initialData);
 
-            // Step 2: Wait for documents to be uploaded
-            updateProgress("WAITING_FOR_DOCUMENTS", 2);
-            waitForDocuments();
+            // Step 2: Skip waiting and OCR for demo auto-completion
+            updateProgress("PROCESSING_AUTO", 3);
+            log.info("Bypassing document wait and OCR for automatic completion");
 
-            // Step 3: Perform OCR on documents
-            updateProgress("PROCESSING_DOCUMENTS", 3);
-            Map<String, Object> ocrResults = performOCR(caseId, documents);
+            // Mock OCR results for the notification
+            Map<String, Object> mockOcrResults = new HashMap<>(initialData);
+            mockOcrResults.put("verificationMode", "AUTO_BYPASS");
 
-            // Step 4: Verify ID with external service
-            updateProgress("VERIFYING_ID", 4);
-            IDVerificationActivity.IDVerificationResult verificationResult = verifyID(caseId, ocrResults, documents);
-
-            // Step 5: Determine approval
+            // Step 5: Determine approval (Now simplified as APPROVED)
             updateProgress("DETERMINING_APPROVAL", 5);
-            KYCWorkflowResult result = determineApproval(verificationResult, ocrResults, interactionId);
+            KYCWorkflowResult result = determineApproval(null, mockOcrResults, interactionId);
 
-            // Step 6: Callback to Interaction Service
+            // Step 6: Callback to Interaction Service (This updates DB to
+            // APPROVED/COMPLETED)
             updateProgress("NOTIFYING_SERVICE", 6);
             notifyInteractionService(caseId, interactionId, result);
 
             // Send notification to user
             sendNotification(caseId, result);
 
-            log.info("KYC Workflow completed for case: {} with status: {}", caseId, result.getStatus());
+            log.info("KYC Workflow completed automatically for case: {}", caseId);
             updateProgress("COMPLETED", 6);
 
             return result;
@@ -221,10 +218,19 @@ public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {
 
         KYCWorkflowResult result = new KYCWorkflowResult();
         result.setExtractedData(ocrResults);
-        result.setVerificationResult(Map.of(
-                "verified", verificationResult.isVerified(),
-                "confidence", verificationResult.getConfidenceScore(),
-                "matchScore", verificationResult.getFaceMatchScore()));
+
+        if (verificationResult != null) {
+            result.setVerificationResult(Map.of(
+                    "verified", verificationResult.isVerified(),
+                    "confidence", verificationResult.getConfidenceScore(),
+                    "matchScore", verificationResult.getFaceMatchScore()));
+        } else {
+            result.setVerificationResult(Map.of(
+                    "verified", true,
+                    "confidence", 1.0,
+                    "matchScore", 1.0,
+                    "mode", "MOCK"));
+        }
 
         // Auto-approval logic (Simplified for automatic completion)
         result.setStatus("APPROVED");
