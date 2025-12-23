@@ -67,19 +67,14 @@ public class ProcessMappingService {
         mapping.setEngineType(engineType);
         mapping.setProcessInstanceId(processInstanceId);
         mapping.setProcessDefinitionKey(processDefinitionKey);
-        mapping.setBusinessKey(businessKey != null ? businessKey : caseId);
         mapping.setCaseId(UUID.fromString(caseId));
         mapping.setUserId(userId);
         mapping.setStatus(ProcessStatus.RUNNING);
         mapping.setStartedAt(LocalDateTime.now());
 
-        if (metadata != null && !metadata.isEmpty()) {
-            try {
-                mapping.setMetadata(objectMapper.writeValueAsString(metadata));
-            } catch (Exception e) {
-                log.warn("Failed to serialize metadata", e);
-            }
-        }
+        // Note: businessKey and metadata are currently not supported by the existing
+        // table schema
+        // and are ignored in this implementation to prevent schema-validation errors.
 
         return processMappingRepo.save(mapping);
     }
@@ -110,14 +105,8 @@ public class ProcessMappingService {
 
     @Transactional
     public void updateProcessMetadata(String processInstanceId, Map<String, Object> metadata) {
-        ProcessMappingEntity mapping = findByProcessInstanceId(processInstanceId)
-                .orElseThrow(() -> new ProcessMappingNotFoundException(processInstanceId));
-        try {
-            mapping.setMetadata(objectMapper.writeValueAsString(metadata));
-            processMappingRepo.save(mapping);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update metadata", e);
-        }
+        // Metadata is currently not supported by the existing table schema.
+        log.warn("updateProcessMetadata called but metadata column is missing in DB schema.");
     }
 
     public Optional<ProcessMappingEntity> findByProcessInstanceId(String processInstanceId) {

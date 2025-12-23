@@ -13,16 +13,12 @@ public class ProcessMappingMapper {
                 .engineType(entity.getEngineType())
                 .processInstanceId(entity.getProcessInstanceId())
                 .processDefinitionKey(entity.getProcessDefinitionKey())
-                .businessKey(entity.getBusinessKey())
                 .caseId(entity.getCaseId() != null ? entity.getCaseId().toString() : null)
                 .userId(entity.getUserId())
                 .status(entity.getStatus())
                 .startedAt(entity.getStartedAt())
                 .completedAt(entity.getCompletedAt())
-                .metadata(entity.getMetadata())
-                .errorMessage(entity.getErrorMessage())
-                .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt())
+                .errorDetails(entity.getErrorDetails())
                 .build();
     }
 }

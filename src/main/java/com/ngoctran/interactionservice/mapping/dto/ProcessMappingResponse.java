@@ -14,14 +14,10 @@ public class ProcessMappingResponse {
     private EngineType engineType;
     private String processInstanceId;
     private String processDefinitionKey;
-    private String businessKey;
     private String caseId;
     private String userId;
     private ProcessStatus status;
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;
-    private String metadata;
-    private String errorMessage;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private String errorDetails;
 }

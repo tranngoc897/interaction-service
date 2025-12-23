@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.UUID;
 
@@ -39,17 +41,12 @@ public class InteractionEntity {
     @Column(name = "interaction_definition_version")
     private Long interactionDefinitionVersion;
 
-    @Column(name = "case_definition_key", length = 255)
-    private String caseDefinitionKey;
-
-    @Column(name = "case_definition_version")
-    private Long caseDefinitionVersion;
-
     /**
      * Foreign key to flow_case.id
      * Many interactions can belong to one case (1:N relationship)
      */
     @Column(name = "case_id")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     private UUID caseId;
 
     /**
