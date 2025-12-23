@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -16,7 +17,7 @@ public class TaskService {
     @Transactional
     public TaskEntity createTask(String caseId, String interactionId, String taskType, String payload) {
         TaskEntity task = new TaskEntity();
-        task.setCaseId(caseId);
+        task.setCaseId(UUID.fromString(caseId));
         task.setInteractionId(interactionId);
         task.setTaskType(taskType);
         task.setPayload(payload);
@@ -26,14 +27,14 @@ public class TaskService {
 
     @Transactional
     public TaskEntity completeTask(String taskId, String result, String userId) {
-        TaskEntity task = taskRepository.findById(taskId)
+        TaskEntity task = taskRepository.findById(UUID.fromString(taskId))
                 .orElseThrow(() -> new RuntimeException("Task not found: " + taskId));
-        
+
         task.setStatus(TaskStatus.COMPLETED);
         task.setResult(result);
         task.setAssigneeId(userId);
         task.setCompletedAt(LocalDateTime.now());
-        
+
         return taskRepository.save(task);
     }
 
