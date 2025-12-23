@@ -3,6 +3,7 @@ package com.ngoctran.interactionservice.workflow;
 import com.ngoctran.interactionservice.workflow.activity.*;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.common.RetryOptions;
+import io.temporal.workflow.ChildWorkflowOptions;
 import io.temporal.workflow.Workflow;
 import org.slf4j.Logger;
 
@@ -66,17 +67,36 @@ public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {
             updateProgress("VALIDATING_DATA", 1);
             validateInitialData(initialData);
 
-            // Step 2: Skip waiting and OCR for demo auto-completion
-            updateProgress("PROCESSING_AUTO", 3);
-            log.info("Bypassing document wait and OCR for automatic completion");
+            // Step 2 & 3: Child Workflow (Document Processing)
+            // This encapsulates OCR and ID Verification into a separate sub-workflow
+            updateProgress("PROCESSING_DOCUMENTS_CHILD", 2);
+            DocumentProcessingWorkflow documentChild = Workflow.newChildWorkflowStub(
+                    DocumentProcessingWorkflow.class,
+                    ChildWorkflowOptions.newBuilder()
+                            .setWorkflowId("doc-proc-" + caseId)
+                            .build());
 
-            // Mock OCR results for the notification
-            Map<String, Object> mockOcrResults = new HashMap<>(initialData);
-            mockOcrResults.put("verificationMode", "AUTO_BYPASS");
+            log.info("Calling Child Workflow: DocumentProcessing");
+            Map<String, Object> childResult = documentChild.processDocuments(caseId, initialData);
+            log.info("Child Workflow returned: {}", childResult);
 
-            // Step 5: Determine approval (Now simplified as APPROVED)
+            // Step 4: Versioning (New Risk Check Feature)
+            // Goal: Add a new activity call only for NEW workflow executions,
+            // while keeping OLD (running) ones safe from non-deterministic errors.
+            int version = Workflow.getVersion("risk-check-logic", Workflow.DEFAULT_VERSION, 1);
+            if (version == 1) {
+                log.info("Version 1: Executing NEW risk assessment logic");
+                // In reality, you'd call a RiskActivity here
+                updateProgress("RISK_ASSESSMENT", 4);
+                Workflow.sleep(Duration.ofSeconds(1)); // Simulate processing
+            } else {
+                log.info("Default Version: Skipping risk assessment (legacy flow)");
+            }
+
+            // Step 5: Determine approval
             updateProgress("DETERMINING_APPROVAL", 5);
-            KYCWorkflowResult result = determineApproval(null, mockOcrResults, interactionId);
+            KYCWorkflowResult result = determineApproval(null, (Map<String, Object>) childResult.get("ocrData"),
+                    interactionId);
 
             // Step 6: Callback to Interaction Service (This updates DB to
             // APPROVED/COMPLETED)

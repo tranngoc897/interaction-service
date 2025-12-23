@@ -63,7 +63,9 @@ public class WorkerConfiguration {
         log.info("Registering KYC Onboarding Worker on queue: {}", KYC_ONBOARDING_QUEUE);
         Worker worker = workerFactory.newWorker(KYC_ONBOARDING_QUEUE);
         // Register onboarding implementations
-        worker.registerWorkflowImplementationTypes(KYCOnboardingWorkflowImpl.class);
+        worker.registerWorkflowImplementationTypes(
+                KYCOnboardingWorkflowImpl.class,
+                DocumentProcessingWorkflowImpl.class);
         // Register activity implementations
         worker.registerActivitiesImplementations(
                 ocrActivity,
