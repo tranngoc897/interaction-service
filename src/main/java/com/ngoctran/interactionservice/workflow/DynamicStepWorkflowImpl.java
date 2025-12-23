@@ -31,36 +31,44 @@ public class DynamicStepWorkflowImpl implements DynamicStepWorkflow {
         // 2. Iterate through actions defined in Blueprint (onSubmit)
         for (Map<String, Object> actionConfig : actions) {
             String activityName = (String) actionConfig.get("activity");
+            String requiredField = (String) actionConfig.get("runIfFieldExists");
 
             if (activityName == null) {
                 log.warn("Action config missing 'activity' name, skipping: {}", actionConfig);
                 continue;
             }
 
+            // 1. CONDITION CHECK: If-Else logic based on data
+            if (requiredField != null && !currentContext.containsKey(requiredField)) {
+                log.info("Skipping activity {} because required field {} is missing from context",
+                        activityName, requiredField);
+                continue;
+            }
+
             log.info("Dynamically calling activity: {} for case: {}", activityName, caseId);
 
-            // 3. Invoke Activity Dynamically
-            // The activity is identified by its @ActivityMethod name OR the generic name if
-            // registered that way
             try {
-                // Pass current context (data) to the activity
-                // We expect activities to return a Map of results
+                // 2. TRIGGER ACTIVITY:
                 Map<String, Object> activityResult = untypedActivity.execute(
                         activityName,
                         Map.class,
                         caseId,
                         currentContext);
 
-                // 4. Merge results into context for the NEXT activity to use
+                // 3. DATA PASSING: Merge results back to context
                 if (activityResult != null) {
-                    log.info("Activity {} returned results. Merging into context.", activityName);
                     currentContext.putAll(activityResult);
+                }
+
+                // 4. DYNAMIC NEW TRIGGER: Example of triggering a NEW activity
+                // based on the result of the previous one
+                if (Boolean.TRUE.equals(currentContext.get("needsManualReview"))) {
+                    log.warn("Flag 'needsManualReview' detected! Triggering ReviewActivity on the fly.");
+                    untypedActivity.execute("CreateManualTaskActivity", Void.class, caseId, "Auto-triggered review");
                 }
 
             } catch (Exception e) {
                 log.error("Dynamic activity {} failed", activityName, e);
-                // Based on business logic, we could throw exception to fail workflow or
-                // continue
                 throw e;
             }
         }
