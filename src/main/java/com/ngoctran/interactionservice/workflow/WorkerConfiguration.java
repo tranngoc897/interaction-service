@@ -24,12 +24,13 @@ public class WorkerConfiguration {
 
     private final WorkerFactory workerFactory;
     private final WorkflowClient workflowClient;
-    
+
     // Activity implementations
     private final OCRActivityImpl ocrActivity;
     private final IDVerificationActivityImpl idVerificationActivity;
     private final NotificationActivityImpl notificationActivity;
     private final InteractionCallbackActivityImpl interactionCallbackActivity;
+    private final TaskActivityImpl taskActivity;
 
     /**
      * Task Queue Names
@@ -49,7 +50,7 @@ public class WorkerConfiguration {
         registerGeneralWorker();
         // Start all workers
         workerFactory.start();
-        
+
         log.info("All Temporal Workers started successfully");
     }
 
@@ -67,8 +68,8 @@ public class WorkerConfiguration {
                 ocrActivity,
                 idVerificationActivity,
                 notificationActivity,
-                interactionCallbackActivity
-        );
+                interactionCallbackActivity,
+                taskActivity);
 
         log.info("KYC Onboarding Worker registered successfully");
     }
@@ -87,8 +88,7 @@ public class WorkerConfiguration {
                 ocrActivity,
                 idVerificationActivity,
                 notificationActivity,
-                interactionCallbackActivity
-        );
+                interactionCallbackActivity);
 
         log.info("Document Verification Worker registered successfully");
     }
@@ -99,13 +99,12 @@ public class WorkerConfiguration {
      */
     private void registerGeneralWorker() {
         log.info("Registering General Worker on queue: {}", GENERAL_QUEUE);
-        
+
         Worker worker = workerFactory.newWorker(GENERAL_QUEUE);
         // Register activity implementations
         worker.registerActivitiesImplementations(
                 notificationActivity,
-                interactionCallbackActivity
-        );
+                interactionCallbackActivity);
 
         log.info("General Worker registered successfully");
     }

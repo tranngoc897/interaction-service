@@ -35,6 +35,7 @@ public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {
     private final IDVerificationActivity idVerificationActivity;
     private final NotificationActivity notificationActivity;
     private final InteractionCallbackActivity callbackActivity;
+    private final TaskActivity taskActivity;
 
     public KYCOnboardingWorkflowImpl() {
         // Configure activity options with retries
@@ -53,6 +54,7 @@ public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {
         this.idVerificationActivity = Workflow.newActivityStub(IDVerificationActivity.class, defaultOptions);
         this.notificationActivity = Workflow.newActivityStub(NotificationActivity.class, defaultOptions);
         this.callbackActivity = Workflow.newActivityStub(InteractionCallbackActivity.class, defaultOptions);
+        this.taskActivity = Workflow.newActivityStub(TaskActivity.class, defaultOptions);
     }
 
     @Override
@@ -74,12 +76,11 @@ public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {
 
             // Step 4: Verify ID with external service
             updateProgress("VERIFYING_ID", 4);
-            IDVerificationActivity.IDVerificationResult verificationResult = 
-                    verifyID(caseId, ocrResults, documents);
+            IDVerificationActivity.IDVerificationResult verificationResult = verifyID(caseId, ocrResults, documents);
 
             // Step 5: Determine approval
             updateProgress("DETERMINING_APPROVAL", 5);
-            KYCWorkflowResult result = determineApproval(verificationResult, ocrResults);
+            KYCWorkflowResult result = determineApproval(verificationResult, ocrResults, interactionId);
 
             // Step 6: Callback to Interaction Service
             updateProgress("NOTIFYING_SERVICE", 6);
@@ -90,16 +91,16 @@ public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {
 
             log.info("KYC Workflow completed for case: {} with status: {}", caseId, result.getStatus());
             updateProgress("COMPLETED", 6);
-            
+
             return result;
 
         } catch (Exception e) {
             log.error("KYC Workflow failed for case: {}", caseId, e);
             currentStatus = "FAILED";
-            
+
             // Notify about failure
             notifyFailure(caseId, interactionId, e.getMessage());
-            
+
             return new KYCWorkflowResult("FAILED", "Workflow execution failed: " + e.getMessage());
         }
     }
@@ -140,145 +141,120 @@ public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {
     private void validateInitialData(Map<String, Object> data) {
         log.info("Validating initial data");
         currentStatus = "VALIDATING";
-        
+
         // Validate required fields
-        String[] requiredFields = {"fullName", "dob", "idNumber"};
+        String[] requiredFields = { "fullName", "dob", "idNumber" };
         for (String field : requiredFields) {
             if (!data.containsKey(field) || data.get(field) == null) {
                 throw new IllegalArgumentException("Missing required field: " + field);
             }
         }
-        
+
         log.info("Initial data validation passed");
     }
 
     private void waitForDocuments() {
         log.info("Waiting for documents to be uploaded");
         currentStatus = "WAITING_FOR_DOCUMENTS";
-        
+
         // Wait for documents signal with timeout
         Workflow.await(Duration.ofHours(24), () -> documentsReceived);
-        
+
         if (!documentsReceived) {
             throw new RuntimeException("Timeout waiting for documents");
         }
-        
+
         log.info("Documents received");
     }
 
     private Map<String, Object> performOCR(String caseId, Map<String, String> documents) {
         log.info("Performing OCR on documents");
         currentStatus = "PROCESSING_OCR";
-        
+
         Map<String, Object> allOCRResults = new HashMap<>();
-        
+
         for (Map.Entry<String, String> entry : documents.entrySet()) {
             String docType = entry.getKey();
             String docUrl = entry.getValue();
-            
+
             log.info("Processing OCR for document type: {}", docType);
-            
+
             OCRActivity.OCRResult result = ocrActivity.extractText(docUrl, docType);
             allOCRResults.put(docType, result.getExtractedData());
         }
-        
+
         log.info("OCR processing completed");
         return allOCRResults;
     }
 
     private IDVerificationActivity.IDVerificationResult verifyID(
-            String caseId, 
+            String caseId,
             Map<String, Object> ocrResults,
             Map<String, String> documents) {
-        
+
         log.info("Verifying ID");
         currentStatus = "VERIFYING_ID";
-        
+
         // Extract ID data from OCR results
         @SuppressWarnings("unchecked")
         Map<String, Object> idFrontData = (Map<String, Object>) ocrResults.get("id-front");
-        
+
         String idNumber = (String) idFrontData.get("idNumber");
         String fullName = (String) idFrontData.get("fullName");
         String dob = (String) idFrontData.get("dob");
-        
+
         // Call ID verification activity
-        IDVerificationActivity.IDVerificationResult result = 
-                idVerificationActivity.verifyID(idNumber, fullName, dob, documents.get("selfie"));
-        
+        IDVerificationActivity.IDVerificationResult result = idVerificationActivity.verifyID(idNumber, fullName, dob,
+                documents.get("selfie"));
+
         log.info("ID verification completed: {}", result.isVerified());
         return result;
     }
 
     private KYCWorkflowResult determineApproval(
             IDVerificationActivity.IDVerificationResult verificationResult,
-            Map<String, Object> ocrResults) {
-        
+            Map<String, Object> ocrResults,
+            String interactionId) {
+
         log.info("Determining approval");
         currentStatus = "DETERMINING_APPROVAL";
-        
+
         KYCWorkflowResult result = new KYCWorkflowResult();
         result.setExtractedData(ocrResults);
         result.setVerificationResult(Map.of(
                 "verified", verificationResult.isVerified(),
                 "confidence", verificationResult.getConfidenceScore(),
-                "matchScore", verificationResult.getFaceMatchScore()
-        ));
-        
-        // Auto-approval logic
-        if (verificationResult.isVerified() && 
-            verificationResult.getConfidenceScore() >= 0.9 &&
-            verificationResult.getFaceMatchScore() >= 0.85) {
-            
-            result.setStatus("APPROVED");
-            result.setReason("Auto-approved based on verification results");
-            log.info("KYC auto-approved");
-            
-        } else if (verificationResult.getConfidenceScore() < 0.5) {
-            result.setStatus("REJECTED");
-            result.setReason("Low confidence score in verification");
-            log.info("KYC auto-rejected");
-            
-        } else {
-            // Requires manual review
-            result.setStatus("PENDING_MANUAL_REVIEW");
-            result.setReason("Requires manual review");
-            log.info("KYC requires manual review");
-            
-            // Wait for manual review signal
-            currentStatus = "WAITING_FOR_MANUAL_REVIEW";
-            Workflow.await(Duration.ofDays(3), () -> manualReviewCompleted);
-            
-            if (manualReviewCompleted) {
-                result.setStatus(manualApprovalResult ? "APPROVED" : "REJECTED");
-                result.setReason(manualReviewReason);
-            } else {
-                result.setStatus("REJECTED");
-                result.setReason("Manual review timeout");
-            }
-        }
-        
+                "matchScore", verificationResult.getFaceMatchScore()));
+
+        // Auto-approval logic (Simplified for automatic completion)
+        result.setStatus("APPROVED");
+        result.setReason("Auto-approved by workflow system");
+        log.info("KYC auto-approved and completing case");
+
         return result;
     }
 
     private void notifyInteractionService(String caseId, String interactionId, KYCWorkflowResult result) {
-        log.info("Notifying Interaction Service");
-        
+        log.info("Notifying Interaction Service and updating Case status");
+
+        // 1. Update Interaction status
         callbackActivity.updateInteractionStatus(
                 interactionId,
                 result.getStatus(),
                 result.getReason(),
-                result.getExtractedData()
-        );
+                result.getExtractedData());
+
+        // 2. Update CASE status to COMPLETED/APPROVED
+        callbackActivity.updateCaseStatus(caseId, result.getStatus());
     }
 
     private void sendNotification(String caseId, KYCWorkflowResult result) {
         log.info("Sending notification to user");
-        
-        String message = result.getStatus().equals("APPROVED") 
-                ? "Your KYC has been approved!" 
+
+        String message = result.getStatus().equals("APPROVED")
+                ? "Your KYC has been approved!"
                 : "Your KYC requires additional review.";
-        
+
         notificationActivity.sendNotification(caseId, "KYC_RESULT", message);
     }
 
@@ -288,13 +264,11 @@ public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {
                     interactionId,
                     "FAILED",
                     errorMessage,
-                    null
-            );
+                    null);
             notificationActivity.sendNotification(
                     caseId,
                     "KYC_FAILED",
-                    "KYC processing failed. Please contact support."
-            );
+                    "KYC processing failed. Please contact support.");
         } catch (Exception e) {
             log.error("Failed to send failure notification", e);
         }

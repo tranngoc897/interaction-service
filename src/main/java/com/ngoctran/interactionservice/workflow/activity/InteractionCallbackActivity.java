@@ -6,15 +6,17 @@ import java.util.Map;
 
 @ActivityInterface
 public interface InteractionCallbackActivity {
-    
+
     @ActivityMethod
     void updateInteractionStatus(
             String interactionId,
             String status,
             String reason,
-            Map<String, Object> data
-    );
-    
+            Map<String, Object> data);
+
     @ActivityMethod
     void updateCaseData(String caseId, Map<String, Object> data);
+
+    @ActivityMethod
+    void updateCaseStatus(String caseId, String status);
 }
