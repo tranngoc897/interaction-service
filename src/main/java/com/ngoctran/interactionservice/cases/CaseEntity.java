@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "flow_case", indexes = {
+@Table(name = "flw_case", indexes = {
     @Index(name = "idx_onboarding_case_status", columnList = "status"),
     @Index(name = "idx_onboarding_case_workflow_instance", columnList = "workflow_instance_id")
 })
