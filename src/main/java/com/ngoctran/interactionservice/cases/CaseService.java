@@ -6,6 +6,8 @@ import com.ngoctran.interactionservice.NextStepResponse;
 import com.ngoctran.interactionservice.StepSubmissionDto;
 import com.ngoctran.interactionservice.mapping.ProcessMappingRepository;
 import com.ngoctran.interactionservice.workflow.TemporalWorkflowService;
+import com.ngoctran.interactionservice.task.TaskRepository;
+import com.ngoctran.interactionservice.task.TaskEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ public class CaseService {
     private final ObjectMapper objectMapper;
     private final TemporalWorkflowService temporalWorkflowService;
     private final ProcessMappingRepository processMappingRepo;
+    private final TaskRepository taskRepo;
 
     @Transactional
     public UUID createCase(Map<String, Object> initialData) {
@@ -48,6 +51,46 @@ public class CaseService {
     public CaseEntity getCase(UUID caseId) {
         return caseRepo.findById(caseId)
                 .orElseThrow(() -> new RuntimeException("Case not found: " + caseId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<CaseEntity> listCases(String customerId, String status) {
+        if (customerId != null && status != null) {
+            return caseRepo.findByCustomerIdAndStatus(customerId, status);
+        } else if (customerId != null) {
+            return caseRepo.findByCustomerId(customerId);
+        } else if (status != null) {
+            return caseRepo.findByStatus(status);
+        } else {
+            return caseRepo.findAll();
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<TaskEntity> getTasksByCase(UUID caseId) {
+        return taskRepo.findByCaseId(caseId);
+    }
+
+    @Transactional
+    public void cancelCase(UUID caseId) {
+        CaseEntity caseEntity = getCase(caseId);
+        caseEntity.setStatus("CANCELLED");
+
+        // Cancel Temporal workflow if exists
+        String workflowInstanceId = caseEntity.getWorkflowInstanceId();
+        if (workflowInstanceId != null) {
+            try {
+                String simpleWorkflowId = workflowInstanceId.contains(":") ? workflowInstanceId.split(":")[0]
+                        : workflowInstanceId;
+                temporalWorkflowService.cancelWorkflow(simpleWorkflowId);
+                log.info("Cancelled Temporal workflow {} for case {}", simpleWorkflowId, caseId);
+            } catch (Exception e) {
+                log.warn("Failed to cancel workflow for case {}: {}", caseId, e.getMessage());
+            }
+        }
+
+        caseRepo.save(caseEntity);
+        log.info("Case {} cancelled", caseId);
     }
 
     @Transactional
@@ -125,7 +168,6 @@ public class CaseService {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void updateAuditTrail(CaseEntity caseEntity, StepSubmissionDto submission) {
         try {
             Map<String, Object> auditTrail = new HashMap<>();
@@ -135,6 +177,7 @@ public class CaseService {
                         });
             }
 
+            @SuppressWarnings("unchecked")
             List<Map<String, Object>> steps = (List<Map<String, Object>>) auditTrail.getOrDefault("steps",
                     new ArrayList<>());
 
