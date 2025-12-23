@@ -8,12 +8,15 @@ import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.client.WorkflowStub;
+import io.temporal.client.schedules.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,6 +26,7 @@ public class TemporalWorkflowService {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TemporalWorkflowService.class);
     private final WorkflowClient workflowClient;
+    private final ScheduleClient scheduleClient;
     private final ProcessMappingRepository processMappingRepo;
 
     /**
@@ -146,5 +150,39 @@ public class TemporalWorkflowService {
         processMappingRepo.save(mapping);
 
         log.info("Process mapping saved: {}", mapping.getId());
+    }
+
+    /**
+     * Create a Schedule for the Cleanup Workflow
+     */
+    public void createCleanupSchedule() {
+        log.info("Creating/Updating Cleanup Workflow Schedule...");
+
+        ScheduleActionStartWorkflow action = ScheduleActionStartWorkflow.newBuilder()
+                .setWorkflowType(CleanupWorkflow.class)
+                .setOptions(WorkflowOptions.newBuilder()
+                        .setWorkflowId("scheduled-cleanup-job")
+                        .setTaskQueue(WorkerConfiguration.GENERAL_QUEUE)
+                        .build())
+                .build();
+
+        Schedule schedule = Schedule.newBuilder()
+                .setAction(action)
+                .setSpec(ScheduleSpec.newBuilder()
+                        // Run every hour
+                        .setIntervals(Collections.singletonList(new ScheduleIntervalSpec(Duration.ofHours(1))))
+                        .build())
+                .build();
+
+        try {
+            // Create the schedule (throws error if exists, which we catch)
+            scheduleClient.createSchedule(
+                    "DAILY_CLEANUP_SCHEDULE",
+                    schedule,
+                    ScheduleOptions.newBuilder().build());
+            log.info("Cleanup schedule created successfully");
+        } catch (Exception e) {
+            log.info("Schedule already exists or error occurred: {}", e.getMessage());
+        }
     }
 }

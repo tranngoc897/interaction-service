@@ -2,6 +2,8 @@ package com.ngoctran.interactionservice.workflow;
 
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowClientOptions;
+import io.temporal.client.schedules.ScheduleClient;
+import io.temporal.client.schedules.ScheduleClientOptions;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.serviceclient.WorkflowServiceStubsOptions;
 import io.temporal.worker.WorkerFactory;
@@ -42,13 +44,13 @@ public class TemporalConfig {
     @Bean
     public WorkflowServiceStubs workflowServiceStubs() {
         log.info("Connecting to Temporal Server at {}:{}", temporalHost, temporalPort);
-        
+
         WorkflowServiceStubsOptions options = WorkflowServiceStubsOptions.newBuilder()
                 .setTarget(temporalHost + ":" + temporalPort)
                 .build();
 
         WorkflowServiceStubs service = WorkflowServiceStubs.newServiceStubs(options);
-        
+
         log.info("Successfully connected to Temporal Server");
         return service;
     }
@@ -59,15 +61,29 @@ public class TemporalConfig {
     @Bean
     public WorkflowClient workflowClient(WorkflowServiceStubs serviceStubs) {
         log.info("Creating Workflow Client for namespace: {}", namespace);
-        
+
         WorkflowClientOptions options = WorkflowClientOptions.newBuilder()
                 .setNamespace(namespace)
                 .build();
 
         WorkflowClient client = WorkflowClient.newInstance(serviceStubs, options);
-        
+
         log.info("Workflow Client created successfully");
         return client;
+    }
+
+    /**
+     * Create Schedule Client for managing scheduled workflows
+     */
+    @Bean
+    public ScheduleClient scheduleClient(WorkflowServiceStubs serviceStubs) {
+        log.info("Creating Schedule Client");
+
+        ScheduleClientOptions options = ScheduleClientOptions.newBuilder()
+                .setNamespace(namespace)
+                .build();
+
+        return ScheduleClient.newInstance(serviceStubs, options);
     }
 
     /**
@@ -76,9 +92,9 @@ public class TemporalConfig {
     @Bean
     public WorkerFactory workerFactory(WorkflowClient workflowClient) {
         log.info("Creating Worker Factory");
-        
+
         WorkerFactory factory = WorkerFactory.newInstance(workflowClient);
-        
+
         log.info("Worker Factory created successfully");
         return factory;
     }
@@ -90,7 +106,7 @@ public class TemporalConfig {
     public TemporalShutdownHook temporalShutdownHook(
             WorkflowServiceStubs serviceStubs,
             WorkerFactory workerFactory) {
-        
+
         return new TemporalShutdownHook(serviceStubs, workerFactory);
     }
 
@@ -104,13 +120,13 @@ public class TemporalConfig {
         public TemporalShutdownHook(WorkflowServiceStubs serviceStubs, WorkerFactory workerFactory) {
             this.serviceStubs = serviceStubs;
             this.workerFactory = workerFactory;
-            
+
             Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
         }
 
         private void shutdown() {
             log.info("Shutting down Temporal connections...");
-            
+
             try {
                 workerFactory.shutdown();
                 log.info("Worker Factory shut down");
@@ -124,7 +140,7 @@ public class TemporalConfig {
             } catch (Exception e) {
                 log.error("Error shutting down Service Stubs", e);
             }
-            
+
             log.info("Temporal shutdown complete");
         }
     }

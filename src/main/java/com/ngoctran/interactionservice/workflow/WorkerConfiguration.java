@@ -31,6 +31,7 @@ public class WorkerConfiguration {
     private final NotificationActivityImpl notificationActivity;
     private final InteractionCallbackActivityImpl interactionCallbackActivity;
     private final TaskActivityImpl taskActivity;
+    private final CleanupActivityImpl cleanupActivity;
 
     /**
      * Task Queue Names
@@ -101,10 +102,15 @@ public class WorkerConfiguration {
         log.info("Registering General Worker on queue: {}", GENERAL_QUEUE);
 
         Worker worker = workerFactory.newWorker(GENERAL_QUEUE);
+
+        // Register Scheduled Workflow
+        worker.registerWorkflowImplementationTypes(CleanupWorkflowImpl.class);
+
         // Register activity implementations
         worker.registerActivitiesImplementations(
                 notificationActivity,
-                interactionCallbackActivity);
+                interactionCallbackActivity,
+                cleanupActivity);
 
         log.info("General Worker registered successfully");
     }
