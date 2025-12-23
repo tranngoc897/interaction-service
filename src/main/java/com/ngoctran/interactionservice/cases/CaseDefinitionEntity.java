@@ -1,9 +1,8 @@
 package com.ngoctran.interactionservice.cases;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "flw_case_def")
@@ -15,9 +14,11 @@ public class CaseDefinitionEntity {
     private Long caseDefinitionVersion;
 
     @Column(columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String defaultValue;
 
     @Column(columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String caseSchema;
 
 }

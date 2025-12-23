@@ -41,6 +41,55 @@ public class InteractionService {
     private final TemporalWorkflowService temporalWorkflowService;
 
     /**
+     * Start a new interaction journey
+     * This:
+     * 1. Creates a new flow_case (if not provided/linked)
+     * 2. Creates a new interaction record (CURRENT POSITION) starting at the first
+     * step of BLUEPRINT
+     */
+    @Transactional
+    public StepResponse startInteraction(com.ngoctran.interactionservice.interaction.InteractionStartRequest request) {
+        log.info("Starting new interaction for key: {}", request.interactionDefinitionKey());
+
+        // 1. Get blueprint to find the first step
+        List<StepDefinition> allSteps = loadStepBlueprint(
+                request.interactionDefinitionKey(),
+                request.interactionDefinitionVersion());
+
+        if (allSteps.isEmpty()) {
+            throw new RuntimeException("No steps defined for interaction: " + request.interactionDefinitionKey());
+        }
+
+        String firstStepName = allSteps.get(0).getName();
+
+        // 2. Create a new Case
+        CaseEntity caseEntity = new CaseEntity();
+        caseEntity.setCustomerId(request.userId());
+        caseEntity.setStatus("ACTIVE");
+        caseEntity.setCaseDefinitionKey(request.interactionDefinitionKey()); // Simplifying: use same key for case def
+        caseEntity.setCaseDefinitionVersion(String.valueOf(request.interactionDefinitionVersion()));
+        caseEntity = caseRepo.save(caseEntity);
+
+        // 3. Create Interaction instance
+        InteractionEntity interaction = new InteractionEntity();
+        interaction.setId(UUID.randomUUID().toString());
+        interaction.setUserId(request.userId());
+        interaction.setInteractionDefinitionKey(request.interactionDefinitionKey());
+        interaction.setInteractionDefinitionVersion(request.interactionDefinitionVersion());
+        interaction.setCaseId(caseEntity.getId());
+        interaction.setStepName(firstStepName);
+        interaction.setStepStatus("PENDING");
+        interaction.setStatus("ACTIVE");
+        interaction.setResumable(true);
+
+        intRepo.save(interaction);
+
+        log.info("Started interaction {} for case {}", interaction.getId(), caseEntity.getId());
+
+        return getCurrentStep(interaction.getId());
+    }
+
+    /**
      * Get current step information for an interaction
      * This combines:
      * - Current position from flw_int.step_name

@@ -96,6 +96,7 @@ public class InteractionEntity {
      * Temporary data for current step
      */
     @Column(name = "temp_data", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String tempData;
 
     public void setStepName(String stepName) {

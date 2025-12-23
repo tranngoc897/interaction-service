@@ -3,6 +3,8 @@ package com.ngoctran.interactionservice.task;
 import com.ngoctran.interactionservice.cases.CaseEntity;
 import com.ngoctran.interactionservice.interaction.InteractionEntity;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -59,9 +61,11 @@ public class TaskEntity {
     private String assigneeId;
 
     @Column(name = "payload", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String payload; // Data for the reviewer to look at
 
     @Column(name = "result", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String result; // Decision/Outcome of the review
 
     @Column(name = "created_at")

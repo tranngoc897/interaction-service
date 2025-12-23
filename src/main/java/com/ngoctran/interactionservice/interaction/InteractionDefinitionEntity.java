@@ -1,11 +1,8 @@
 package com.ngoctran.interactionservice.interaction;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.IdClass;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
+import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -32,6 +29,7 @@ public class InteractionDefinitionEntity {
     private String schemaId;
 
     @Column(columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String steps; // JSON array: [{ "name": "...", "next": "...", "uiSchema": {...}}]
 
     public String getSteps() {

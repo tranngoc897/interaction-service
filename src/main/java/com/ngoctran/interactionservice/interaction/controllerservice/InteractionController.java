@@ -15,16 +15,16 @@ import java.util.Map;
  * REST Controller demonstrating the 3 types of "steps":
  * 
  * 1. GET /api/interactions/{id}/current-step
- *    - Returns current step info (combines BLUEPRINT + CURRENT POSITION + HISTORY)
+ * - Returns current step info (combines BLUEPRINT + CURRENT POSITION + HISTORY)
  * 
  * 2. POST /api/interactions/{id}/submit-step
- *    - Submit step data (updates CURRENT POSITION + HISTORY)
+ * - Submit step data (updates CURRENT POSITION + HISTORY)
  * 
  * 3. GET /api/interactions/definitions/{key}/steps
- *    - Get step blueprint (BLUEPRINT only)
+ * - Get step blueprint (BLUEPRINT only)
  * 
  * 4. GET /api/cases/{caseId}/step-history
- *    - Get step history (HISTORY only)
+ * - Get step history (HISTORY only)
  */
 @RestController
 @RequestMapping("/api/interactions")
@@ -35,45 +35,43 @@ public class InteractionController {
     private final InteractionService interactionService;
 
     /**
-     * Get current step information for an interaction
+     * Start a new interaction journey
      * 
-     * This demonstrates how CURRENT POSITION (flw_int.step_name) is used to:
-     * - Find the step config in BLUEPRINT (flw_int_def.steps)
-     * - Get pre-filled data from HISTORY (flow_case.audit_trail)
-     * 
-     * Example response:
-     * {
-     *   "interactionId": "int-abc-123",
-     *   "stepName": "personal-info",           ← CURRENT POSITION
-     *   "stepStatus": "PENDING",
-     *   "stepDefinition": {                    ← From BLUEPRINT
-     *     "name": "personal-info",
-     *     "type": "form",
-     *     "title": "Thông tin cá nhân",
-     *     "fields": [...]
-     *   },
-     *   "stepData": {...},                     ← From HISTORY (if resuming)
-     *   "progress": {
-     *     "currentStepIndex": 2,
-     *     "totalSteps": 7,
-     *     "percentComplete": 28
-     *   }
-     * }
+     * This API uses BLUEPRINT data (flw_int_def) to:
+     * 1. Create a new Case record (flow_case)
+     * 2. Create a new Interaction record (flw_int)
+     * 3. Position the user at the first step
      */
-    @GetMapping("/{interactionId}/current-step")
-    public ResponseEntity<StepResponse> getCurrentStep(@PathVariable String interactionId) {
-        log.info("GET /api/interactions/{}/current-step", interactionId);
-        
-        StepResponse response = interactionService.getCurrentStep(interactionId);
-        
-        log.info("Current step: {} (status: {})", 
-                response.getStepName(), 
-                response.getStepStatus());
-        
+    @PostMapping("/start")
+    public ResponseEntity<StepResponse> startInteraction(
+            @RequestBody com.ngoctran.interactionservice.interaction.InteractionStartRequest request) {
+        log.info("POST /api/interactions/start - key: {}", request.interactionDefinitionKey());
+
+        StepResponse response = interactionService.startInteraction(request);
+
+        log.info("Interaction started: {} (first step: {})",
+                response.getInteractionId(),
+                response.getStepName());
+
         return ResponseEntity.ok(response);
     }
 
     /**
+     * Get current step information for an interaction
+     * public ResponseEntity<StepResponse> getCurrentStep(@PathVariable String
+     * interactionId) {
+     * log.info("GET /api/interactions/{}/current-step", interactionId);
+     * 
+     * StepResponse response = interactionService.getCurrentStep(interactionId);
+     * 
+     * log.info("Current step: {} (status: {})",
+     * response.getStepName(),
+     * response.getStepStatus());
+     * 
+     * return ResponseEntity.ok(response);
+     * }
+     * 
+     * /**
      * Submit step data and move to next step
      * 
      * This demonstrates how submission:
@@ -84,31 +82,30 @@ public class InteractionController {
      * 
      * Request body:
      * {
-     *   "stepName": "personal-info",
-     *   "data": {
-     *     "fullName": "Nguyen Van A",
-     *     "dob": "1990-01-01",
-     *     "idNumber": "123456789"
-     *   }
+     * "stepName": "personal-info",
+     * "data": {
+     * "fullName": "Nguyen Van A",
+     * "dob": "1990-01-01",
+     * "idNumber": "123456789"
+     * }
      * }
      */
     @PostMapping("/{interactionId}/submit-step")
     public ResponseEntity<StepResponse> submitStep(
             @PathVariable String interactionId,
             @RequestBody StepSubmitRequest request) {
-        
-        log.info("POST /api/interactions/{}/submit-step - step: {}", 
-                interactionId, 
+
+        log.info("POST /api/interactions/{}/submit-step - step: {}",
+                interactionId,
                 request.getStepName());
-        
+
         StepResponse response = interactionService.submitStep(
                 interactionId,
                 request.getStepName(),
-                request.getData()
-        );
-        
+                request.getData());
+
         log.info("Step submitted. Next step: {}", response.getStepName());
-        
+
         return ResponseEntity.ok(response);
     }
 
@@ -122,64 +119,64 @@ public class InteractionController {
      * 
      * Example response:
      * [
-     *   {"name": "welcome", "type": "info", "title": "Chào mừng", ...},
-     *   {"name": "personal-info", "type": "form", "title": "Thông tin cá nhân", ...},
-     *   {"name": "address-info", "type": "form", "title": "Địa chỉ", ...},
-     *   ...
+     * {"name": "welcome", "type": "info", "title": "Chào mừng", ...},
+     * {"name": "personal-info", "type": "form", "title": "Thông tin cá nhân", ...},
+     * {"name": "address-info", "type": "form", "title": "Địa chỉ", ...},
+     * ...
      * ]
      */
     @GetMapping("/definitions/{key}/steps")
     public ResponseEntity<List<StepDefinition>> getStepBlueprint(
             @PathVariable String key,
             @RequestParam(defaultValue = "1") Long version) {
-        
+
         log.info("GET /api/interactions/definitions/{}/steps?version={}", key, version);
-        
+
         List<StepDefinition> steps = interactionService.getStepBlueprint(key, version);
-        
+
         log.info("Found {} steps in blueprint", steps.size());
-        
+
         return ResponseEntity.ok(steps);
     }
 
     /**
      * Get step history for a case
      * 
-     * This returns the HISTORY (flow_case.audit_trail.steps) - 
+     * This returns the HISTORY (flow_case.audit_trail.steps) -
      * all steps completed so far with timestamps and submitted data.
      * 
-     * Use case: 
+     * Use case:
      * - User wants to review what they've submitted
      * - Admin wants to audit the journey
      * - Compliance/reporting
      * 
      * Example response:
      * [
-     *   {
-     *     "stepName": "welcome",
-     *     "status": "COMPLETED",
-     *     "completedAt": "2025-12-20T08:00:00Z",
-     *     "data": {}
-     *   },
-     *   {
-     *     "stepName": "personal-info",
-     *     "status": "COMPLETED",
-     *     "completedAt": "2025-12-20T08:05:00Z",
-     *     "data": {
-     *       "fullName": "Nguyen Van A",
-     *       "dob": "1990-01-01"
-     *     }
-     *   }
+     * {
+     * "stepName": "welcome",
+     * "status": "COMPLETED",
+     * "completedAt": "2025-12-20T08:00:00Z",
+     * "data": {}
+     * },
+     * {
+     * "stepName": "personal-info",
+     * "status": "COMPLETED",
+     * "completedAt": "2025-12-20T08:05:00Z",
+     * "data": {
+     * "fullName": "Nguyen Van A",
+     * "dob": "1990-01-01"
+     * }
+     * }
      * ]
      */
     @GetMapping("/cases/{caseId}/step-history")
     public ResponseEntity<List<StepHistoryEntry>> getStepHistory(@PathVariable String caseId) {
         log.info("GET /api/interactions/cases/{}/step-history", caseId);
-        
+
         List<StepHistoryEntry> history = interactionService.getStepHistory(caseId);
-        
+
         log.info("Found {} steps in history", history.size());
-        
+
         return ResponseEntity.ok(history);
     }
 
