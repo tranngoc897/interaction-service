@@ -58,37 +58,22 @@ public class InteractionController {
 
     /**
      * Get current step information for an interaction
-     * public ResponseEntity<StepResponse> getCurrentStep(@PathVariable String
-     * interactionId) {
-     * log.info("GET /api/interactions/{}/current-step", interactionId);
-     * 
-     * StepResponse response = interactionService.getCurrentStep(interactionId);
-     * 
-     * log.info("Current step: {} (status: {})",
-     * response.getStepName(),
-     * response.getStepStatus());
-     * 
-     * return ResponseEntity.ok(response);
-     * }
-     * 
-     * /**
+     */
+    @GetMapping("/{interactionId}/current-step")
+    public ResponseEntity<StepResponse> getCurrentStep(@PathVariable String interactionId) {
+        log.info("GET /api/interactions/{}/current-step", interactionId);
+
+        StepResponse response = interactionService.getCurrentStep(interactionId);
+
+        log.info("Current step: {} (status: {})",
+                response.getStepName(),
+                response.getStepStatus());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Submit step data and move to next step
-     * 
-     * This demonstrates how submission:
-     * 1. Validates data against BLUEPRINT (flw_int_def.steps[x].fields)
-     * 2. Adds entry to HISTORY (flow_case.audit_trail)
-     * 3. Updates CURRENT POSITION (flw_int.step_name = next step)
-     * 4. Executes actions from BLUEPRINT (flw_int_def.steps[x].onSubmit)
-     * 
-     * Request body:
-     * {
-     * "stepName": "personal-info",
-     * "data": {
-     * "fullName": "Nguyen Van A",
-     * "dob": "1990-01-01",
-     * "idNumber": "123456789"
-     * }
-     * }
      */
     @PostMapping("/{interactionId}/submit-step")
     public ResponseEntity<StepResponse> submitStep(
