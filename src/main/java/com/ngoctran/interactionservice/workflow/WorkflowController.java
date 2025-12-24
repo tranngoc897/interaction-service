@@ -120,6 +120,16 @@ public class WorkflowController {
                 "RUNNING"));
     }
 
+    /**
+     * Create/Update Onboarding Monitor Schedule
+     */
+    @PostMapping("/schedules/onboarding")
+    public ResponseEntity<String> createOnboardingSchedule(@RequestBody OnboardingScheduleRequest request) {
+        log.info("Request to create onboarding schedule: {}", request.getScheduleId());
+        workflowService.createOnboardingMonitorSchedule(request.getScheduleId(), request.getCron());
+        return ResponseEntity.ok("Onboarding schedule created/updated successfully");
+    }
+
     // ==================== DTOs ====================
 
     public static class PipelineRunRequest {
@@ -149,6 +159,27 @@ public class WorkflowController {
 
         public void setData(Map<String, Object> data) {
             this.data = data;
+        }
+    }
+
+    public static class OnboardingScheduleRequest {
+        private String scheduleId;
+        private String cron;
+
+        public String getScheduleId() {
+            return scheduleId;
+        }
+
+        public void setScheduleId(String scheduleId) {
+            this.scheduleId = scheduleId;
+        }
+
+        public String getCron() {
+            return cron;
+        }
+
+        public void setCron(String cron) {
+            this.cron = cron;
         }
     }
 

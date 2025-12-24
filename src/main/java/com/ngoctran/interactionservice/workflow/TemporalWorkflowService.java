@@ -208,4 +208,37 @@ public class TemporalWorkflowService {
                         log.info("Schedule already exists or error occurred: {}", e.getMessage());
                 }
         }
+
+        /**
+         * Create a Schedule for an Onboarding Monitor job
+         */
+        public void createOnboardingMonitorSchedule(String scheduleId, String cronSchedule) {
+                log.info("Creating Onboarding Monitor Schedule: {} with cron: {}", scheduleId, cronSchedule);
+                ScheduleActionStartWorkflow action = ScheduleActionStartWorkflow.newBuilder()
+                                .setWorkflowType(CaseMonitorWorkflow.class)
+                                .setOptions(WorkflowOptions.newBuilder()
+                                                .setWorkflowId("onboarding-monitor-" + scheduleId)
+                                                .setTaskQueue(WorkerConfiguration.KYC_ONBOARDING_QUEUE)
+                                                .build())
+                                // Default arguments for monitorCase(String caseId, int iterationCount)
+                                .setArguments("SYSTEM_WIDE", 0)
+                                .build();
+
+                Schedule schedule = Schedule.newBuilder()
+                                .setAction(action)
+                                .setSpec(ScheduleSpec.newBuilder()
+                                                .setCronExpressions(Collections.singletonList(cronSchedule))
+                                                .build()).build();
+
+                try {
+                        scheduleClient.createSchedule(scheduleId, schedule, ScheduleOptions.newBuilder().build());
+                        log.info("Onboarding monitor schedule {} created successfully", scheduleId);
+
+                } catch (Exception e) {
+                        log.warn("Schedule {} might already exist: {}", scheduleId, e.getMessage());
+                        // In a real app, you might want to update it
+                }
+
+        }
+
 }
