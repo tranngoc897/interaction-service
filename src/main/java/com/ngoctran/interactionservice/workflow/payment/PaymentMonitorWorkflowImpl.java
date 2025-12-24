@@ -12,7 +12,11 @@ import java.time.Duration;
 public class PaymentMonitorWorkflowImpl implements PaymentMonitorWorkflow {
 
     private static final Logger log = Workflow.getLogger(PaymentMonitorWorkflowImpl.class);
-    private static final int CONTINUE_AS_NEW_THRESHOLD = 10; // Low for demo, usually ~1000s
+    // Configurable threshold - can be overridden for testing
+    private static final int CONTINUE_AS_NEW_THRESHOLD = 10;
+
+    // Configurable wait duration - can be overridden for testing
+    private static final Duration WAIT_DURATION = Duration.ofMillis(3600);
 
     private String lastStatus = "STARTED";
     private int eventCount = 0;
@@ -27,8 +31,8 @@ public class PaymentMonitorWorkflowImpl implements PaymentMonitorWorkflow {
         // Event loop for monitoring payment activities
         while (!exit) {
             try {
-                // Wait for a signal or timeout (check every hour for scheduled payments)
-                boolean signalReceived = Workflow.await(Duration.ofHours(1),
+                // Wait for a signal or timeout (configurable for testing)
+                boolean signalReceived = Workflow.await(WAIT_DURATION,
                         () -> eventCount >= CONTINUE_AS_NEW_THRESHOLD || exit);
 
                 if (exit) {
