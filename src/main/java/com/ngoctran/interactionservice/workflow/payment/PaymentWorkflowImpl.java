@@ -293,19 +293,6 @@ public class PaymentWorkflowImpl implements PaymentWorkflow {
                 result.getRiskScore(), result.getRiskLevel());
     }
 
-    private void executePayment() {
-        log.info("Calling PaymentExecutionActivity for payment: {}", paymentId);
-
-        PaymentExecutionActivity.PaymentExecutionResult result =
-                paymentExecution.executePayment(paymentId, accountId, amount, currency);
-
-        if (!result.isSuccess()) {
-            throw new RuntimeException("Payment execution failed: " + result.getErrorMessage());
-        }
-
-        log.info("Payment execution completed successfully: transactionId={}", result.getTransactionId());
-    }
-
     private void confirmPayment(PaymentExecutionActivity.PaymentExecutionResult executionResult) {
         log.info("Calling PaymentConfirmationActivity for payment: {}", paymentId);
 
