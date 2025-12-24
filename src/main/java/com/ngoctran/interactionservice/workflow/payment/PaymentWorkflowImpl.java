@@ -4,7 +4,10 @@ import com.ngoctran.interactionservice.workflow.activity.payment.*;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.common.RetryOptions;
 import io.temporal.workflow.Workflow;
+import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Duration;
 
@@ -40,6 +43,13 @@ public class PaymentWorkflowImpl implements PaymentWorkflow {
     private boolean circuitBreakerOpen = false;
     private int consecutiveFailures = 0;
     private static final int CIRCUIT_BREAKER_THRESHOLD = 5;
+
+    // Advanced scheduler features (static instance for workflow compatibility)
+    private static final PaymentSchedulerAdvanced advancedScheduler = new PaymentSchedulerAdvanced();
+
+    // Workflow state for advanced features
+    private String tenantId = "DEFAULT_TENANT";
+    private String userId = "DEFAULT_USER";
 
     public PaymentWorkflowImpl() {
         // Configure different activity options for different operations
@@ -95,13 +105,28 @@ public class PaymentWorkflowImpl implements PaymentWorkflow {
                 paymentId, accountId, amount, currency);
 
         try {
-            // Step 0: Idempotency Check
+            // Record payment submission event
+            advancedScheduler.recordPaymentEvent(paymentId, PaymentSchedulerAdvanced.EventType.PAYMENT_SUBMITTED,
+                    Map.of("amount", amount, "currency", currency, "accountId", accountId,
+                           "tenantId", tenantId, "userId", userId));
+
+            // Step 0: Rate Limiting Check (Advanced Feature)
+            updateProgress("CHECKING_RATE_LIMITS", 2, "INITIALIZING");
+            if (!advancedScheduler.canProcessPayment(tenantId, userId)) {
+                throw new RuntimeException("Rate limit exceeded for tenant: " + tenantId + ", user: " + userId);
+            }
+
+            // Step 0.5: Idempotency Check
             updateProgress("CHECKING_IDEMPOTENCY", 5, "INITIALIZING");
             checkIdempotency();
 
             // Step 1: Payment Validation
             updateProgress("VALIDATING_PAYMENT", 15, "VALIDATING");
             validatePaymentDetails();
+
+            // Record validation event
+            advancedScheduler.recordPaymentEvent(paymentId, PaymentSchedulerAdvanced.EventType.PAYMENT_VALIDATED,
+                    Map.of("validationResult", "SUCCESS"));
 
             // Step 2: Account Verification
             updateProgress("VERIFYING_ACCOUNT", 25, "VALIDATING");
@@ -123,9 +148,21 @@ public class PaymentWorkflowImpl implements PaymentWorkflow {
             updateProgress("CHECKING_CIRCUIT_BREAKER", 65, "PROCESSING");
             checkCircuitBreaker();
 
-            // Step 7: Execute Payment (with Saga Pattern)
+            // Step 7: Execute Payment (with Circuit Breaker & Saga Pattern)
             updateProgress("EXECUTING_PAYMENT", 80, "PROCESSING");
+
+            // Record execution start event
+            advancedScheduler.recordPaymentEvent(paymentId, PaymentSchedulerAdvanced.EventType.PAYMENT_EXECUTED,
+                    Map.of("executionStarted", "true"));
+
             PaymentExecutionActivity.PaymentExecutionResult executionResult = executePayment();
+
+            // Record successful execution
+            if (executionResult.isSuccess()) {
+                advancedScheduler.recordPaymentEvent(paymentId, PaymentSchedulerAdvanced.EventType.PAYMENT_COMPLETED,
+                        Map.of("transactionId", executionResult.getTransactionId(),
+                              "processingTime", executionResult.getProcessingTime()));
+            }
 
             // Step 8: Confirm Payment
             updateProgress("CONFIRMING_PAYMENT", 95, "FINALIZING");
@@ -323,6 +360,13 @@ public class PaymentWorkflowImpl implements PaymentWorkflow {
 
     private void handlePaymentFailure(Exception e) {
         log.error("Handling payment failure for payment: {}", paymentId, e);
+
+        // Record failure event
+        advancedScheduler.recordPaymentEvent(paymentId, PaymentSchedulerAdvanced.EventType.PAYMENT_FAILED,
+                Map.of("error", e.getMessage(), "errorType", e.getClass().getSimpleName()));
+
+        // Use Dead Letter Queue for failed payments (Advanced Feature)
+        advancedScheduler.handlePaymentFailure(paymentId, tenantId, userId, e, 0);
 
         // In real implementation, this would:
         // 1. Rollback any partial transactions
