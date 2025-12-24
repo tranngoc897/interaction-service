@@ -6,6 +6,7 @@ import com.ngoctran.interactionservice.mapping.enums.EngineType;
 import com.ngoctran.interactionservice.mapping.enums.ProcessStatus;
 import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflow;
 import com.ngoctran.interactionservice.workflow.payment.PaymentMonitorWorkflow;
+import com.ngoctran.interactionservice.workflow.payment.PaymentWorkflow;
 import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
@@ -373,6 +374,30 @@ public class TemporalWorkflowService {
                 scheduleRepo.save(scheduleEntity);
 
                 log.info("Schedule marked as deleted in database: {}", scheduleId);
+        }
+
+        /**
+         * Start Payment Workflow Manually
+         */
+        public String startPaymentWorkflow(String paymentId, String accountId, double amount,
+                                         String currency, String tenantId, String userId) {
+                log.info("Starting payment workflow manually: paymentId={}, accountId={}, amount={}",
+                        paymentId, accountId, amount);
+
+                String workflowId = "payment-workflow-" + paymentId;
+                WorkflowOptions options = WorkflowOptions.newBuilder()
+                                .setWorkflowId(workflowId)
+                                .setTaskQueue(WorkerConfiguration.GENERAL_QUEUE)
+                                .setWorkflowExecutionTimeout(Duration.ofHours(2))
+                                .build();
+
+                PaymentWorkflow workflow = client.newWorkflowStub(PaymentWorkflow.class, options);
+
+                // Start workflow asynchronously
+                WorkflowClient.start(workflow::processPayment, paymentId, accountId, amount, currency);
+
+                log.info("Payment workflow started: {}", workflowId);
+                return workflowId;
         }
 
         /**

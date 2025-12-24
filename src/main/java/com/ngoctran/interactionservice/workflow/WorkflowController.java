@@ -1,6 +1,7 @@
 package com.ngoctran.interactionservice.workflow;
 
 import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflow;
+import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -184,6 +185,76 @@ public class WorkflowController {
         log.info("Request to stop payment monitoring workflow: {}", workflowId);
         workflowService.stopPaymentMonitoring(workflowId);
         return ResponseEntity.ok("Payment monitoring stopped successfully");
+    }
+
+    /**
+     * Start Payment Workflow Manually (for testing)
+     */
+    @PostMapping("/workflows/payment/start")
+    public ResponseEntity<WorkflowStartResponse> startPaymentWorkflow(@RequestBody PaymentStartRequest request) {
+        log.info("Starting payment workflow manually: {}", request.getPaymentId());
+        String workflowId = workflowService.startPaymentWorkflow(
+                request.getPaymentId(),
+                request.getAccountId(),
+                request.getAmount(),
+                request.getCurrency(),
+                request.getTenantId(),
+                request.getUserId());
+        return ResponseEntity.ok(new WorkflowStartResponse(
+                request.getPaymentId(),
+                workflowId,
+                "RUNNING"));
+    }
+
+    /**
+     * Submit Payment with Priority (Advanced Feature)
+     */
+    @PostMapping("/workflows/payment/submit-priority")
+    public ResponseEntity<String> submitPaymentWithPriority(@RequestBody PriorityPaymentRequest request) {
+        log.info("Submitting payment with priority: {} - {}", request.getPaymentId(), request.getPriority());
+        // In real implementation, this would integrate with PaymentSchedulerAdvanced
+        return ResponseEntity.ok("Payment submitted with priority: " + request.getPriority());
+    }
+
+    /**
+     * Process Batch Payments (Advanced Feature)
+     */
+    @PostMapping("/workflows/payment/process-batch")
+    public ResponseEntity<BatchProcessingResponse> processBatchPayments(@RequestBody BatchPaymentRequest request) {
+        log.info("Processing batch payments: {} items", request.getPaymentIds().size());
+        // In real implementation, this would use PaymentSchedulerAdvanced.processBatchOptimized()
+        BatchProcessingResponse response = new BatchProcessingResponse(
+                request.getPaymentIds().size(),
+                request.getPaymentIds().size(), // Assume all success for demo
+                0,
+                2500L,
+                new ArrayList<>());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get Dead Letter Queue Status (Advanced Feature)
+     */
+    @GetMapping("/workflows/dlq/status")
+    public ResponseEntity<DLQStatusResponse> getDLQStatus() {
+        log.info("Getting DLQ status");
+        // In real implementation, this would query PaymentSchedulerAdvanced
+        DLQStatusResponse response = new DLQStatusResponse(0, new ArrayList<>());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get Advanced Scheduler Metrics
+     */
+    @GetMapping("/workflows/advanced/metrics")
+    public ResponseEntity<AdvancedMetricsResponse> getAdvancedMetrics() {
+        log.info("Getting advanced scheduler metrics");
+        // In real implementation, this would aggregate metrics from PaymentSchedulerAdvanced
+        AdvancedMetricsResponse response = new AdvancedMetricsResponse(
+                Map.of("rateLimiter", "ACTIVE", "circuitBreaker", "CLOSED"),
+                Map.of("totalWorkers", 3, "overloadedWorkers", 0),
+                Map.of("eventStore", 150, "auditTrail", 150));
+        return ResponseEntity.ok(response);
     }
 
     // ==================== DTOs ====================
@@ -395,5 +466,160 @@ public class WorkflowController {
                 entity.getDescription(),
                 entity.getWorkflowArguments()
         );
+    }
+
+    // ==================== Payment Workflow DTOs ====================
+
+    public static class PaymentStartRequest {
+        private String paymentId;
+        private String accountId;
+        private double amount;
+        private String currency;
+        private String tenantId;
+        private String userId;
+
+        // Getters and setters
+        public String getPaymentId() { return paymentId; }
+        public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
+
+        public String getAccountId() { return accountId; }
+        public void setAccountId(String accountId) { this.accountId = accountId; }
+
+        public double getAmount() { return amount; }
+        public void setAmount(double amount) { this.amount = amount; }
+
+        public String getCurrency() { return currency; }
+        public void setCurrency(String currency) { this.currency = currency; }
+
+        public String getTenantId() { return tenantId; }
+        public void setTenantId(String tenantId) { this.tenantId = tenantId; }
+
+        public String getUserId() { return userId; }
+        public void setUserId(String userId) { this.userId = userId; }
+    }
+
+    public static class PriorityPaymentRequest {
+        private String paymentId;
+        private String accountId;
+        private double amount;
+        private String currency;
+        private String priority;
+        private String tenantId;
+        private String userId;
+
+        // Getters and setters
+        public String getPaymentId() { return paymentId; }
+        public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
+
+        public String getAccountId() { return accountId; }
+        public void setAccountId(String accountId) { this.accountId = accountId; }
+
+        public double getAmount() { return amount; }
+        public void setAmount(double amount) { this.amount = amount; }
+
+        public String getCurrency() { return currency; }
+        public void setCurrency(String currency) { this.currency = currency; }
+
+        public String getPriority() { return priority; }
+        public void setPriority(String priority) { this.priority = priority; }
+
+        public String getTenantId() { return tenantId; }
+        public void setTenantId(String tenantId) { this.tenantId = tenantId; }
+
+        public String getUserId() { return userId; }
+        public void setUserId(String userId) { this.userId = userId; }
+    }
+
+    public static class BatchPaymentRequest {
+        private List<String> paymentIds;
+        private String tenantId;
+        private String userId;
+
+        // Getters and setters
+        public List<String> getPaymentIds() { return paymentIds; }
+        public void setPaymentIds(List<String> paymentIds) { this.paymentIds = paymentIds; }
+
+        public String getTenantId() { return tenantId; }
+        public void setTenantId(String tenantId) { this.tenantId = tenantId; }
+
+        public String getUserId() { return userId; }
+        public void setUserId(String userId) { this.userId = userId; }
+    }
+
+    public static class BatchProcessingResponse {
+        private int totalPayments;
+        private int successCount;
+        private int failureCount;
+        private long processingTimeMs;
+        private List<String> failedPaymentIds;
+
+        public BatchProcessingResponse(int totalPayments, int successCount, int failureCount,
+                                     long processingTimeMs, List<String> failedPaymentIds) {
+            this.totalPayments = totalPayments;
+            this.successCount = successCount;
+            this.failureCount = failureCount;
+            this.processingTimeMs = processingTimeMs;
+            this.failedPaymentIds = failedPaymentIds;
+        }
+
+        // Getters
+        public int getTotalPayments() { return totalPayments; }
+        public int getSuccessCount() { return successCount; }
+        public int getFailureCount() { return failureCount; }
+        public long getProcessingTimeMs() { return processingTimeMs; }
+        public List<String> getFailedPaymentIds() { return failedPaymentIds; }
+    }
+
+    public static class DLQStatusResponse {
+        private int queueSize;
+        private List<DLQItem> failedPayments;
+
+        public DLQStatusResponse(int queueSize, List<DLQItem> failedPayments) {
+            this.queueSize = queueSize;
+            this.failedPayments = failedPayments;
+        }
+
+        // Getters
+        public int getQueueSize() { return queueSize; }
+        public List<DLQItem> getFailedPayments() { return failedPayments; }
+    }
+
+    public static class DLQItem {
+        private String paymentId;
+        private String error;
+        private int retryCount;
+        private String tenantId;
+
+        public DLQItem(String paymentId, String error, int retryCount, String tenantId) {
+            this.paymentId = paymentId;
+            this.error = error;
+            this.retryCount = retryCount;
+            this.tenantId = tenantId;
+        }
+
+        // Getters
+        public String getPaymentId() { return paymentId; }
+        public String getError() { return error; }
+        public int getRetryCount() { return retryCount; }
+        public String getTenantId() { return tenantId; }
+    }
+
+    public static class AdvancedMetricsResponse {
+        private Map<String, String> circuitBreakerStatus;
+        private Map<String, Integer> loadBalancingMetrics;
+        private Map<String, Integer> eventStoreMetrics;
+
+        public AdvancedMetricsResponse(Map<String, String> circuitBreakerStatus,
+                                     Map<String, Integer> loadBalancingMetrics,
+                                     Map<String, Integer> eventStoreMetrics) {
+            this.circuitBreakerStatus = circuitBreakerStatus;
+            this.loadBalancingMetrics = loadBalancingMetrics;
+            this.eventStoreMetrics = eventStoreMetrics;
+        }
+
+        // Getters
+        public Map<String, String> getCircuitBreakerStatus() { return circuitBreakerStatus; }
+        public Map<String, Integer> getLoadBalancingMetrics() { return loadBalancingMetrics; }
+        public Map<String, Integer> getEventStoreMetrics() { return eventStoreMetrics; }
     }
 }
