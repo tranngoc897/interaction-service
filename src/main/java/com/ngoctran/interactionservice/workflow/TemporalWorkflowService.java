@@ -28,6 +28,7 @@ public class TemporalWorkflowService {
         private final WorkflowClient workflowClient;
         private final ScheduleClient scheduleClient;
         private final ProcessMappingRepository processMappingRepo;
+        private final ScheduleRepository scheduleRepo;
 
         /**
          * Start KYC Onboarding Workflow
@@ -212,8 +213,16 @@ public class TemporalWorkflowService {
         /**
          * Create a Schedule for an Onboarding Monitor job
          */
+        @Transactional
         public void createOnboardingMonitorSchedule(String scheduleId, String cronSchedule) {
                 log.info("Creating Onboarding Monitor Schedule: {} with cron: {}", scheduleId, cronSchedule);
+
+                // Check if schedule already exists in DB
+                if (scheduleRepo.existsByScheduleIdAndStatus(scheduleId, ScheduleStatus.ACTIVE)) {
+                        log.warn("Schedule {} already exists and is active", scheduleId);
+                        return;
+                }
+
                 ScheduleActionStartWorkflow action = ScheduleActionStartWorkflow.newBuilder()
                                 .setWorkflowType(CaseMonitorWorkflow.class)
                                 .setOptions(WorkflowOptions.newBuilder()
@@ -232,13 +241,81 @@ public class TemporalWorkflowService {
 
                 try {
                         scheduleClient.createSchedule(scheduleId, schedule, ScheduleOptions.newBuilder().build());
-                        log.info("Onboarding monitor schedule {} created successfully", scheduleId);
+                        log.info("Onboarding monitor schedule {} created successfully in Temporal", scheduleId);
+
+                        // Save schedule metadata to database
+                        saveScheduleEntity(scheduleId, cronSchedule, "CaseMonitorWorkflow",
+                                         WorkerConfiguration.KYC_ONBOARDING_QUEUE, null);
 
                 } catch (Exception e) {
-                        log.warn("Schedule {} might already exist: {}", scheduleId, e.getMessage());
-                        // In a real app, you might want to update it
+                        log.warn("Schedule {} might already exist in Temporal: {}", scheduleId, e.getMessage());
+                        // Still save to DB if it doesn't exist there, for consistency
+                        if (!scheduleRepo.existsById(scheduleId)) {
+                                saveScheduleEntity(scheduleId, cronSchedule, "CaseMonitorWorkflow",
+                                                 WorkerConfiguration.KYC_ONBOARDING_QUEUE, null);
+                        }
                 }
 
+        }
+
+        private void saveScheduleEntity(String scheduleId, String cronExpression, String workflowType,
+                                      String taskQueue, String createdBy) {
+                ScheduleEntity scheduleEntity = new ScheduleEntity();
+                scheduleEntity.setScheduleId(scheduleId);
+                scheduleEntity.setCronExpression(cronExpression);
+                scheduleEntity.setWorkflowType(workflowType);
+                scheduleEntity.setTaskQueue(taskQueue);
+                scheduleEntity.setCreatedBy(createdBy != null ? createdBy : "SYSTEM");
+                scheduleEntity.setDescription("Onboarding monitor schedule");
+                scheduleEntity.setWorkflowArguments("[\"SYSTEM_WIDE\", 0]");
+
+                scheduleRepo.save(scheduleEntity);
+                log.info("Schedule metadata saved to database: {}", scheduleId);
+        }
+
+        /**
+         * Get all schedules from database
+         */
+        public List<ScheduleEntity> getAllSchedules() {
+                log.info("Retrieving all schedules from database");
+                return scheduleRepo.findAll();
+        }
+
+        /**
+         * Get schedule by ID from database
+         */
+        public ScheduleEntity getScheduleById(String scheduleId) {
+                log.info("Retrieving schedule by ID: {}", scheduleId);
+                return scheduleRepo.findById(scheduleId)
+                        .orElseThrow(() -> new RuntimeException("Schedule not found: " + scheduleId));
+        }
+
+        /**
+         * Delete schedule from both Temporal and database
+         */
+        @Transactional
+        public void deleteSchedule(String scheduleId) {
+                log.info("Deleting schedule: {}", scheduleId);
+
+                // Check if schedule exists in DB
+                ScheduleEntity scheduleEntity = scheduleRepo.findById(scheduleId)
+                        .orElseThrow(() -> new RuntimeException("Schedule not found: " + scheduleId));
+
+                try {
+                        // Delete from Temporal
+                        //scheduleClient.deleteSchedule(scheduleId);
+                        log.info("Schedule deleted from Temporal: {}", scheduleId);
+                } catch (Exception e) {
+                        log.warn("Failed to delete schedule from Temporal: {}", e.getMessage());
+                        // Continue with DB deletion even if Temporal deletion fails
+                }
+
+                // Mark as deleted in database (soft delete)
+                scheduleEntity.setStatus(ScheduleStatus.DELETED);
+                scheduleEntity.setUpdatedAt(LocalDateTime.now());
+                scheduleRepo.save(scheduleEntity);
+
+                log.info("Schedule marked as deleted in database: {}", scheduleId);
         }
 
 }

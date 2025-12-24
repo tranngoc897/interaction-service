@@ -111,6 +111,27 @@ CREATE INDEX idx_proc_map_case ON process_mapping(case_id);
 CREATE INDEX idx_proc_map_instance ON process_mapping(process_instance_id);
 
 -- =============================================================================
+-- 6. WORKFLOW SCHEDULE MANAGEMENT (Theo dõi Temporal Schedules)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS workflow_schedule (
+    schedule_id VARCHAR(255) PRIMARY KEY,
+    cron_expression VARCHAR(255) NOT NULL,
+    workflow_type VARCHAR(255) NOT NULL,
+    task_queue VARCHAR(255),
+    created_by VARCHAR(255),
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    description TEXT,
+    workflow_arguments TEXT
+);
+
+CREATE INDEX idx_schedule_id ON workflow_schedule(schedule_id);
+CREATE INDEX idx_schedule_status ON workflow_schedule(status);
+CREATE INDEX idx_schedule_created_by ON workflow_schedule(created_by);
+
+-- =============================================================================
 -- 5. TRIGGER CẬP NHẬT THỜI GIAN (PostgreSQL)
 -- =============================================================================
 

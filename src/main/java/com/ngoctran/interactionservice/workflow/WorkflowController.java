@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -128,6 +130,39 @@ public class WorkflowController {
         log.info("Request to create onboarding schedule: {}", request.getScheduleId());
         workflowService.createOnboardingMonitorSchedule(request.getScheduleId(), request.getCron());
         return ResponseEntity.ok("Onboarding schedule created/updated successfully");
+    }
+
+    /**
+     * Get all schedules
+     */
+    @GetMapping("/schedules")
+    public ResponseEntity<List<ScheduleResponse>> getAllSchedules() {
+        log.info("Request to get all schedules");
+        List<ScheduleEntity> schedules = workflowService.getAllSchedules();
+        List<ScheduleResponse> responses = schedules.stream()
+                .map(this::convertToScheduleResponse)
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
+    /**
+     * Get schedule by ID
+     */
+    @GetMapping("/schedules/{scheduleId}")
+    public ResponseEntity<ScheduleResponse> getSchedule(@PathVariable String scheduleId) {
+        log.info("Request to get schedule: {}", scheduleId);
+        ScheduleEntity schedule = workflowService.getScheduleById(scheduleId);
+        return ResponseEntity.ok(convertToScheduleResponse(schedule));
+    }
+
+    /**
+     * Delete/Pause schedule
+     */
+    @DeleteMapping("/schedules/{scheduleId}")
+    public ResponseEntity<String> deleteSchedule(@PathVariable String scheduleId) {
+        log.info("Request to delete schedule: {}", scheduleId);
+        workflowService.deleteSchedule(scheduleId);
+        return ResponseEntity.ok("Schedule deleted successfully");
     }
 
     // ==================== DTOs ====================
@@ -283,5 +318,61 @@ public class WorkflowController {
         public void setReason(String reason) {
             this.reason = reason;
         }
+    }
+
+    public static class ScheduleResponse {
+        private String scheduleId;
+        private String cronExpression;
+        private String workflowType;
+        private String taskQueue;
+        private String createdBy;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
+        private ScheduleStatus status;
+        private String description;
+        private String workflowArguments;
+
+        public ScheduleResponse(String scheduleId, String cronExpression, String workflowType,
+                               String taskQueue, String createdBy, LocalDateTime createdAt,
+                               LocalDateTime updatedAt, ScheduleStatus status, String description,
+                               String workflowArguments) {
+            this.scheduleId = scheduleId;
+            this.cronExpression = cronExpression;
+            this.workflowType = workflowType;
+            this.taskQueue = taskQueue;
+            this.createdBy = createdBy;
+            this.createdAt = createdAt;
+            this.updatedAt = updatedAt;
+            this.status = status;
+            this.description = description;
+            this.workflowArguments = workflowArguments;
+        }
+
+        // Getters
+        public String getScheduleId() { return scheduleId; }
+        public String getCronExpression() { return cronExpression; }
+        public String getWorkflowType() { return workflowType; }
+        public String getTaskQueue() { return taskQueue; }
+        public String getCreatedBy() { return createdBy; }
+        public LocalDateTime getCreatedAt() { return createdAt; }
+        public LocalDateTime getUpdatedAt() { return updatedAt; }
+        public ScheduleStatus getStatus() { return status; }
+        public String getDescription() { return description; }
+        public String getWorkflowArguments() { return workflowArguments; }
+    }
+
+    private ScheduleResponse convertToScheduleResponse(ScheduleEntity entity) {
+        return new ScheduleResponse(
+                entity.getScheduleId(),
+                entity.getCronExpression(),
+                entity.getWorkflowType(),
+                entity.getTaskQueue(),
+                entity.getCreatedBy(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt(),
+                entity.getStatus(),
+                entity.getDescription(),
+                entity.getWorkflowArguments()
+        );
     }
 }
