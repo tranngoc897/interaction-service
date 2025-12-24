@@ -133,6 +133,16 @@ public class WorkflowController {
     }
 
     /**
+     * Create/Update Payment Processing Schedule
+     */
+    @PostMapping("/schedules/payment")
+    public ResponseEntity<String> createPaymentSchedule(@RequestBody OnboardingScheduleRequest request) {
+        log.info("Request to create payment processing schedule: {}", request.getScheduleId());
+        workflowService.createPaymentProcessingSchedule(request.getScheduleId(), request.getCron());
+        return ResponseEntity.ok("Payment processing schedule created/updated successfully");
+    }
+
+    /**
      * Get all schedules
      */
     @GetMapping("/schedules")

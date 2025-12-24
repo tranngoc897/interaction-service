@@ -258,6 +258,51 @@ public class TemporalWorkflowService {
 
         }
 
+        @Transactional
+        public void createPaymentProcessingSchedule(String scheduleId, String cronSchedule) {
+                log.info("Creating Payment Processing Schedule: {} with cron: {}", scheduleId, cronSchedule);
+                // Check if schedule already exists in DB
+                if (scheduleRepo.existsByScheduleIdAndStatus(scheduleId, ScheduleStatus.ACTIVE)) {
+                        log.warn("Payment schedule {} already exists and is active", scheduleId);
+                        return;
+                }
+
+                ScheduleActionStartWorkflow action = ScheduleActionStartWorkflow.newBuilder()
+                                .setWorkflowType(com.ngoctran.interactionservice.payment.PaymentMonitorWorkflow.class)
+                                .setOptions(WorkflowOptions.newBuilder()
+                                                .setWorkflowId("payment-monitor-" + scheduleId)
+                                                .setTaskQueue(WorkerConfiguration.GENERAL_QUEUE)
+                                                .build())
+                                // Default arguments for monitorPayments(String accountId, int iterationCount)
+                                .setArguments("BANKING_SYSTEM", 0)
+                                .build();
+
+                Schedule schedule = Schedule.newBuilder()
+                                .setAction(action)
+                                .setSpec(ScheduleSpec.newBuilder()
+                                                .setCronExpressions(Collections.singletonList(cronSchedule))
+                                                .build()).build();
+
+                try {
+                        scheduleClient.createSchedule(scheduleId, schedule, ScheduleOptions.newBuilder().build());
+                        log.info("Payment processing schedule {} created successfully in Temporal", scheduleId);
+
+                        // Save schedule metadata to database
+                        saveScheduleEntity(scheduleId, cronSchedule, "PaymentMonitorWorkflow",
+                                         WorkerConfiguration.GENERAL_QUEUE, null);
+
+                } catch (Exception e) {
+                        log.warn("Payment schedule {} might already exist in Temporal: {}", scheduleId, e.getMessage());
+                        // Still save to DB if it doesn't exist there, for consistency
+                        if (!scheduleRepo.existsById(scheduleId)) {
+                                saveScheduleEntity(scheduleId, cronSchedule, "PaymentMonitorWorkflow",
+                                                 WorkerConfiguration.GENERAL_QUEUE, null);
+                        }
+                }
+
+        }
+
+
         private void saveScheduleEntity(String scheduleId, String cronExpression, String workflowType,
                                       String taskQueue, String createdBy) {
                 ScheduleEntity scheduleEntity = new ScheduleEntity();
@@ -266,8 +311,18 @@ public class TemporalWorkflowService {
                 scheduleEntity.setWorkflowType(workflowType);
                 scheduleEntity.setTaskQueue(taskQueue);
                 scheduleEntity.setCreatedBy(createdBy != null ? createdBy : "SYSTEM");
-                scheduleEntity.setDescription("Onboarding monitor schedule");
-                scheduleEntity.setWorkflowArguments("[\"SYSTEM_WIDE\", 0]");
+
+                // Set appropriate description and arguments based on workflow type
+                if ("PaymentMonitorWorkflow".equals(workflowType)) {
+                        scheduleEntity.setDescription("Payment processing monitor schedule");
+                        scheduleEntity.setWorkflowArguments("[\"BANKING_SYSTEM\", 0]");
+                } else if ("CaseMonitorWorkflow".equals(workflowType)) {
+                        scheduleEntity.setDescription("Onboarding monitor schedule");
+                        scheduleEntity.setWorkflowArguments("[\"SYSTEM_WIDE\", 0]");
+                } else {
+                        scheduleEntity.setDescription("Workflow schedule");
+                        scheduleEntity.setWorkflowArguments("[]");
+                }
 
                 scheduleRepo.save(scheduleEntity);
                 log.info("Schedule metadata saved to database: {}", scheduleId);

@@ -1,6 +1,8 @@
 package com.ngoctran.interactionservice.workflow;
 
 import com.ngoctran.interactionservice.workflow.activity.*;
+import com.ngoctran.interactionservice.payment.PaymentWorkflowImpl;
+import com.ngoctran.interactionservice.payment.PaymentMonitorWorkflowImpl;
 import io.temporal.client.WorkflowClient;
 import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;
@@ -110,7 +112,9 @@ public class WorkerConfiguration {
         // Register Scheduled Workflow and Dynamic Pipelines
         worker.registerWorkflowImplementationTypes(
                 CleanupWorkflowImpl.class,
-                AdvancedPipelineWorkflowImpl.class);
+                AdvancedPipelineWorkflowImpl.class,
+                PaymentWorkflowImpl.class,
+                PaymentMonitorWorkflowImpl.class);
 
         // Register activity implementations
         worker.registerActivitiesImplementations(
