@@ -4,6 +4,7 @@ import com.ngoctran.interactionservice.mapping.ProcessMappingEntity;
 import com.ngoctran.interactionservice.mapping.ProcessMappingRepository;
 import com.ngoctran.interactionservice.mapping.enums.EngineType;
 import com.ngoctran.interactionservice.mapping.enums.ProcessStatus;
+import com.ngoctran.interactionservice.workflow.payment.PaymentMonitorWorkflow;
 import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
@@ -268,7 +269,7 @@ public class TemporalWorkflowService {
                 }
 
                 ScheduleActionStartWorkflow action = ScheduleActionStartWorkflow.newBuilder()
-                                .setWorkflowType(com.ngoctran.interactionservice.payment.PaymentMonitorWorkflow.class)
+                                .setWorkflowType(PaymentMonitorWorkflow.class)
                                 .setOptions(WorkflowOptions.newBuilder()
                                                 .setWorkflowId("payment-monitor-" + scheduleId)
                                                 .setTaskQueue(WorkerConfiguration.GENERAL_QUEUE)

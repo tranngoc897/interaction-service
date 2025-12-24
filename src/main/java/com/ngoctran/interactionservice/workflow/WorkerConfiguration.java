@@ -1,8 +1,8 @@
 package com.ngoctran.interactionservice.workflow;
 
 import com.ngoctran.interactionservice.workflow.activity.*;
-import com.ngoctran.interactionservice.payment.PaymentWorkflowImpl;
-import com.ngoctran.interactionservice.payment.PaymentMonitorWorkflowImpl;
+import com.ngoctran.interactionservice.workflow.payment.PaymentWorkflowImpl;
+import com.ngoctran.interactionservice.workflow.payment.PaymentMonitorWorkflowImpl;
 import io.temporal.client.WorkflowClient;
 import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;
