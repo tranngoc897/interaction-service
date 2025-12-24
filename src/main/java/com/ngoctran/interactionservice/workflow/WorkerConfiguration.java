@@ -2,6 +2,7 @@ package com.ngoctran.interactionservice.workflow;
 
 import com.ngoctran.interactionservice.workflow.activity.*;
 import com.ngoctran.interactionservice.workflow.activity.payment.*;
+import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflowImpl;
 import com.ngoctran.interactionservice.workflow.payment.PaymentWorkflowImpl;
 import com.ngoctran.interactionservice.workflow.payment.PaymentMonitorWorkflowImpl;
 import io.temporal.client.WorkflowClient;

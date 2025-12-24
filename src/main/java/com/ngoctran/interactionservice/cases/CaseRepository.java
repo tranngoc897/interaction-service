@@ -13,4 +13,5 @@ public interface CaseRepository extends JpaRepository<CaseEntity, UUID> {
     List<CaseEntity> findByStatus(String status);
 
     List<CaseEntity> findByCustomerIdAndStatus(String customerId, String status);
+
 }

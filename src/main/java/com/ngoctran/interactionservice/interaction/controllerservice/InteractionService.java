@@ -329,8 +329,7 @@ public class InteractionService {
                     new TypeReference<Map<String, Object>>() {
                     });
 
-            List<Map<String, Object>> stepsHistory = (List<Map<String, Object>>) auditTrail.getOrDefault("steps",
-                    new ArrayList<>());
+            List<Map<String, Object>> stepsHistory = (List<Map<String, Object>>) auditTrail.getOrDefault("steps", new ArrayList<>());
 
             return stepsHistory.stream()
                     .map(this::mapToStepHistoryEntry)
