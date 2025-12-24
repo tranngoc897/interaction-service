@@ -27,7 +27,7 @@ import java.util.UUID;
 public class TemporalWorkflowService {
 
         private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TemporalWorkflowService.class);
-        private final WorkflowClient workflowClient;
+        private final WorkflowClient client;
         private final ScheduleClient scheduleClient;
         private final ProcessMappingRepository processMappingRepo;
         private final ScheduleRepository scheduleRepo;
@@ -51,7 +51,7 @@ public class TemporalWorkflowService {
                                 .setWorkflowExecutionTimeout(Duration.ofDays(7))
                                 .build();
                 // Create onboarding stub
-                KYCOnboardingWorkflow workflow = workflowClient.newWorkflowStub(
+                KYCOnboardingWorkflow workflow = client.newWorkflowStub(
                                 KYCOnboardingWorkflow.class,
                                 options);
                 // Start onboarding asynchronously
@@ -78,7 +78,7 @@ public class TemporalWorkflowService {
                                 .setTaskQueue(WorkerConfiguration.GENERAL_QUEUE)
                                 .build();
 
-                AdvancedPipelineWorkflow workflow = workflowClient.newWorkflowStub(AdvancedPipelineWorkflow.class,
+                AdvancedPipelineWorkflow workflow = client.newWorkflowStub(AdvancedPipelineWorkflow.class,
                                 options);
 
                 // Start it and return ID
@@ -92,7 +92,7 @@ public class TemporalWorkflowService {
         public void signalDocumentsUploaded(String workflowId, Map<String, String> documents) {
                 log.info("Sending documents uploaded signal to onboarding: {}", workflowId);
 
-                KYCOnboardingWorkflow workflow = workflowClient.newWorkflowStub(
+                KYCOnboardingWorkflow workflow = client.newWorkflowStub(
                                 KYCOnboardingWorkflow.class,
                                 workflowId);
                 workflow.documentsUploaded(documents);
@@ -105,7 +105,7 @@ public class TemporalWorkflowService {
         public void signalUserDataUpdated(String workflowId, Map<String, Object> updatedData) {
                 log.info("Sending user data updated signal to onboarding: {}", workflowId);
 
-                KYCOnboardingWorkflow workflow = workflowClient.newWorkflowStub(
+                KYCOnboardingWorkflow workflow = client.newWorkflowStub(
                                 KYCOnboardingWorkflow.class,
                                 workflowId);
                 workflow.userDataUpdated(updatedData);
@@ -118,7 +118,7 @@ public class TemporalWorkflowService {
         public void signalManualReview(String workflowId, boolean approved, String reason) {
                 log.info("Sending manual review signal to onboarding: {}, approved={}", workflowId, approved);
 
-                KYCOnboardingWorkflow workflow = workflowClient.newWorkflowStub(
+                KYCOnboardingWorkflow workflow = client.newWorkflowStub(
                                 KYCOnboardingWorkflow.class,
                                 workflowId);
                 workflow.manualReview(approved, reason);
@@ -130,7 +130,7 @@ public class TemporalWorkflowService {
          */
         public String queryWorkflowStatus(String workflowId) {
                 log.info("Querying onboarding status: {}", workflowId);
-                KYCOnboardingWorkflow workflow = workflowClient.newWorkflowStub(
+                KYCOnboardingWorkflow workflow = client.newWorkflowStub(
                                 KYCOnboardingWorkflow.class,
                                 workflowId);
                 return workflow.getStatus();
@@ -142,7 +142,7 @@ public class TemporalWorkflowService {
         public KYCOnboardingWorkflow.WorkflowProgress queryWorkflowProgress(String workflowId) {
                 log.info("Querying onboarding progress: {}", workflowId);
 
-                KYCOnboardingWorkflow workflow = workflowClient.newWorkflowStub(
+                KYCOnboardingWorkflow workflow = client.newWorkflowStub(
                                 KYCOnboardingWorkflow.class,
                                 workflowId);
 
@@ -155,7 +155,7 @@ public class TemporalWorkflowService {
         public void cancelWorkflow(String workflowId) {
                 log.info("Cancelling onboarding: {}", workflowId);
 
-                WorkflowStub workflow = workflowClient.newUntypedWorkflowStub(workflowId);
+                WorkflowStub workflow = client.newUntypedWorkflowStub(workflowId);
                 workflow.cancel();
 
                 log.info("Workflow cancelled");
@@ -373,6 +373,19 @@ public class TemporalWorkflowService {
                 scheduleRepo.save(scheduleEntity);
 
                 log.info("Schedule marked as deleted in database: {}", scheduleId);
+        }
+
+        /**
+         * Stop payment monitoring workflow
+         */
+        public void stopPaymentMonitoring(String workflowId) {
+                log.info("Stopping payment monitoring workflow: {}", workflowId);
+
+                com.ngoctran.interactionservice.workflow.payment.PaymentMonitorWorkflow workflow =
+                        client.newWorkflowStub(com.ngoctran.interactionservice.workflow.payment.PaymentMonitorWorkflow.class, workflowId);
+
+                workflow.stopMonitoring();
+                log.info("Stop monitoring signal sent to workflow: {}", workflowId);
         }
 
 }

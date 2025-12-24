@@ -88,6 +88,13 @@ public class PaymentMonitorWorkflowImpl implements PaymentMonitorWorkflow {
                 paymentBatchId, eventCount);
     }
 
+    @Override
+    public void stopMonitoring() {
+        this.exit = true; // Đặt cờ exit để thoát vòng lặp
+        this.eventCount++;
+        log.info("Stop monitoring signal received. Workflow will exit gracefully. Total events: {}", eventCount);
+    }
+
     // ==================== Private Helper Methods ====================
 
     private void performScheduledPaymentChecks(String accountId) {

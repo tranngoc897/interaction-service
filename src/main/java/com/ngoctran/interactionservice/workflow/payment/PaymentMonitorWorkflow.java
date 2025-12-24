@@ -32,4 +32,10 @@ public interface PaymentMonitorWorkflow {
      */
     @SignalMethod
     void triggerPaymentCheck(String paymentBatchId);
+
+    /**
+     * Signal to stop monitoring gracefully
+     */
+    @SignalMethod
+    void stopMonitoring();
 }

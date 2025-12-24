@@ -176,6 +176,16 @@ public class WorkflowController {
         return ResponseEntity.ok("Schedule deleted successfully");
     }
 
+    /**
+     * Stop payment monitoring workflow
+     */
+    @PostMapping("/workflows/{workflowId}/stop-monitoring")
+    public ResponseEntity<String> stopPaymentMonitoring(@PathVariable String workflowId) {
+        log.info("Request to stop payment monitoring workflow: {}", workflowId);
+        workflowService.stopPaymentMonitoring(workflowId);
+        return ResponseEntity.ok("Payment monitoring stopped successfully");
+    }
+
     // ==================== DTOs ====================
 
     public static class PipelineRunRequest {
