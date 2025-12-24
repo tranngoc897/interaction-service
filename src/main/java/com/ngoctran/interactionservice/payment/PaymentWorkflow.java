@@ -1,5 +1,6 @@
 package com.ngoctran.interactionservice.payment;
 
+import io.temporal.workflow.QueryMethod;
 import io.temporal.workflow.WorkflowInterface;
 import io.temporal.workflow.WorkflowMethod;
 
@@ -19,11 +20,13 @@ public interface PaymentWorkflow {
     /**
      * Query current payment status
      */
+    @QueryMethod
     String getStatus();
 
     /**
      * Query payment progress
      */
+    @QueryMethod
     PaymentProgress getProgress();
 
     // DTOs
