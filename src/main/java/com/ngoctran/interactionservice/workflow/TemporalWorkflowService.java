@@ -261,6 +261,7 @@ public class TemporalWorkflowService {
 
         @Transactional
         public void createPaymentProcessingSchedule(String scheduleId, String cronSchedule) {
+
                 log.info("Creating Payment Processing Schedule: {} with cron: {}", scheduleId, cronSchedule);
 
                 // Check if schedule already exists in DB

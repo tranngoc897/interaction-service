@@ -1,5 +1,8 @@
 package com.ngoctran.interactionservice.workflow.payment;
 
+import com.ngoctran.interactionservice.workflow.activity.payment.*;
+import io.temporal.activity.ActivityOptions;
+import io.temporal.common.RetryOptions;
 import io.temporal.workflow.Workflow;
 import org.slf4j.Logger;
 
@@ -7,7 +10,7 @@ import java.time.Duration;
 
 /**
  * Payment Processing Workflow Implementation
- * Handles banking retail payment scheduling and processing
+ * Handles banking retail payment scheduling and processing using separate activities
  */
 public class PaymentWorkflowImpl implements PaymentWorkflow {
 
@@ -21,6 +24,33 @@ public class PaymentWorkflowImpl implements PaymentWorkflow {
     private String accountId;
     private double amount;
     private String currency;
+
+    // Activity stubs with retry policies
+    private final PaymentValidationActivity paymentValidation;
+    private final AccountVerificationActivity accountVerification;
+    private final FraudDetectionActivity fraudDetection;
+    private final PaymentExecutionActivity paymentExecution;
+    private final PaymentConfirmationActivity paymentConfirmation;
+
+    public PaymentWorkflowImpl() {
+        // Configure activity options with retries
+        ActivityOptions defaultOptions = ActivityOptions.newBuilder()
+                .setStartToCloseTimeout(Duration.ofMinutes(5))
+                .setRetryOptions(RetryOptions.newBuilder()
+                        .setMaximumAttempts(3)
+                        .setInitialInterval(Duration.ofSeconds(1))
+                        .setMaximumInterval(Duration.ofSeconds(10))
+                        .setBackoffCoefficient(2.0)
+                        .build())
+                .build();
+
+        // Create activity stubs
+        this.paymentValidation = Workflow.newActivityStub(PaymentValidationActivity.class, defaultOptions);
+        this.accountVerification = Workflow.newActivityStub(AccountVerificationActivity.class, defaultOptions);
+        this.fraudDetection = Workflow.newActivityStub(FraudDetectionActivity.class, defaultOptions);
+        this.paymentExecution = Workflow.newActivityStub(PaymentExecutionActivity.class, defaultOptions);
+        this.paymentConfirmation = Workflow.newActivityStub(PaymentConfirmationActivity.class, defaultOptions);
+    }
 
     @Override
     public void processPayment(String paymentId, String accountId, double amount, String currency) {
@@ -77,102 +107,78 @@ public class PaymentWorkflowImpl implements PaymentWorkflow {
     // ==================== Private Helper Methods ====================
 
     private void validatePaymentDetails() {
-        log.info("Validating payment details for payment: {}", paymentId);
+        log.info("Calling PaymentValidationActivity for payment: {}", paymentId);
 
-        // Validate payment amount
-        if (amount <= 0) {
-            throw new IllegalArgumentException("Payment amount must be positive");
+        PaymentValidationActivity.ValidationResult result =
+                paymentValidation.validatePayment(paymentId, accountId, amount, currency);
+
+        if (!result.isValid()) {
+            throw new IllegalArgumentException("Payment validation failed: " + result.getErrorMessage());
         }
-
-        // Validate currency
-        if (currency == null || currency.trim().isEmpty()) {
-            throw new IllegalArgumentException("Currency is required");
-        }
-
-        // Validate account ID
-        if (accountId == null || accountId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Account ID is required");
-        }
-
-        // Simulate some processing time
-        Workflow.sleep(Duration.ofSeconds(1));
 
         log.info("Payment validation completed successfully");
     }
 
     private void checkAccountStatus() {
-        log.info("Checking account status for account: {}", accountId);
+        log.info("Calling AccountVerificationActivity for account: {}", accountId);
 
-        // Simulate account verification
-        // In real implementation, this would call an activity to check account status
-        boolean accountActive = true;
-        double availableBalance = 10000.00;
+        AccountVerificationActivity.AccountVerificationResult result =
+                accountVerification.verifyAccount(accountId, amount, currency);
 
-        if (!accountActive) {
-            throw new RuntimeException("Account is not active: " + accountId);
+        if (!result.isVerificationPassed()) {
+            throw new RuntimeException("Account verification failed: " + result.getErrorMessage());
         }
 
-        if (availableBalance < amount) {
-            throw new RuntimeException("Insufficient funds. Available: " + availableBalance + ", Required: " + amount);
-        }
-
-        // Simulate some processing time
-        Workflow.sleep(Duration.ofSeconds(1));
-
-        log.info("Account status check completed successfully");
+        log.info("Account verification completed successfully");
     }
 
     private void performFraudCheck() {
-        log.info("Performing fraud detection for payment: {}", paymentId);
+        log.info("Calling FraudDetectionActivity for payment: {}", paymentId);
 
-        // Simulate fraud detection logic
-        // In real implementation, this would call a fraud detection service
-        boolean isFraudulent = false;
+        // Get account verification result for fraud detection
+        AccountVerificationActivity.AccountVerificationResult accountResult =
+                accountVerification.verifyAccount(accountId, amount, currency);
 
-        // Simple fraud checks (in real implementation, this would be much more sophisticated)
-        if (amount > 50000) {
-            log.warn("High value payment detected: {}", amount);
-            // Could trigger additional verification steps here
+        FraudDetectionActivity.FraudDetectionResult result =
+                fraudDetection.detectFraud(paymentId, accountId, amount, currency, accountResult);
+
+        if (!result.isApproved()) {
+            throw new RuntimeException("Fraud detection failed: " + result.getRecommendation());
         }
 
-        if (isFraudulent) {
-            throw new RuntimeException("Payment flagged as potentially fraudulent");
-        }
-
-        // Simulate some processing time
-        Workflow.sleep(Duration.ofSeconds(2));
-
-        log.info("Fraud check completed successfully");
+        log.info("Fraud detection completed successfully: score={}, level={}",
+                result.getRiskScore(), result.getRiskLevel());
     }
 
     private void executePayment() {
-        log.info("Executing payment transaction for payment: {}", paymentId);
+        log.info("Calling PaymentExecutionActivity for payment: {}", paymentId);
 
-        // Simulate payment processing
-        // In real implementation, this would integrate with banking systems
-        boolean paymentSuccessful = true;
+        PaymentExecutionActivity.PaymentExecutionResult result =
+                paymentExecution.executePayment(paymentId, accountId, amount, currency);
 
-        // Simulate processing delay
-        Workflow.sleep(Duration.ofSeconds(3));
-
-        if (!paymentSuccessful) {
-            throw new RuntimeException("Payment execution failed");
+        if (!result.isSuccess()) {
+            throw new RuntimeException("Payment execution failed: " + result.getErrorMessage());
         }
 
-        log.info("Payment execution completed successfully");
+        log.info("Payment execution completed successfully: transactionId={}", result.getTransactionId());
     }
 
     private void confirmPayment() {
-        log.info("Confirming payment completion for payment: {}", paymentId);
+        log.info("Calling PaymentConfirmationActivity for payment: {}", paymentId);
 
-        // Simulate confirmation process
-        // In real implementation, this would update payment status in database
-        // and send confirmation notifications
+        // Get execution result for confirmation
+        PaymentExecutionActivity.PaymentExecutionResult executionResult =
+                paymentExecution.executePayment(paymentId, accountId, amount, currency);
 
-        // Simulate processing delay
-        Workflow.sleep(Duration.ofSeconds(1));
+        PaymentConfirmationActivity.PaymentConfirmationResult result =
+                paymentConfirmation.confirmPayment(paymentId, executionResult.getTransactionId(), executionResult);
 
-        log.info("Payment confirmation completed");
+        if (!result.isConfirmed()) {
+            log.warn("Payment confirmation failed: {}", result.getMessage());
+            // Don't throw exception here as payment was successful, just log the issue
+        } else {
+            log.info("Payment confirmation completed successfully: confirmationId={}", result.getConfirmationId());
+        }
     }
 
     private void handlePaymentFailure(Exception e) {

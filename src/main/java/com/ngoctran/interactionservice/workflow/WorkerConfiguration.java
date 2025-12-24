@@ -1,6 +1,7 @@
 package com.ngoctran.interactionservice.workflow;
 
 import com.ngoctran.interactionservice.workflow.activity.*;
+import com.ngoctran.interactionservice.workflow.activity.payment.*;
 import com.ngoctran.interactionservice.workflow.payment.PaymentWorkflowImpl;
 import com.ngoctran.interactionservice.workflow.payment.PaymentMonitorWorkflowImpl;
 import io.temporal.client.WorkflowClient;
@@ -34,6 +35,13 @@ public class WorkerConfiguration {
     private final InteractionCallbackActivityImpl interactionCallbackActivity;
     private final TaskActivityImpl taskActivity;
     private final CleanupActivityImpl cleanupActivity;
+
+    // Payment activity implementations
+    private final PaymentValidationActivityImpl paymentValidationActivity;
+    private final AccountVerificationActivityImpl accountVerificationActivity;
+    private final FraudDetectionActivityImpl fraudDetectionActivity;
+    private final PaymentExecutionActivityImpl paymentExecutionActivity;
+    private final PaymentConfirmationActivityImpl paymentConfirmationActivity;
 
     /**
      * Task Queue Names
@@ -120,7 +128,12 @@ public class WorkerConfiguration {
         worker.registerActivitiesImplementations(
                 notificationActivity,
                 interactionCallbackActivity,
-                cleanupActivity);
+                cleanupActivity,
+                paymentValidationActivity,
+                accountVerificationActivity,
+                fraudDetectionActivity,
+                paymentExecutionActivity,
+                paymentConfirmationActivity);
 
         log.info("General Worker registered successfully");
     }
