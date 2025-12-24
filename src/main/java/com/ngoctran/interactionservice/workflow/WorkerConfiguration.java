@@ -39,9 +39,13 @@ public class WorkerConfiguration {
     // Payment activity implementations
     private final PaymentValidationActivityImpl paymentValidationActivity;
     private final AccountVerificationActivityImpl accountVerificationActivity;
+    private final ComplianceCheckActivityImpl complianceCheckActivity;
     private final FraudDetectionActivityImpl fraudDetectionActivity;
+    private final PaymentRoutingActivityImpl paymentRoutingActivity;
     private final PaymentExecutionActivityImpl paymentExecutionActivity;
     private final PaymentConfirmationActivityImpl paymentConfirmationActivity;
+    private final PaymentCompensationActivityImpl paymentCompensationActivity;
+    private final IdempotencyCheckActivityImpl idempotencyCheckActivity;
 
     /**
      * Task Queue Names
@@ -131,9 +135,13 @@ public class WorkerConfiguration {
                 cleanupActivity,
                 paymentValidationActivity,
                 accountVerificationActivity,
+                complianceCheckActivity,
                 fraudDetectionActivity,
+                paymentRoutingActivity,
                 paymentExecutionActivity,
-                paymentConfirmationActivity);
+                paymentConfirmationActivity,
+                paymentCompensationActivity,
+                idempotencyCheckActivity);
 
         log.info("General Worker registered successfully");
     }

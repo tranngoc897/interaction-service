@@ -25,31 +25,63 @@ public class PaymentWorkflowImpl implements PaymentWorkflow {
     private double amount;
     private String currency;
 
-    // Activity stubs with retry policies
+    // Activity stubs with different retry policies for different operations
+    private final IdempotencyCheckActivity idempotencyCheck;
     private final PaymentValidationActivity paymentValidation;
     private final AccountVerificationActivity accountVerification;
+    private final ComplianceCheckActivity complianceCheck;
     private final FraudDetectionActivity fraudDetection;
+    private final PaymentRoutingActivity paymentRouting;
     private final PaymentExecutionActivity paymentExecution;
     private final PaymentConfirmationActivity paymentConfirmation;
+    private final PaymentCompensationActivity paymentCompensation;
+
+    // Circuit breaker state (workflow-level state)
+    private boolean circuitBreakerOpen = false;
+    private int consecutiveFailures = 0;
+    private static final int CIRCUIT_BREAKER_THRESHOLD = 5;
 
     public PaymentWorkflowImpl() {
-        // Configure activity options with retries
-        ActivityOptions defaultOptions = ActivityOptions.newBuilder()
+        // Configure different activity options for different operations
+
+        // Idempotency check - no retries, fast failure
+        ActivityOptions idempotencyOptions = ActivityOptions.newBuilder()
+                .setStartToCloseTimeout(Duration.ofSeconds(30))
+                .setRetryOptions(RetryOptions.newBuilder()
+                        .setMaximumAttempts(1) // No retries for idempotency checks
+                        .build())
+                .build();
+
+        // Validation activities - minimal retries
+        ActivityOptions validationOptions = ActivityOptions.newBuilder()
+                .setStartToCloseTimeout(Duration.ofMinutes(2))
+                .setRetryOptions(RetryOptions.newBuilder()
+                        .setMaximumAttempts(2)
+                        .setInitialInterval(Duration.ofSeconds(1))
+                        .build())
+                .build();
+
+        // Execution activities - higher retries with circuit breaker awareness
+        ActivityOptions executionOptions = ActivityOptions.newBuilder()
                 .setStartToCloseTimeout(Duration.ofMinutes(5))
                 .setRetryOptions(RetryOptions.newBuilder()
                         .setMaximumAttempts(3)
-                        .setInitialInterval(Duration.ofSeconds(1))
-                        .setMaximumInterval(Duration.ofSeconds(10))
+                        .setInitialInterval(Duration.ofSeconds(2))
+                        .setMaximumInterval(Duration.ofSeconds(30))
                         .setBackoffCoefficient(2.0)
                         .build())
                 .build();
 
         // Create activity stubs
-        this.paymentValidation = Workflow.newActivityStub(PaymentValidationActivity.class, defaultOptions);
-        this.accountVerification = Workflow.newActivityStub(AccountVerificationActivity.class, defaultOptions);
-        this.fraudDetection = Workflow.newActivityStub(FraudDetectionActivity.class, defaultOptions);
-        this.paymentExecution = Workflow.newActivityStub(PaymentExecutionActivity.class, defaultOptions);
-        this.paymentConfirmation = Workflow.newActivityStub(PaymentConfirmationActivity.class, defaultOptions);
+        this.idempotencyCheck = Workflow.newActivityStub(IdempotencyCheckActivity.class, idempotencyOptions);
+        this.paymentValidation = Workflow.newActivityStub(PaymentValidationActivity.class, validationOptions);
+        this.accountVerification = Workflow.newActivityStub(AccountVerificationActivity.class, validationOptions);
+        this.complianceCheck = Workflow.newActivityStub(ComplianceCheckActivity.class, validationOptions);
+        this.fraudDetection = Workflow.newActivityStub(FraudDetectionActivity.class, validationOptions);
+        this.paymentRouting = Workflow.newActivityStub(PaymentRoutingActivity.class, validationOptions);
+        this.paymentExecution = Workflow.newActivityStub(PaymentExecutionActivity.class, executionOptions);
+        this.paymentConfirmation = Workflow.newActivityStub(PaymentConfirmationActivity.class, validationOptions);
+        this.paymentCompensation = Workflow.newActivityStub(PaymentCompensationActivity.class, executionOptions);
     }
 
     @Override
@@ -59,38 +91,149 @@ public class PaymentWorkflowImpl implements PaymentWorkflow {
         this.amount = amount;
         this.currency = currency;
 
-        log.info("Starting Payment Processing Workflow - Payment ID: {}, Account: {}, Amount: {} {}",
+        log.info("Starting Advanced Payment Processing Workflow - Payment ID: {}, Account: {}, Amount: {} {}",
                 paymentId, accountId, amount, currency);
 
         try {
-            // Step 1: Validate payment details
-            updateProgress("VALIDATING_PAYMENT", 20, "VALIDATING");
+            // Step 0: Idempotency Check
+            updateProgress("CHECKING_IDEMPOTENCY", 5, "INITIALIZING");
+            checkIdempotency();
+
+            // Step 1: Payment Validation
+            updateProgress("VALIDATING_PAYMENT", 15, "VALIDATING");
             validatePaymentDetails();
 
-            // Step 2: Check account balance and status
-            updateProgress("CHECKING_ACCOUNT", 40, "VALIDATING");
+            // Step 2: Account Verification
+            updateProgress("VERIFYING_ACCOUNT", 25, "VALIDATING");
             checkAccountStatus();
 
-            // Step 3: Fraud detection and risk assessment
-            updateProgress("FRAUD_CHECK", 60, "PROCESSING");
+            // Step 3: Compliance Check
+            updateProgress("COMPLIANCE_CHECK", 35, "VALIDATING");
+            performComplianceCheck();
+
+            // Step 4: Fraud Detection
+            updateProgress("FRAUD_DETECTION", 50, "PROCESSING");
             performFraudCheck();
 
-            // Step 4: Process the payment
-            updateProgress("PROCESSING_PAYMENT", 80, "PROCESSING");
-            executePayment();
+            // Step 5: Payment Routing
+            updateProgress("ROUTING_PAYMENT", 60, "PROCESSING");
+            routePayment();
 
-            // Step 5: Confirm and complete
-            updateProgress("COMPLETING_PAYMENT", 100, "COMPLETED");
-            confirmPayment();
+            // Step 6: Circuit Breaker Check
+            updateProgress("CHECKING_CIRCUIT_BREAKER", 65, "PROCESSING");
+            checkCircuitBreaker();
 
-            log.info("Payment processing completed successfully - Payment ID: {}", paymentId);
+            // Step 7: Execute Payment (with Saga Pattern)
+            updateProgress("EXECUTING_PAYMENT", 80, "PROCESSING");
+            PaymentExecutionActivity.PaymentExecutionResult executionResult = executePayment();
+
+            // Step 8: Confirm Payment
+            updateProgress("CONFIRMING_PAYMENT", 95, "FINALIZING");
+            confirmPayment(executionResult);
+
+            // Step 9: Manual Approval for High-Value (if needed)
+            if (requiresManualApproval(amount)) {
+                updateProgress("AWAITING_MANUAL_APPROVAL", 98, "PENDING_APPROVAL");
+                // In real implementation, this would wait for manual approval signal
+                log.info("High-value payment {} requires manual approval", paymentId);
+            }
+
+            updateProgress("PAYMENT_COMPLETED", 100, "COMPLETED");
+            log.info("Advanced payment processing completed successfully - Payment ID: {}", paymentId);
             currentStatus = "COMPLETED";
 
         } catch (Exception e) {
-            log.error("Payment processing failed - Payment ID: {}", paymentId, e);
+            log.error("Payment processing failed - Payment ID: {}, initiating compensation", paymentId, e);
             currentStatus = "FAILED";
+
+            // Saga Pattern: Attempt compensation
+            performCompensation(e);
+
             handlePaymentFailure(e);
             throw e;
+        }
+    }
+
+    // ==================== Advanced Feature Methods ====================
+
+    private void checkIdempotency() {
+        log.info("Checking idempotency for payment: {}", paymentId);
+
+        IdempotencyCheckActivity.IdempotencyResult result =
+                idempotencyCheck.checkPaymentIdempotency(paymentId, null, accountId, amount);
+
+        if (!result.isIdempotent()) {
+            throw new IllegalStateException("Payment request not idempotent: " + result.getErrorMessage());
+        }
+
+        log.info("Idempotency check passed");
+    }
+
+    private void performComplianceCheck() {
+        log.info("Performing compliance check for payment: {}", paymentId);
+
+        ComplianceCheckActivity.ComplianceResult result =
+                complianceCheck.checkRegulatoryCompliance(paymentId, accountId, amount, currency, null);
+
+        if (!result.isCompliant()) {
+            log.warn("Compliance check failed for payment: {}, violations: {}",
+                    paymentId, String.join(", ", result.getViolations()));
+            throw new RuntimeException("Regulatory compliance check failed: " +
+                    String.join(", ", result.getRequiredActions()));
+        }
+
+        log.info("Compliance check passed: riskLevel={}", result.getRiskLevel());
+    }
+
+    private void routePayment() {
+        log.info("Routing payment: {}", paymentId);
+
+        PaymentRoutingActivity.RoutingDecision decision =
+                paymentRouting.routePayment(paymentId, amount, currency, accountId);
+
+        log.info("Payment routed to processor: {} ({}) - reason: {}",
+                decision.getProcessorName(), decision.getProcessorType(), decision.getRoutingReason());
+    }
+
+    private void checkCircuitBreaker() {
+        if (circuitBreakerOpen) {
+            log.warn("Circuit breaker is OPEN for payment processing");
+            throw new RuntimeException("Payment service temporarily unavailable (circuit breaker open)");
+        }
+        log.info("Circuit breaker check passed");
+    }
+
+    private boolean requiresManualApproval(double amount) {
+        // High-value payments require manual approval
+        return amount > 10000000; // 10M VND threshold
+    }
+
+    private void performCompensation(Exception originalException) {
+        log.info("Initiating compensation saga for payment: {}", paymentId);
+
+        try {
+            // Step 1: Reverse account debit if it was charged
+            if (originalException.getMessage().contains("execution")) {
+                PaymentCompensationActivity.CompensationResult debitReversal =
+                        paymentCompensation.reverseAccountDebit(accountId, amount, originalException.getMessage());
+                log.info("Account debit reversal result: {}", debitReversal.isSuccess() ?
+                        "SUCCESS" : "FAILED: " + debitReversal.getErrorMessage());
+            }
+
+            // Step 2: Cancel transaction if it was created
+            // This would be called if we have a transaction ID
+
+            // Step 3: Log compensation event
+            paymentCompensation.logCompensationEvent(paymentId, "PAYMENT_FAILURE_COMPENSATION",
+                    "Original error: " + originalException.getMessage());
+
+            log.info("Compensation saga completed for payment: {}", paymentId);
+
+        } catch (Exception compensationException) {
+            log.error("Compensation saga failed for payment: {}", paymentId, compensationException);
+            // Escalate to manual intervention
+            log.error("MANUAL INTERVENTION REQUIRED: Payment {} failed and compensation unsuccessful",
+                    paymentId);
         }
     }
 
@@ -163,12 +306,8 @@ public class PaymentWorkflowImpl implements PaymentWorkflow {
         log.info("Payment execution completed successfully: transactionId={}", result.getTransactionId());
     }
 
-    private void confirmPayment() {
+    private void confirmPayment(PaymentExecutionActivity.PaymentExecutionResult executionResult) {
         log.info("Calling PaymentConfirmationActivity for payment: {}", paymentId);
-
-        // Get execution result for confirmation
-        PaymentExecutionActivity.PaymentExecutionResult executionResult =
-                paymentExecution.executePayment(paymentId, accountId, amount, currency);
 
         PaymentConfirmationActivity.PaymentConfirmationResult result =
                 paymentConfirmation.confirmPayment(paymentId, executionResult.getTransactionId(), executionResult);
@@ -179,6 +318,20 @@ public class PaymentWorkflowImpl implements PaymentWorkflow {
         } else {
             log.info("Payment confirmation completed successfully: confirmationId={}", result.getConfirmationId());
         }
+    }
+
+    private PaymentExecutionActivity.PaymentExecutionResult executePayment() {
+        log.info("Calling PaymentExecutionActivity for payment: {}", paymentId);
+
+        PaymentExecutionActivity.PaymentExecutionResult result =
+                paymentExecution.executePayment(paymentId, accountId, amount, currency);
+
+        if (!result.isSuccess()) {
+            throw new RuntimeException("Payment execution failed: " + result.getErrorMessage());
+        }
+
+        log.info("Payment execution completed successfully: transactionId={}", result.getTransactionId());
+        return result;
     }
 
     private void handlePaymentFailure(Exception e) {
