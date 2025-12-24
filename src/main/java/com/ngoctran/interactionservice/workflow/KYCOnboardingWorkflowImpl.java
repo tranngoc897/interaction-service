@@ -67,36 +67,38 @@ public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {
             updateProgress("VALIDATING_DATA", 1);
             validateInitialData(initialData);
 
-            // Step 2 & 3: Child Workflow (Document Processing)
-            // This encapsulates OCR and ID Verification into a separate sub-workflow
-            updateProgress("PROCESSING_DOCUMENTS_CHILD", 2);
+            // Step 2: Bypassing document wait for immediate execution
+            log.info("Bypassing document wait for automatic completion");
+            updateProgress("PROCESSING_AUTO", 2);
+
+            // Step 3: Child Workflow (Document Processing)
+            updateProgress("PROCESSING_DOCUMENTS", 3);
             DocumentProcessingWorkflow documentChild = Workflow.newChildWorkflowStub(
                     DocumentProcessingWorkflow.class,
                     ChildWorkflowOptions.newBuilder()
                             .setWorkflowId("doc-proc-" + caseId)
                             .build());
 
-            log.info("Calling Child Workflow: DocumentProcessing");
+            log.info("Calling Child Workflow for OCR and Verification");
             Map<String, Object> childResult = documentChild.processDocuments(caseId, initialData);
-            log.info("Child Workflow returned: {}", childResult);
 
-            // Step 4: Versioning (New Risk Check Feature)
-            // Goal: Add a new activity call only for NEW workflow executions,
-            // while keeping OLD (running) ones safe from non-deterministic errors.
+            // Step 4: Versioning
             int version = Workflow.getVersion("risk-check-logic", Workflow.DEFAULT_VERSION, 1);
             if (version == 1) {
-                log.info("Version 1: Executing NEW risk assessment logic");
-                // In reality, you'd call a RiskActivity here
                 updateProgress("RISK_ASSESSMENT", 4);
-                Workflow.sleep(Duration.ofSeconds(1)); // Simulate processing
-            } else {
-                log.info("Default Version: Skipping risk assessment (legacy flow)");
+                // Call potential Risk Activity here
+                Workflow.sleep(Duration.ofSeconds(2));
             }
 
-            // Step 5: Determine approval
+            // Step 5: Determine approval based on Child Workflow results
             updateProgress("DETERMINING_APPROVAL", 5);
-            KYCWorkflowResult result = determineApproval(null, (Map<String, Object>) childResult.get("ocrData"),
-                    interactionId);
+
+            // Map child results to activity-like result for determineApproval
+            IDVerificationActivity.IDVerificationResult vResult = new IDVerificationActivity.IDVerificationResult();
+            vResult.setVerified(Boolean.TRUE.equals(childResult.get("isVerified")));
+            vResult.setConfidenceScore((Double) childResult.get("verificationScore"));
+
+            KYCWorkflowResult result = determineApproval(vResult, (Map<String, Object>) childResult.get("ocrData"), interactionId);
 
             // Step 6: Callback to Interaction Service (This updates DB to
             // APPROVED/COMPLETED)
@@ -252,10 +254,16 @@ public class KYCOnboardingWorkflowImpl implements KYCOnboardingWorkflow {
                     "mode", "MOCK"));
         }
 
-        // Auto-approval logic (Simplified for automatic completion)
-        result.setStatus("APPROVED");
-        result.setReason("Auto-approved by workflow system");
-        log.info("KYC auto-approved and completing case");
+        // Result logic based on verification
+        if (verificationResult != null && verificationResult.isVerified()) {
+            result.setStatus("APPROVED");
+            result.setReason("Auto-approved: ID Verification successful");
+            log.info("KYC APPROVED for case");
+        } else {
+            result.setStatus("MANUAL_REVIEW");
+            result.setReason("Verification failed or confidence low. Manual review required.");
+            log.info("KYC needs MANUAL_REVIEW");
+        }
 
         return result;
     }
