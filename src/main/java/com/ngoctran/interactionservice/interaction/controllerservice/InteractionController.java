@@ -11,21 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/**
- * REST Controller demonstrating the 3 types of "steps":
- * 
- * 1. GET /api/interactions/{id}/current-step
- * - Returns current step info (combines BLUEPRINT + CURRENT POSITION + HISTORY)
- * 
- * 2. POST /api/interactions/{id}/submit-step
- * - Submit step data (updates CURRENT POSITION + HISTORY)
- * 
- * 3. GET /api/interactions/definitions/{key}/steps
- * - Get step blueprint (BLUEPRINT only)
- * 
- * 4. GET /api/cases/{caseId}/step-history
- * - Get step history (HISTORY only)
- */
 @RestController
 @RequestMapping("/api/interactions")
 @RequiredArgsConstructor
@@ -34,14 +19,6 @@ public class InteractionController {
 
     private final InteractionService interactionService;
 
-    /**
-     * Start a new interaction journey
-     * 
-     * This API uses BLUEPRINT data (flw_int_def) to:
-     * 1. Create a new Case record (flow_case)
-     * 2. Create a new Interaction record (flw_int)
-     * 3. Position the user at the first step
-     */
     @PostMapping("/start")
     public ResponseEntity<StepResponse> startInteraction(
             @RequestBody com.ngoctran.interactionservice.interaction.InteractionStartRequest request) {
@@ -56,9 +33,6 @@ public class InteractionController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Get current step information for an interaction
-     */
     @GetMapping("/{interactionId}/current-step")
     public ResponseEntity<StepResponse> getCurrentStep(@PathVariable String interactionId) {
         log.info("GET /api/interactions/{}/current-step", interactionId);
@@ -94,22 +68,6 @@ public class InteractionController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Get the complete step blueprint for an interaction definition
-     * 
-     * This returns the BLUEPRINT (flw_int_def.steps) - the template
-     * showing all possible steps in the journey.
-     * 
-     * Use case: Frontend wants to show a progress bar or journey map
-     * 
-     * Example response:
-     * [
-     * {"name": "welcome", "type": "info", "title": "Chào mừng", ...},
-     * {"name": "personal-info", "type": "form", "title": "Thông tin cá nhân", ...},
-     * {"name": "address-info", "type": "form", "title": "Địa chỉ", ...},
-     * ...
-     * ]
-     */
     @GetMapping("/definitions/{key}/steps")
     public ResponseEntity<List<StepDefinition>> getStepBlueprint(
             @PathVariable String key,
@@ -124,36 +82,7 @@ public class InteractionController {
         return ResponseEntity.ok(steps);
     }
 
-    /**
-     * Get step history for a case
-     * 
-     * This returns the HISTORY (flow_case.audit_trail.steps) -
-     * all steps completed so far with timestamps and submitted data.
-     * 
-     * Use case:
-     * - User wants to review what they've submitted
-     * - Admin wants to audit the journey
-     * - Compliance/reporting
-     * 
-     * Example response:
-     * [
-     * {
-     * "stepName": "welcome",
-     * "status": "COMPLETED",
-     * "completedAt": "2025-12-20T08:00:00Z",
-     * "data": {}
-     * },
-     * {
-     * "stepName": "personal-info",
-     * "status": "COMPLETED",
-     * "completedAt": "2025-12-20T08:05:00Z",
-     * "data": {
-     * "fullName": "Nguyen Van A",
-     * "dob": "1990-01-01"
-     * }
-     * }
-     * ]
-     */
+
     @GetMapping("/cases/{caseId}/step-history")
     public ResponseEntity<List<StepHistoryEntry>> getStepHistory(@PathVariable String caseId) {
         log.info("GET /api/interactions/cases/{}/step-history", caseId);
