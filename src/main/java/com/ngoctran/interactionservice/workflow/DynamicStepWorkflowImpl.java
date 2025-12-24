@@ -32,21 +32,17 @@ public class DynamicStepWorkflowImpl implements DynamicStepWorkflow {
         for (Map<String, Object> actionConfig : actions) {
             String activityName = (String) actionConfig.get("activity");
             String requiredField = (String) actionConfig.get("runIfFieldExists");
-
             if (activityName == null) {
                 log.warn("Action config missing 'activity' name, skipping: {}", actionConfig);
                 continue;
             }
-
             // 1. CONDITION CHECK: If-Else logic based on data
             if (requiredField != null && !currentContext.containsKey(requiredField)) {
                 log.info("Skipping activity {} because required field {} is missing from context",
                         activityName, requiredField);
                 continue;
             }
-
             log.info("Dynamically calling activity: {} for case: {}", activityName, caseId);
-
             try {
                 // 2. TRIGGER ACTIVITY:
                 Map<String, Object> activityResult = untypedActivity.execute(
@@ -54,12 +50,10 @@ public class DynamicStepWorkflowImpl implements DynamicStepWorkflow {
                         Map.class,
                         caseId,
                         currentContext);
-
                 // 3. DATA PASSING: Merge results back to context
                 if (activityResult != null) {
                     currentContext.putAll(activityResult);
                 }
-
                 // 4. DYNAMIC NEW TRIGGER: Example of triggering a NEW activity
                 // based on the result of the previous one
                 if (Boolean.TRUE.equals(currentContext.get("needsManualReview"))) {

@@ -107,8 +107,10 @@ public class WorkerConfiguration {
 
         Worker worker = workerFactory.newWorker(GENERAL_QUEUE);
 
-        // Register Scheduled Workflow
-        worker.registerWorkflowImplementationTypes(CleanupWorkflowImpl.class);
+        // Register Scheduled Workflow and Dynamic Pipelines
+        worker.registerWorkflowImplementationTypes(
+                CleanupWorkflowImpl.class,
+                AdvancedPipelineWorkflowImpl.class);
 
         // Register activity implementations
         worker.registerActivitiesImplementations(

@@ -18,26 +18,21 @@ public class CaseMonitorWorkflowImpl implements CaseMonitorWorkflow {
     public void monitorCase(String caseId, int iterationCount) {
         log.info("Monitoring Case: {} | Iteration: {} | Current History Size: {}",
                 caseId, iterationCount, Workflow.getInfo().getHistorySize());
-
         // Event loop
         while (!exit) {
             // Wait for a signal or a timeout
             Workflow.await(Duration.ofDays(1), () -> eventCount >= CONTINUE_AS_NEW_THRESHOLD || exit);
-
             if (exit) {
                 log.info("Case Monitor for {} exiting", caseId);
                 break;
             }
-
             // CRITICAL: ContinueAsNew Logic
             // When history grows too large, we restart the workflow with fresh history but
             // same status
             if (eventCount >= CONTINUE_AS_NEW_THRESHOLD) {
                 log.info("History threshold reached for {}. Continuing as New...", caseId);
-
                 // This resets the history but starts the method again with these parameters
                 Workflow.continueAsNew(caseId, iterationCount + 1);
-
                 // Code after continueAsNew is never executed
                 return;
             }

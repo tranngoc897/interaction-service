@@ -104,16 +104,53 @@ public class WorkflowController {
     }
 
     /**
-     * Create/Update Cleanup Schedule
+     * Start Advanced Dynamic Pipeline
      */
-    @PostMapping("/schedules/cleanup")
-    public ResponseEntity<String> createCleanupSchedule() {
-        log.info("Request to create/update cleanup schedule");
-        workflowService.createCleanupSchedule();
-        return ResponseEntity.ok("Cleanup schedule created/updated successfully");
+    @PostMapping("/pipeline/run")
+    public ResponseEntity<WorkflowStartResponse> startPipeline(@RequestBody PipelineRunRequest request) {
+        log.info("Starting advanced pipeline: {}", request.getPipelineName());
+        String workflowId = workflowService.startAdvancedPipeline(
+                request.getPipelineName(),
+                request.getTasks(),
+                request.getData());
+
+        return ResponseEntity.ok(new WorkflowStartResponse(
+                workflowId,
+                workflowId,
+                "RUNNING"));
     }
 
     // ==================== DTOs ====================
+
+    public static class PipelineRunRequest {
+        private String pipelineName;
+        private java.util.List<Map<String, Object>> tasks;
+        private Map<String, Object> data;
+
+        public String getPipelineName() {
+            return pipelineName;
+        }
+
+        public void setPipelineName(String pipelineName) {
+            this.pipelineName = pipelineName;
+        }
+
+        public java.util.List<Map<String, Object>> getTasks() {
+            return tasks;
+        }
+
+        public void setTasks(java.util.List<Map<String, Object>> tasks) {
+            this.tasks = tasks;
+        }
+
+        public Map<String, Object> getData() {
+            return data;
+        }
+
+        public void setData(Map<String, Object> data) {
+            this.data = data;
+        }
+    }
 
     public static class KYCStartRequest {
         private String caseId;
