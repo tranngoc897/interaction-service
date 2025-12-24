@@ -262,6 +262,7 @@ public class TemporalWorkflowService {
         @Transactional
         public void createPaymentProcessingSchedule(String scheduleId, String cronSchedule) {
                 log.info("Creating Payment Processing Schedule: {} with cron: {}", scheduleId, cronSchedule);
+
                 // Check if schedule already exists in DB
                 if (scheduleRepo.existsByScheduleIdAndStatus(scheduleId, ScheduleStatus.ACTIVE)) {
                         log.warn("Payment schedule {} already exists and is active", scheduleId);
@@ -289,15 +290,13 @@ public class TemporalWorkflowService {
                         log.info("Payment processing schedule {} created successfully in Temporal", scheduleId);
 
                         // Save schedule metadata to database
-                        saveScheduleEntity(scheduleId, cronSchedule, "PaymentMonitorWorkflow",
-                                         WorkerConfiguration.GENERAL_QUEUE, null);
+                        saveScheduleEntity(scheduleId, cronSchedule, "PaymentMonitorWorkflow", WorkerConfiguration.GENERAL_QUEUE, null);
 
                 } catch (Exception e) {
                         log.warn("Payment schedule {} might already exist in Temporal: {}", scheduleId, e.getMessage());
                         // Still save to DB if it doesn't exist there, for consistency
                         if (!scheduleRepo.existsById(scheduleId)) {
-                                saveScheduleEntity(scheduleId, cronSchedule, "PaymentMonitorWorkflow",
-                                                 WorkerConfiguration.GENERAL_QUEUE, null);
+                                saveScheduleEntity(scheduleId, cronSchedule, "PaymentMonitorWorkflow", WorkerConfiguration.GENERAL_QUEUE, null);
                         }
                 }
 
