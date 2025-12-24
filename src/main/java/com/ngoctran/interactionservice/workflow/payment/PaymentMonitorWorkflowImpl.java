@@ -13,15 +13,19 @@ public class PaymentMonitorWorkflowImpl implements PaymentMonitorWorkflow {
 
     private static final Logger log = Workflow.getLogger(PaymentMonitorWorkflowImpl.class);
     // Configurable threshold - can be overridden for testing
-    private static final int CONTINUE_AS_NEW_THRESHOLD = 10;
+    private static final int CONTINUE_AS_NEW_THRESHOLD = Integer.parseInt(
+        System.getProperty("payment.monitor.threshold", "10")
+    );
 
     // Configurable wait duration - can be overridden for testing
-    private static final Duration WAIT_DURATION = Duration.ofMillis(3600);
+    private static final Duration WAIT_DURATION = Duration.ofMillis(Long.parseLong(
+        System.getProperty("payment.monitor.wait.duration", "3600000") // 1 hour default
+    ));
 
     private String lastStatus = "STARTED";
     private int eventCount = 0;
     private boolean exit = false;
-    private String lastPaymentBatchId = null;
+    private String pendingPaymentBatchId = null; // Changed to pending to indicate it needs processing
 
     @Override
     public void monitorPayments(String accountId, int iterationCount) {
@@ -31,17 +35,23 @@ public class PaymentMonitorWorkflowImpl implements PaymentMonitorWorkflow {
         // Event loop for monitoring payment activities
         while (!exit) {
             try {
-                // Wait for a signal or timeout (configurable for testing)
+                // Wait for a signal, pending batch, or timeout (configurable for testing)
                 boolean signalReceived = Workflow.await(WAIT_DURATION,
-                        () -> eventCount >= CONTINUE_AS_NEW_THRESHOLD || exit);
+                        () -> eventCount >= CONTINUE_AS_NEW_THRESHOLD || exit || pendingPaymentBatchId != null);
 
                 if (exit) {
                     log.info("Payment Monitor for account {} exiting", accountId);
                     break;
                 }
 
+                // Process pending payment batch if triggered by signal
+                if (pendingPaymentBatchId != null) {
+                    String batchId = pendingPaymentBatchId;
+                    pendingPaymentBatchId = null; // Clear the flag
+                    processPaymentBatch(batchId);
+                }
                 // If no signal received within timeout, perform scheduled payment checks
-                if (!signalReceived) {
+                else if (!signalReceived) {
                     performScheduledPaymentChecks(accountId);
                 }
 
@@ -72,12 +82,10 @@ public class PaymentMonitorWorkflowImpl implements PaymentMonitorWorkflow {
 
     @Override
     public void triggerPaymentCheck(String paymentBatchId) {
-        this.lastPaymentBatchId = paymentBatchId;
+        this.pendingPaymentBatchId = paymentBatchId; // Just set the flag, don't process here
         this.eventCount++;
-        log.info("Triggered payment check for batch: {}. Total events: {}", paymentBatchId, eventCount);
-
-        // Process the payment batch immediately
-        processPaymentBatch(paymentBatchId);
+        log.info("Payment check triggered for batch: {}. Will be processed in main loop. Total events: {}",
+                paymentBatchId, eventCount);
     }
 
     // ==================== Private Helper Methods ====================
