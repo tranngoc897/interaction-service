@@ -87,6 +87,7 @@ public interface KYCOnboardingWorkflow {
         private String reason;
         private Map<String, Object> extractedData; // Data extracted from OCR
         private Map<String, Object> verificationResult;
+        private Map<String, Object> onboardingData; // Onboarding completion data
 
         // Constructors, getters, setters
         public KYCWorkflowResult() {}
@@ -104,6 +105,8 @@ public interface KYCOnboardingWorkflow {
         public void setExtractedData(Map<String, Object> extractedData) { this.extractedData = extractedData; }
         public Map<String, Object> getVerificationResult() { return verificationResult; }
         public void setVerificationResult(Map<String, Object> verificationResult) { this.verificationResult = verificationResult; }
+        public Map<String, Object> getOnboardingData() { return onboardingData; }
+        public void setOnboardingData(Map<String, Object> onboardingData) { this.onboardingData = onboardingData; }
     }
 
     /**

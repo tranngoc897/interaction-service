@@ -2,6 +2,7 @@ package com.ngoctran.interactionservice.workflow;
 
 import com.ngoctran.interactionservice.workflow.activity.*;
 import com.ngoctran.interactionservice.workflow.activity.payment.*;
+import com.ngoctran.interactionservice.workflow.activity.onboarding.*;
 import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflowImpl;
 import com.ngoctran.interactionservice.workflow.payment.PaymentWorkflowImpl;
 import com.ngoctran.interactionservice.workflow.payment.PaymentMonitorWorkflowImpl;
@@ -48,6 +49,13 @@ public class WorkerConfiguration {
     private final PaymentCompensationActivityImpl paymentCompensationActivity;
     private final IdempotencyCheckActivityImpl idempotencyCheckActivity;
 
+    // Onboarding activity implementations
+    private final CIFActivityImpl cifActivity;
+    private final CorebankAccountActivityImpl corebankAccountActivity;
+    private final RetailAccountActivityImpl retailAccountActivity;
+    private final KeycloakAccountActivityImpl keycloakAccountActivity;
+    private final OnboardingNotificationActivityImpl onboardingNotificationActivity;
+
     /**
      * Task Queue Names
      */
@@ -89,7 +97,13 @@ public class WorkerConfiguration {
                 idVerificationActivity,
                 notificationActivity,
                 interactionCallbackActivity,
-                taskActivity);
+                taskActivity,
+                // Onboarding activities
+                cifActivity,
+                corebankAccountActivity,
+                retailAccountActivity,
+                keycloakAccountActivity,
+                onboardingNotificationActivity);
 
         log.info("KYC Onboarding Worker registered successfully");
     }
