@@ -2,6 +2,8 @@ package com.ngoctran.interactionservice.workflow;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
+import java.util.Random;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,26 +20,18 @@ import java.util.Map;
  * Based on SchedulerInstructionHistoryChangeEntity pattern
  * Tracks all state changes and actions performed on workflows
  */
-@Entity
-@Table(name = "workflow_history", indexes = {
-    @Index(name = "idx_workflow_history_workflow_id", columnList = "workflow_id"),
-    @Index(name = "idx_workflow_history_workflow_type", columnList = "workflow_type"),
-    @Index(name = "idx_workflow_history_changed_by", columnList = "changed_by"),
-    @Index(name = "idx_workflow_history_action", columnList = "action"),
-    @Index(name = "idx_workflow_history_changed_at", columnList = "changed_at"),
-    @Index(name = "idx_workflow_history_workflow_action", columnList = "workflow_id, action"),
-    @Index(name = "idx_workflow_history_type_date", columnList = "workflow_type, changed_at DESC")
-})
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class WorkflowHistoryEntity {
+   @Entity
+   @Data
+   @Builder
+   @Table(name = "workflow_history")
+   @NoArgsConstructor
+   @AllArgsConstructor
+   public class WorkflowHistoryEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "history_id")
-    private String historyId;
+       @Id
+       @Column(name = "history_id", columnDefinition = "uuid")
+       @JdbcTypeCode(SqlTypes.UUID)
+       private UUID historyId;
 
     @Column(name = "workflow_id", nullable = false)
     private String workflowId;
@@ -115,7 +109,7 @@ public class WorkflowHistoryEntity {
     public static WorkflowHistoryEntity createWorkflowStart(String workflowId, String workflowType,
                                                           String startedBy, Map<String, Object> initialData) {
         WorkflowHistoryEntity entity = new WorkflowHistoryEntity();
-        entity.setHistoryId("HIST-" + workflowId + "-" + System.nanoTime());
+        entity.setHistoryId(UUID.randomUUID());
         entity.setWorkflowId(workflowId);
         entity.setWorkflowType(workflowType);
         entity.setAction("START");
@@ -136,7 +130,7 @@ public class WorkflowHistoryEntity {
                                                          WorkflowExecutionStatus toStatus,
                                                          String changedBy, String reason) {
         WorkflowHistoryEntity entity = new WorkflowHistoryEntity();
-        entity.setHistoryId("HIST-" + workflowId + "-" + System.nanoTime());
+        entity.setHistoryId(UUID.randomUUID());
         entity.setWorkflowId(workflowId);
         entity.setWorkflowType(workflowType);
         entity.setAction("STATUS_CHANGE");
@@ -155,7 +149,7 @@ public class WorkflowHistoryEntity {
                                                            String signalName, Map<String, Object> signalData,
                                                            String sentBy) {
         WorkflowHistoryEntity entity = new WorkflowHistoryEntity();
-        entity.setHistoryId("HIST-" + workflowId + "-" + System.nanoTime());
+        entity.setHistoryId(UUID.randomUUID());
         entity.setWorkflowId(workflowId);
         entity.setWorkflowType(workflowType);
         entity.setAction("SIGNAL_" + signalName.toUpperCase());
@@ -173,7 +167,7 @@ public class WorkflowHistoryEntity {
                                                             String error, String errorDetails,
                                                             String failedBy) {
         WorkflowHistoryEntity entity = new WorkflowHistoryEntity();
-        entity.setHistoryId("HIST-" + workflowId + "-" + System.nanoTime());
+        entity.setHistoryId(UUID.randomUUID());
         entity.setWorkflowId(workflowId);
         entity.setWorkflowType(workflowType);
         entity.setAction("FAILURE");

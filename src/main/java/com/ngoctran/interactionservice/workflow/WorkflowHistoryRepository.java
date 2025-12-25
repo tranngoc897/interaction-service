@@ -1,5 +1,6 @@
 package com.ngoctran.interactionservice.workflow;
 
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,7 +16,7 @@ import java.util.List;
  * Provides comprehensive querying capabilities for workflow audit trails
  */
 @Repository
-public interface WorkflowHistoryRepository extends JpaRepository<WorkflowHistoryEntity, String> {
+public interface WorkflowHistoryRepository extends JpaRepository<WorkflowHistoryEntity, UUID> {
 
     /**
      * Find all history for a specific workflow

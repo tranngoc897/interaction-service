@@ -1,5 +1,6 @@
 package com.ngoctran.interactionservice.workflow;
 
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -56,7 +57,7 @@ public class WorkflowSchedulerService {
 
             // Record scheduling in history
             WorkflowHistoryEntity historyEntry = WorkflowHistoryEntity.builder()
-                    .historyId("HIST-SCH-" + System.nanoTime())
+                    .historyId(UUID.randomUUID())
                     .workflowId(scheduledWorkflowId)
                     .workflowType(workflowType)
                     .action("SCHEDULE_CREATED")
@@ -111,7 +112,7 @@ public class WorkflowSchedulerService {
 
             // Record update in history
             WorkflowHistoryEntity historyEntry = WorkflowHistoryEntity.builder()
-                    .historyId("HIST-SCH-UPD-" + System.nanoTime())
+                .historyId(UUID.randomUUID())
                     .workflowId(scheduledWorkflowId)
                     .workflowType("SCHEDULED_WORKFLOW")
                     .action("SCHEDULE_UPDATED")
@@ -149,7 +150,7 @@ public class WorkflowSchedulerService {
 
             // Record pause in history
             WorkflowHistoryEntity historyEntry = WorkflowHistoryEntity.builder()
-                    .historyId("HIST-SCH-PAUSE-" + System.nanoTime())
+                .historyId(UUID.randomUUID())
                     .workflowId(scheduledWorkflowId)
                     .workflowType("SCHEDULED_WORKFLOW")
                     .action("SCHEDULE_PAUSED")
@@ -184,7 +185,7 @@ public class WorkflowSchedulerService {
 
             // Record resume in history
             WorkflowHistoryEntity historyEntry = WorkflowHistoryEntity.builder()
-                    .historyId("HIST-SCH-RESUME-" + System.nanoTime())
+                .historyId(UUID.randomUUID())
                     .workflowId(scheduledWorkflowId)
                     .workflowType("SCHEDULED_WORKFLOW")
                     .action("SCHEDULE_RESUMED")
@@ -219,7 +220,7 @@ public class WorkflowSchedulerService {
 
             // Record deletion in history
             WorkflowHistoryEntity historyEntry = WorkflowHistoryEntity.builder()
-                    .historyId("HIST-SCH-DELETE-" + System.nanoTime())
+                .historyId(UUID.randomUUID())
                     .workflowId(scheduledWorkflowId)
                     .workflowType("SCHEDULED_WORKFLOW")
                     .action("SCHEDULE_DELETED")
