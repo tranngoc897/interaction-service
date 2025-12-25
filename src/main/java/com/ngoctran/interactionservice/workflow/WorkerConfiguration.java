@@ -3,7 +3,9 @@ package com.ngoctran.interactionservice.workflow;
 import com.ngoctran.interactionservice.workflow.activity.*;
 import com.ngoctran.interactionservice.workflow.activity.payment.*;
 import com.ngoctran.interactionservice.workflow.activity.onboarding.*;
+import com.ngoctran.interactionservice.workflow.activity.reconciliation.*;
 import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflowImpl;
+import com.ngoctran.interactionservice.workflow.reconciliation.ReconciliationWorkflowImpl;
 import com.ngoctran.interactionservice.workflow.payment.PaymentWorkflowImpl;
 import com.ngoctran.interactionservice.workflow.payment.PaymentMonitorWorkflowImpl;
 import io.temporal.client.WorkflowClient;
@@ -15,11 +17,12 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Worker Configuration for Temporal
- * 
+ *
  * Registers workflows and activities with different task queues:
  * - KYC_ONBOARDING_QUEUE: KYC onboarding workflows
  * - DOCUMENT_VERIFICATION_QUEUE: Document verification workflows
  * - GENERAL_QUEUE: General purpose workflows
+ * - RECONCILIATION_QUEUE: Payment reconciliation workflows
  */
 @Configuration
 @RequiredArgsConstructor
@@ -56,12 +59,20 @@ public class WorkerConfiguration {
     private final KeycloakAccountActivityImpl keycloakAccountActivity;
     private final OnboardingNotificationActivityImpl onboardingNotificationActivity;
 
+    // Reconciliation activity implementations
+    private final DataCollectionActivityImpl dataCollectionActivity;
+    private final MatchingActivityImpl matchingActivity;
+    private final DiscrepancyAnalysisActivityImpl discrepancyAnalysisActivity;
+    private final EscalationActivityImpl escalationActivity;
+    private final ReportingActivityImpl reportingActivity;
+
     /**
      * Task Queue Names
      */
     public static final String KYC_ONBOARDING_QUEUE = "KYC_ONBOARDING_QUEUE";
     public static final String DOCUMENT_VERIFICATION_QUEUE = "DOCUMENT_VERIFICATION_QUEUE";
     public static final String GENERAL_QUEUE = "GENERAL_QUEUE";
+    public static final String RECONCILIATION_QUEUE = "RECONCILIATION_QUEUE";
 
     @PostConstruct
     public void registerWorkersAndActivities() {
@@ -72,6 +83,8 @@ public class WorkerConfiguration {
         registerDocumentVerificationWorker();
         // Register General Worker
         registerGeneralWorker();
+        // Register Reconciliation Worker
+        registerReconciliationWorker();
         // Start all workers
         workerFactory.start();
 
@@ -159,5 +172,28 @@ public class WorkerConfiguration {
                 idempotencyCheckActivity);
 
         log.info("General Worker registered successfully");
+    }
+
+    /**
+     * Register Reconciliation Worker
+     * Handles payment reconciliation workflows
+     */
+    private void registerReconciliationWorker() {
+        log.info("Registering Reconciliation Worker on queue: {}", RECONCILIATION_QUEUE);
+
+        Worker worker = workerFactory.newWorker(RECONCILIATION_QUEUE);
+
+        // Register reconciliation workflow implementation
+        worker.registerWorkflowImplementationTypes(ReconciliationWorkflowImpl.class);
+
+        // Register reconciliation activity implementations
+        worker.registerActivitiesImplementations(
+                dataCollectionActivity,
+                matchingActivity,
+                discrepancyAnalysisActivity,
+                escalationActivity,
+                reportingActivity);
+
+        log.info("Reconciliation Worker registered successfully");
     }
 }

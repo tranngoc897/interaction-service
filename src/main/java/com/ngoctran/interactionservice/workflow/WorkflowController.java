@@ -1,6 +1,7 @@
 package com.ngoctran.interactionservice.workflow;
 
 import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflow;
+import com.ngoctran.interactionservice.workflow.reconciliation.ReconciliationWorkflow;
 import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -255,6 +256,83 @@ public class WorkflowController {
                 Map.of("totalWorkers", 3, "overloadedWorkers", 0),
                 Map.of("eventStore", 150, "auditTrail", 150));
         return ResponseEntity.ok(response);
+    }
+
+    // ==================== RECONCILIATION WORKFLOW ENDPOINTS ====================
+
+    /**
+     * Start Payment Reconciliation Workflow
+     */
+    @PostMapping("/reconciliation/start")
+    public ResponseEntity<WorkflowStartResponse> startReconciliationWorkflow(@RequestBody ReconciliationStartRequest request) {
+        log.info("Starting payment reconciliation for date: {}, type: {}", request.getDate(), request.getType());
+        // In real implementation, this would call TemporalWorkflowService.startReconciliationWorkflow()
+        String workflowId = "reconciliation-" + request.getDate() + "-" + request.getType();
+        return ResponseEntity.ok(new WorkflowStartResponse(
+                request.getReconciliationId(),
+                workflowId,
+                "RUNNING"));
+    }
+
+    /**
+     * Get Reconciliation Status
+     */
+    @GetMapping("/reconciliation/{workflowId}/status")
+    public ResponseEntity<WorkflowStatusResponse> getReconciliationStatus(@PathVariable String workflowId) {
+        log.info("Getting reconciliation status: {}", workflowId);
+        // In real implementation, this would query reconciliation workflow status
+        return ResponseEntity.ok(new WorkflowStatusResponse(workflowId, "RUNNING"));
+    }
+
+    /**
+     * Get Reconciliation Progress
+     */
+    @GetMapping("/reconciliation/{workflowId}/progress")
+    public ResponseEntity<ReconciliationWorkflow.ReconciliationProgress> getReconciliationProgress(@PathVariable String workflowId) {
+        log.info("Getting reconciliation progress: {}", workflowId);
+        // In real implementation, this would query reconciliation workflow progress
+        ReconciliationWorkflow.ReconciliationProgress progress = new ReconciliationWorkflow.ReconciliationProgress(
+                "DATA_COLLECTION", 2, 25);
+        progress.setCurrentOperation("Collecting transaction data");
+        return ResponseEntity.ok(progress);
+    }
+
+    /**
+     * Get Reconciliation Statistics
+     */
+    @GetMapping("/reconciliation/{workflowId}/stats")
+    public ResponseEntity<ReconciliationWorkflow.ReconciliationStats> getReconciliationStats(@PathVariable String workflowId) {
+        log.info("Getting reconciliation statistics: {}", workflowId);
+        // In real implementation, this would query reconciliation workflow stats
+        ReconciliationWorkflow.ReconciliationStats stats = new ReconciliationWorkflow.ReconciliationStats(
+                2300, 2100, 200, 200);
+        stats.setResolvedExceptions(150);
+        stats.setPendingManualReview(50);
+        return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * Signal Manual Resolution for Discrepancy
+     */
+    @PostMapping("/reconciliation/{workflowId}/resolve")
+    public ResponseEntity<Void> resolveDiscrepancy(@PathVariable String workflowId,
+                                                  @RequestBody ManualResolutionRequest request) {
+        log.info("Signaling manual resolution for discrepancy: {} in workflow: {}",
+                request.getDiscrepancyId(), workflowId);
+        // In real implementation, this would signal the reconciliation workflow
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Signal Additional Data Received
+     */
+    @PostMapping("/reconciliation/{workflowId}/additional-data")
+    public ResponseEntity<Void> addAdditionalData(@PathVariable String workflowId,
+                                                @RequestBody AdditionalDataRequest request) {
+        log.info("Signaling additional data received for source: {} in workflow: {}",
+                request.getSourceId(), workflowId);
+        // In real implementation, this would signal the reconciliation workflow
+        return ResponseEntity.ok().build();
     }
 
     // ==================== DTOs ====================
@@ -621,5 +699,59 @@ public class WorkflowController {
         public Map<String, String> getCircuitBreakerStatus() { return circuitBreakerStatus; }
         public Map<String, Integer> getLoadBalancingMetrics() { return loadBalancingMetrics; }
         public Map<String, Integer> getEventStoreMetrics() { return eventStoreMetrics; }
+    }
+
+    // ==================== RECONCILIATION WORKFLOW DTOs ====================
+
+    public static class ReconciliationStartRequest {
+        private String reconciliationId;
+        private String date;
+        private String type;
+        private Map<String, Object> config;
+
+        // Getters and setters
+        public String getReconciliationId() { return reconciliationId; }
+        public void setReconciliationId(String reconciliationId) { this.reconciliationId = reconciliationId; }
+
+        public String getDate() { return date; }
+        public void setDate(String date) { this.date = date; }
+
+        public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
+
+        public Map<String, Object> getConfig() { return config; }
+        public void setConfig(Map<String, Object> config) { this.config = config; }
+    }
+
+    public static class ManualResolutionRequest {
+        private String discrepancyId;
+        private String resolution;
+        private String notes;
+        private String resolvedBy;
+
+        // Getters and setters
+        public String getDiscrepancyId() { return discrepancyId; }
+        public void setDiscrepancyId(String discrepancyId) { this.discrepancyId = discrepancyId; }
+
+        public String getResolution() { return resolution; }
+        public void setResolution(String resolution) { this.resolution = resolution; }
+
+        public String getNotes() { return notes; }
+        public void setNotes(String notes) { this.notes = notes; }
+
+        public String getResolvedBy() { return resolvedBy; }
+        public void setResolvedBy(String resolvedBy) { this.resolvedBy = resolvedBy; }
+    }
+
+    public static class AdditionalDataRequest {
+        private String sourceId;
+        private Map<String, Object> data;
+
+        // Getters and setters
+        public String getSourceId() { return sourceId; }
+        public void setSourceId(String sourceId) { this.sourceId = sourceId; }
+
+        public Map<String, Object> getData() { return data; }
+        public void setData(Map<String, Object> data) { this.data = data; }
     }
 }
