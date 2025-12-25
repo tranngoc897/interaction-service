@@ -1,7 +1,8 @@
 package com.ngoctran.interactionservice.workflow;
 
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -10,11 +11,11 @@ import java.util.List;
 /**
  * Workflow History Repository
  *
- * Based on SchedulerInstructionRepository pattern for MongoDB
+ * Based on SchedulerInstructionRepository pattern for PostgreSQL
  * Provides comprehensive querying capabilities for workflow audit trails
  */
 @Repository
-public interface WorkflowHistoryRepository extends MongoRepository<WorkflowHistoryEntity, String> {
+public interface WorkflowHistoryRepository extends JpaRepository<WorkflowHistoryEntity, String> {
 
     /**
      * Find all history for a specific workflow
@@ -57,7 +58,7 @@ public interface WorkflowHistoryRepository extends MongoRepository<WorkflowHisto
     /**
      * Find failed workflows
      */
-    @Query("{ 'action': 'FAILURE', 'statusAfter': 'FAILED' }")
+    @Query("SELECT h FROM WorkflowHistoryEntity h WHERE h.action = 'FAILURE' AND h.statusAfter = 'FAILED'")
     List<WorkflowHistoryEntity> findFailedWorkflows();
 
     /**
@@ -68,38 +69,35 @@ public interface WorkflowHistoryRepository extends MongoRepository<WorkflowHisto
     /**
      * Count total actions by workflow type
      */
-    @Query(value = "{ 'workflowType': ?0 }", count = true)
-    long countByWorkflowType(String workflowType);
+    @Query("SELECT COUNT(h) FROM WorkflowHistoryEntity h WHERE h.workflowType = :workflowType")
+    long countByWorkflowType(@Param("workflowType") String workflowType);
 
     /**
      * Count actions by user
      */
-    @Query(value = "{ 'changedBy': ?0 }", count = true)
-    long countByChangedBy(String changedBy);
+    @Query("SELECT COUNT(h) FROM WorkflowHistoryEntity h WHERE h.changedBy = :changedBy")
+    long countByChangedBy(@Param("changedBy") String changedBy);
 
     /**
      * Find recent history (last N records)
      */
-    @Query("{}")
     List<WorkflowHistoryEntity> findTop10ByOrderByChangedAtDesc();
 
     /**
-     * Find history with specific metadata key
+     * Find history with specific metadata key (JSON query for PostgreSQL)
      */
-    @Query("{ 'metadata.?0': { $exists: true } }")
-    List<WorkflowHistoryEntity> findByMetadataKey(String metadataKey);
-
-
+    @Query(value = "SELECT * FROM workflow_history WHERE metadata::jsonb ? :key", nativeQuery = true)
+    List<WorkflowHistoryEntity> findByMetadataKey(@Param("key") String metadataKey);
 
     /**
      * Delete old history records (for cleanup)
      */
-    @Query("{ 'changedAt': { $lt: ?0 } }")
-    List<WorkflowHistoryEntity> findOldHistoryBeforeDate(LocalDateTime cutoffDate);
+    @Query("SELECT h FROM WorkflowHistoryEntity h WHERE h.changedAt < :cutoffDate")
+    List<WorkflowHistoryEntity> findOldHistoryBeforeDate(@Param("cutoffDate") LocalDateTime cutoffDate);
 
     /**
      * Find workflows that changed status multiple times (potential issues)
      */
-    @Query("{ 'action': 'STATUS_CHANGE' }")
+    @Query("SELECT h FROM WorkflowHistoryEntity h WHERE h.action = 'STATUS_CHANGE'")
     List<WorkflowHistoryEntity> findStatusChangeHistory();
 }
