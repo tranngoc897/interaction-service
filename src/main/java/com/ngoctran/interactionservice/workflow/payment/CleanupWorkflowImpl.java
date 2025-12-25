@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.workflow;
+package com.ngoctran.interactionservice.workflow.payment;
 
 import com.ngoctran.interactionservice.workflow.activity.CleanupActivity;
 import io.temporal.activity.ActivityOptions;

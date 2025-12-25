@@ -1,6 +1,7 @@
 package com.ngoctran.interactionservice.workflow;
 
 import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflow;
+import com.ngoctran.interactionservice.workflow.payment.ScheduleEntity;
 import com.ngoctran.interactionservice.workflow.reconciliation.ReconciliationWorkflow;
 import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;

@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.workflow;
+package com.ngoctran.interactionservice.workflow.onboarding;
 
 import com.ngoctran.interactionservice.workflow.activity.IDVerificationActivity;
 import com.ngoctran.interactionservice.workflow.activity.OCRActivity;

@@ -1,11 +1,9 @@
 package com.ngoctran.interactionservice.workflow.onboarding;
 
-import com.ngoctran.interactionservice.workflow.DocumentProcessingWorkflow;
 import com.ngoctran.interactionservice.workflow.activity.*;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.common.RetryOptions;
 import io.temporal.workflow.Workflow;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import com.ngoctran.interactionservice.workflow.activity.onboarding.*;
 

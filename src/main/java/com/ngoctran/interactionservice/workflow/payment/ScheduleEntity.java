@@ -1,5 +1,6 @@
-package com.ngoctran.interactionservice.workflow;
+package com.ngoctran.interactionservice.workflow.payment;
 
+import com.ngoctran.interactionservice.workflow.ScheduleStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;

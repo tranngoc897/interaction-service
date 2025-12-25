@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.workflow;
+package com.ngoctran.interactionservice.workflow.payment;
 
 import io.temporal.workflow.SignalMethod;
 import io.temporal.workflow.WorkflowInterface;

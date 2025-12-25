@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.workflow;
+package com.ngoctran.interactionservice.workflow.payment;
 
 import io.temporal.workflow.Workflow;
 import org.slf4j.Logger;

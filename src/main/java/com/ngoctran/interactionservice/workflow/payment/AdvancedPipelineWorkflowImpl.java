@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.workflow;
+package com.ngoctran.interactionservice.workflow.payment;
 
 import io.temporal.activity.ActivityOptions;
 import io.temporal.common.RetryOptions;
