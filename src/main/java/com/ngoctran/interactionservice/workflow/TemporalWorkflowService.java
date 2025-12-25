@@ -7,6 +7,7 @@ import com.ngoctran.interactionservice.mapping.enums.ProcessStatus;
 import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflow;
 import com.ngoctran.interactionservice.workflow.payment.PaymentMonitorWorkflow;
 import com.ngoctran.interactionservice.workflow.payment.PaymentWorkflow;
+import com.ngoctran.interactionservice.workflow.reconciliation.ReconciliationWorkflow;
 import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
@@ -411,6 +412,152 @@ public class TemporalWorkflowService {
 
                 workflow.stopMonitoring();
                 log.info("Stop monitoring signal sent to workflow: {}", workflowId);
+        }
+
+        // ==================== ENHANCED WORKFLOW METHODS (SchedulerService Patterns) ====================
+
+        /**
+         * Start Reconciliation Workflow
+         */
+        @Transactional
+        public String startReconciliationWorkflow(String reconciliationId, String date, String type,
+                                                Map<String, Object> config) {
+                log.info("Starting Reconciliation Workflow: id={}, date={}, type={}", reconciliationId, date, type);
+
+                String workflowId = "reconciliation-" + reconciliationId;
+                WorkflowOptions options = WorkflowOptions.newBuilder()
+                                .setWorkflowId(workflowId)
+                                .setTaskQueue(WorkerConfiguration.RECONCILIATION_QUEUE)
+                                .setWorkflowExecutionTimeout(Duration.ofHours(8))
+                                .build();
+
+                ReconciliationWorkflow workflow = client.newWorkflowStub(ReconciliationWorkflow.class, options);
+
+                // Start workflow asynchronously
+                WorkflowExecution execution = WorkflowClient.start(
+                        () -> workflow.reconcilePayments(reconciliationId, date, type, config));
+
+                String processInstanceId = execution.getWorkflowId() + ":" + execution.getRunId();
+                log.info("Reconciliation workflow started: workflowId={}, runId={}",
+                        execution.getWorkflowId(), execution.getRunId());
+
+                // Save process mapping
+                saveProcessMapping(reconciliationId, "SYSTEM", processInstanceId, "reconciliation");
+                return processInstanceId;
+        }
+
+
+
+        /**
+         * Suspend workflow
+         */
+        public void suspendWorkflow(String workflowId) {
+                log.info("Suspending workflow: {}", workflowId);
+
+                WorkflowStub workflow = client.newUntypedWorkflowStub(workflowId);
+                // In Temporal, you would use workflow.pause() or similar
+                // For demo, we'll just log
+                log.info("Workflow suspended: {}", workflowId);
+        }
+
+        /**
+         * Resume workflow
+         */
+        public void resumeWorkflow(String workflowId) {
+                log.info("Resuming workflow: {}", workflowId);
+
+                WorkflowStub workflow = client.newUntypedWorkflowStub(workflowId);
+                // In Temporal, you would use workflow.unpause() or similar
+                log.info("Workflow resumed: {}", workflowId);
+        }
+
+        /**
+         * Get workflow history
+         */
+        public List<WorkflowHistoryEntity> getWorkflowHistory(String workflowId) {
+                log.info("Getting workflow history for: {}", workflowId);
+
+                // In real implementation, inject WorkflowHistoryRepository
+                // return workflowHistoryRepository.findByWorkflowIdOrderByChangedAtAsc(workflowId);
+
+                // Mock empty list for demo
+                return java.util.Collections.emptyList();
+        }
+
+        /**
+         * Get workflow statistics
+         */
+        public Map<String, Object> getWorkflowStatistics(String workflowType, String dateRange) {
+                log.info("Getting workflow statistics: type={}, dateRange={}", workflowType, dateRange);
+
+                // In real implementation, query from WorkflowHistoryRepository
+                Map<String, Object> stats = new java.util.HashMap<>();
+                stats.put("totalWorkflows", 150);
+                stats.put("completedWorkflows", 140);
+                stats.put("failedWorkflows", 5);
+                stats.put("cancelledWorkflows", 5);
+                stats.put("averageExecutionTime", "45 minutes");
+                stats.put("successRate", "93.3%");
+
+                return stats;
+        }
+
+        /**
+         * Schedule workflow execution
+         */
+        public String scheduleWorkflow(String workflowType, WorkflowSchedulerService.WorkflowScheduleConfig config) {
+                log.info("Scheduling workflow: {} with config: {}", workflowType, config);
+
+                // In real implementation, inject WorkflowSchedulerService
+                // return workflowSchedulerService.scheduleWorkflowExecution(workflowType, config);
+
+                // Mock response
+                return "SCH-" + workflowType + "-" + System.nanoTime();
+        }
+
+        /**
+         * Send signal to reconciliation workflow
+         */
+        public void signalReconciliationWorkflow(String workflowId, String signalName, Map<String, Object> signalData) {
+                log.info("Sending signal '{}' to reconciliation workflow: {}", signalName, workflowId);
+
+                ReconciliationWorkflow workflow = client.newWorkflowStub(ReconciliationWorkflow.class, workflowId);
+
+                switch (signalName.toLowerCase()) {
+                        case "manual_resolution" -> {
+                                String discrepancyId = (String) signalData.get("discrepancyId");
+                                Map<String, Object> resolution = (Map<String, Object>) signalData.get("resolution");
+                                workflow.manualResolution(discrepancyId, resolution);
+                        }
+                        case "additional_data" -> {
+                                String sourceId = (String) signalData.get("sourceId");
+                                Map<String, Object> data = (Map<String, Object>) signalData.get("data");
+                                workflow.additionalDataReceived(sourceId, data);
+                        }
+                        default -> log.warn("Unknown signal: {}", signalName);
+                }
+
+                log.info("Signal '{}' sent to workflow: {}", signalName, workflowId);
+        }
+
+        /**
+         * Query reconciliation progress
+         */
+        public ReconciliationWorkflow.ReconciliationProgress queryReconciliationProgress(String workflowId) {
+                log.info("Querying reconciliation progress: {}", workflowId);
+
+                ReconciliationWorkflow workflow = client.newWorkflowStub(ReconciliationWorkflow.class, workflowId);
+                return workflow.getProgress();
+        }
+
+        /**
+         * Query reconciliation statistics
+         */
+        public ReconciliationWorkflow.ReconciliationStats queryReconciliationStats(String workflowId) {
+                log.info("Querying reconciliation statistics: {}", workflowId);
+
+                ReconciliationWorkflow workflow = client.newWorkflowStub(ReconciliationWorkflow.class, workflowId);
+                return workflow.getStats();
         }
 
 }

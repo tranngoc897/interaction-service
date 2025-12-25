@@ -266,23 +266,23 @@ public class WorkflowController {
     @PostMapping("/reconciliation/start")
     public ResponseEntity<WorkflowStartResponse> startReconciliationWorkflow(@RequestBody ReconciliationStartRequest request) {
         log.info("Starting payment reconciliation for date: {}, type: {}", request.getDate(), request.getType());
-        // In real implementation, this would call TemporalWorkflowService.startReconciliationWorkflow()
-        String workflowId = "reconciliation-" + request.getDate() + "-" + request.getType();
+        String processInstanceId = workflowService.startReconciliationWorkflow(
+                request.getReconciliationId(), request.getDate(), request.getType(), request.getConfig());
         return ResponseEntity.ok(new WorkflowStartResponse(
                 request.getReconciliationId(),
-                workflowId,
+                "reconciliation-" + request.getReconciliationId(),
                 "RUNNING"));
     }
 
     /**
      * Get Reconciliation Status
      */
-    @GetMapping("/reconciliation/{workflowId}/status")
+/*    @GetMapping("/reconciliation/{workflowId}/status")
     public ResponseEntity<WorkflowStatusResponse> getReconciliationStatus(@PathVariable String workflowId) {
         log.info("Getting reconciliation status: {}", workflowId);
-        // In real implementation, this would query reconciliation workflow status
-        return ResponseEntity.ok(new WorkflowStatusResponse(workflowId, "RUNNING"));
-    }
+        ReconciliationWorkflow workflow = workflowService.queryReconciliationProgress(workflowId);
+        return ResponseEntity.ok(new WorkflowStatusResponse(workflowId, workflow.getCurrentPhase()));
+    }*/
 
     /**
      * Get Reconciliation Progress
@@ -290,10 +290,7 @@ public class WorkflowController {
     @GetMapping("/reconciliation/{workflowId}/progress")
     public ResponseEntity<ReconciliationWorkflow.ReconciliationProgress> getReconciliationProgress(@PathVariable String workflowId) {
         log.info("Getting reconciliation progress: {}", workflowId);
-        // In real implementation, this would query reconciliation workflow progress
-        ReconciliationWorkflow.ReconciliationProgress progress = new ReconciliationWorkflow.ReconciliationProgress(
-                "DATA_COLLECTION", 2, 25);
-        progress.setCurrentOperation("Collecting transaction data");
+        ReconciliationWorkflow.ReconciliationProgress progress = workflowService.queryReconciliationProgress(workflowId);
         return ResponseEntity.ok(progress);
     }
 
@@ -303,11 +300,7 @@ public class WorkflowController {
     @GetMapping("/reconciliation/{workflowId}/stats")
     public ResponseEntity<ReconciliationWorkflow.ReconciliationStats> getReconciliationStats(@PathVariable String workflowId) {
         log.info("Getting reconciliation statistics: {}", workflowId);
-        // In real implementation, this would query reconciliation workflow stats
-        ReconciliationWorkflow.ReconciliationStats stats = new ReconciliationWorkflow.ReconciliationStats(
-                2300, 2100, 200, 200);
-        stats.setResolvedExceptions(150);
-        stats.setPendingManualReview(50);
+        ReconciliationWorkflow.ReconciliationStats stats = workflowService.queryReconciliationStats(workflowId);
         return ResponseEntity.ok(stats);
     }
 
@@ -319,7 +312,17 @@ public class WorkflowController {
                                                   @RequestBody ManualResolutionRequest request) {
         log.info("Signaling manual resolution for discrepancy: {} in workflow: {}",
                 request.getDiscrepancyId(), workflowId);
-        // In real implementation, this would signal the reconciliation workflow
+
+        Map<String, Object> signalData = Map.of(
+                "discrepancyId", request.getDiscrepancyId(),
+                "resolution", Map.of(
+                        "resolution", request.getResolution(),
+                        "notes", request.getNotes(),
+                        "resolvedBy", request.getResolvedBy()
+                )
+        );
+
+        workflowService.signalReconciliationWorkflow(workflowId, "manual_resolution", signalData);
         return ResponseEntity.ok().build();
     }
 
@@ -331,8 +334,98 @@ public class WorkflowController {
                                                 @RequestBody AdditionalDataRequest request) {
         log.info("Signaling additional data received for source: {} in workflow: {}",
                 request.getSourceId(), workflowId);
-        // In real implementation, this would signal the reconciliation workflow
+
+        workflowService.signalReconciliationWorkflow(workflowId, "additional_data",
+                Map.of("sourceId", request.getSourceId(), "data", request.getData()));
         return ResponseEntity.ok().build();
+    }
+
+
+
+    // ==================== WORKFLOW HISTORY & ANALYTICS ====================
+
+    /**
+     * Get Workflow History
+     */
+    @GetMapping("/{workflowId}/history")
+    public ResponseEntity<List<WorkflowHistoryEntity>> getWorkflowHistory(@PathVariable String workflowId) {
+        log.info("Getting workflow history for: {}", workflowId);
+        List<WorkflowHistoryEntity> history = workflowService.getWorkflowHistory(workflowId);
+        return ResponseEntity.ok(history);
+    }
+
+    /**
+     * Get Workflow Statistics
+     */
+    @GetMapping("/statistics")
+    public ResponseEntity<Map<String, Object>> getWorkflowStatistics(
+            @RequestParam(required = false) String workflowType,
+            @RequestParam(required = false, defaultValue = "LAST_30_DAYS") String dateRange) {
+
+        log.info("Getting workflow statistics: type={}, dateRange={}", workflowType, dateRange);
+        Map<String, Object> stats = workflowService.getWorkflowStatistics(workflowType, dateRange);
+        return ResponseEntity.ok(stats);
+    }
+
+    // ==================== WORKFLOW SCHEDULING ENDPOINTS ====================
+
+    /**
+     * Schedule Workflow Execution
+     */
+    @PostMapping("/schedule")
+    public ResponseEntity<WorkflowScheduleResponse> scheduleWorkflow(@RequestBody WorkflowScheduleRequest request) {
+        log.info("Scheduling workflow: {} with schedule type: {}", request.getWorkflowType(), request.getScheduleType());
+
+        String scheduledWorkflowId = workflowService.scheduleWorkflow(request.getWorkflowType(),
+                convertToScheduleConfig(request));
+
+        return ResponseEntity.ok(WorkflowScheduleResponse.builder()
+                .scheduledWorkflowId(scheduledWorkflowId)
+                .status("SCHEDULED")
+                .build());
+    }
+
+    /**
+     * List Scheduled Workflows
+     */
+    @GetMapping("/scheduled")
+    public ResponseEntity<List<WorkflowSchedulerService.ScheduledWorkflowSummary>> getScheduledWorkflows(
+            @RequestParam(required = false) String workflowType) {
+
+        log.info("Getting scheduled workflows: type={}", workflowType);
+        // In real implementation, inject WorkflowSchedulerService
+        // List<WorkflowSchedulerService.ScheduledWorkflowSummary> schedules =
+        //         workflowSchedulerService.listScheduledWorkflows(workflowType);
+
+        // Mock response for demo
+        List<WorkflowSchedulerService.ScheduledWorkflowSummary> mockSchedules = List.of(
+                WorkflowSchedulerService.ScheduledWorkflowSummary.builder()
+                        .scheduledWorkflowId("SCH-RECONCILIATION-EOD")
+                        .workflowType("RECONCILIATION")
+                        .cronExpression("0 0 18 * * ?")
+                        .status("ACTIVE")
+                        .description("End of day payment reconciliation")
+                        .build()
+        );
+
+        return ResponseEntity.ok(mockSchedules);
+    }
+
+    // ==================== HELPER METHODS ====================
+
+    private WorkflowSchedulerService.WorkflowScheduleConfig convertToScheduleConfig(WorkflowScheduleRequest request) {
+        return WorkflowSchedulerService.WorkflowScheduleConfig.builder()
+                .scheduleType(request.getScheduleType())
+                .executionDate(request.getExecutionDate())
+                .executionTime(request.getExecutionTime())
+                .dayOfMonth(request.getDayOfMonth())
+                .daysOfWeek(request.getDaysOfWeek())
+                .customCronExpression(request.getCustomCronExpression())
+                .timezone(request.getTimezone())
+                .createdBy(request.getCreatedBy())
+                .description(request.getDescription())
+                .workflowConfig(request.getWorkflowConfig())
+                .build();
     }
 
     // ==================== DTOs ====================
@@ -753,5 +846,92 @@ public class WorkflowController {
 
         public Map<String, Object> getData() { return data; }
         public void setData(Map<String, Object> data) { this.data = data; }
+    }
+
+
+
+    // ==================== WORKFLOW SCHEDULING DTOs ====================
+
+    public static class WorkflowScheduleRequest {
+        private String workflowType;
+        private String scheduleType;
+        private java.time.LocalDate executionDate;
+        private java.time.LocalTime executionTime;
+        private Integer dayOfMonth;
+        private java.util.List<String> daysOfWeek;
+        private String customCronExpression;
+        private String timezone;
+        private String createdBy;
+        private String description;
+        private Map<String, Object> workflowConfig;
+
+        // Getters and setters
+        public String getWorkflowType() { return workflowType; }
+        public void setWorkflowType(String workflowType) { this.workflowType = workflowType; }
+
+        public String getScheduleType() { return scheduleType; }
+        public void setScheduleType(String scheduleType) { this.scheduleType = scheduleType; }
+
+        public java.time.LocalDate getExecutionDate() { return executionDate; }
+        public void setExecutionDate(java.time.LocalDate executionDate) { this.executionDate = executionDate; }
+
+        public java.time.LocalTime getExecutionTime() { return executionTime; }
+        public void setExecutionTime(java.time.LocalTime executionTime) { this.executionTime = executionTime; }
+
+        public Integer getDayOfMonth() { return dayOfMonth; }
+        public void setDayOfMonth(Integer dayOfMonth) { this.dayOfMonth = dayOfMonth; }
+
+        public java.util.List<String> getDaysOfWeek() { return daysOfWeek; }
+        public void setDaysOfWeek(java.util.List<String> daysOfWeek) { this.daysOfWeek = daysOfWeek; }
+
+        public String getCustomCronExpression() { return customCronExpression; }
+        public void setCustomCronExpression(String customCronExpression) { this.customCronExpression = customCronExpression; }
+
+        public String getTimezone() { return timezone; }
+        public void setTimezone(String timezone) { this.timezone = timezone; }
+
+        public String getCreatedBy() { return createdBy; }
+        public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+
+        public Map<String, Object> getWorkflowConfig() { return workflowConfig; }
+        public void setWorkflowConfig(Map<String, Object> workflowConfig) { this.workflowConfig = workflowConfig; }
+    }
+
+    public static class WorkflowScheduleResponse {
+        private String scheduledWorkflowId;
+        private String status;
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        public static class Builder {
+            private String scheduledWorkflowId;
+            private String status;
+
+            public Builder scheduledWorkflowId(String scheduledWorkflowId) {
+                this.scheduledWorkflowId = scheduledWorkflowId;
+                return this;
+            }
+
+            public Builder status(String status) {
+                this.status = status;
+                return this;
+            }
+
+            public WorkflowScheduleResponse build() {
+                WorkflowScheduleResponse response = new WorkflowScheduleResponse();
+                response.scheduledWorkflowId = this.scheduledWorkflowId;
+                response.status = this.status;
+                return response;
+            }
+        }
+
+        // Getters
+        public String getScheduledWorkflowId() { return scheduledWorkflowId; }
+        public String getStatus() { return status; }
     }
 }
