@@ -26,6 +26,7 @@ public class TemporalWorkerConfiguration {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TemporalWorkerConfiguration.class);
 
     private final WorkerFactory workerFactory;
+
     // Activity implementations
     private final OCRActivityImpl ocrActivity;
     private final IDVerificationActivityImpl idVerificationActivity;

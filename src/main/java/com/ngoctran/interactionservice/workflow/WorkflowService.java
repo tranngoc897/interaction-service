@@ -41,21 +41,22 @@ public class WorkflowService {
                 log.info("Starting KYC Onboarding Workflow: caseId={}, interactionId={}", caseId, interactionId);
                 // Create onboarding options
                 String workflowId = "kyc-onboarding-" + caseId;
+
                 WorkflowOptions options = WorkflowOptions.newBuilder()
                                 .setWorkflowId(workflowId)
                                 .setTaskQueue(TemporalWorkerConfiguration.ONBOARDING_QUEUE)
                                 .setWorkflowExecutionTimeout(Duration.ofDays(7))
                                 .build();
                 // Create onboarding stub
-                OnboardingWorkflow workflow = client.newWorkflowStub(
-                                OnboardingWorkflow.class,
-                                options);
+                OnboardingWorkflow workflow = client.newWorkflowStub(OnboardingWorkflow.class, options);
+
                 // Start onboarding asynchronously
                 WorkflowExecution execution = WorkflowClient
                                 .start(() -> workflow.execute(caseId, interactionId, initialData));
                 String processInstanceId = execution.getWorkflowId() + ":" + execution.getRunId();
                 log.info("Workflow started: workflowId={}, runId={}",
                                 execution.getWorkflowId(), execution.getRunId());
+
                 // Save process mapping
                 saveProcessMapping(caseId, userId, processInstanceId, "kyc-onboarding");
                 return processInstanceId;
