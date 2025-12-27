@@ -9,7 +9,7 @@ import com.ngoctran.interactionservice.interaction.InteractionDefinitionReposito
 import com.ngoctran.interactionservice.interaction.InteractionEntity;
 import com.ngoctran.interactionservice.interaction.InteractionRepository;
 import com.ngoctran.interactionservice.interaction.dto.*;
-import com.ngoctran.interactionservice.workflow.TemporalWorkflowService;
+import com.ngoctran.interactionservice.workflow.WorkflowService;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,7 +40,7 @@ public class InteractionService {
     private final CaseRepository caseRepo;
     private final ObjectMapper objectMapper;
     private final com.ngoctran.interactionservice.task.TaskService taskService;
-    private final TemporalWorkflowService temporalWorkflowService;
+    private final WorkflowService workflowService;
 
     /**
      * Start a new interaction journey
@@ -415,7 +415,7 @@ public class InteractionService {
                         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                             @Override
                             public void afterCommit() {
-                                temporalWorkflowService.startKYCOnboardingWorkflow(
+                                workflowService.startKYCOnboardingWorkflow(
                                         caseIdStr,
                                         interactionIdStr,
                                         userIdStr,
@@ -423,7 +423,7 @@ public class InteractionService {
                             }
                         });
                     } else {
-                        temporalWorkflowService.startKYCOnboardingWorkflow(
+                        workflowService.startKYCOnboardingWorkflow(
                                 caseIdStr,
                                 interactionIdStr,
                                 userIdStr,

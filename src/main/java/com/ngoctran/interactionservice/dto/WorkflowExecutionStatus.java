@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.workflow;
+package com.ngoctran.interactionservice.dto;
 
 /**
  * Workflow Execution Status Enum

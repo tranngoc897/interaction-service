@@ -1,5 +1,6 @@
-package com.ngoctran.interactionservice.workflow;
+package com.ngoctran.interactionservice;
 
+import com.ngoctran.interactionservice.dto.WorkflowExecutionStatus;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

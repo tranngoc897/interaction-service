@@ -19,7 +19,7 @@ import java.util.Map;
  * 6. Callback to Interaction Service with result
  * 
  * Workflow ID format: "kyc-onboarding-{caseId}"
- * Task Queue: KYC_ONBOARDING_QUEUE
+ * Task Queue: ONBOARDING_QUEUE
  */
 @WorkflowInterface
 public interface OnboardingWorkflow {

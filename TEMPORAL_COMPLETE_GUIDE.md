@@ -450,7 +450,7 @@ package com.ngoctran.interactionservice.workflow.service;
 
 import com.ngoctran.interactionservice.mapping.ProcessMappingEntity;
 import com.ngoctran.interactionservice.mapping.ProcessMappingRepository;
-import com.ngoctran.interactionservice.workflow.WorkerConfiguration;
+import com.ngoctran.interactionservice.workflow.config.TemporalWorkerConfiguration;
 import com.ngoctran.interactionservice.workflow.onboarding.OnboardingWorkflow;
 import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.WorkflowClient;
@@ -491,7 +491,7 @@ public class TemporalWorkflowService {
 
     WorkflowOptions options = WorkflowOptions.newBuilder()
         .setWorkflowId(workflowId)
-        .setTaskQueue(WorkerConfiguration.KYC_ONBOARDING_QUEUE)
+        .setTaskQueue(TemporalWorkerConfiguration.ONBOARDING_QUEUE)
         .setWorkflowExecutionTimeout(Duration.ofDays(7))
         .build();
 

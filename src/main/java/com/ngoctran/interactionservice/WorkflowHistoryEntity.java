@@ -1,8 +1,8 @@
-package com.ngoctran.interactionservice.workflow;
+package com.ngoctran.interactionservice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ngoctran.interactionservice.dto.WorkflowExecutionStatus;
 import jakarta.persistence.*;
-import java.util.Random;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

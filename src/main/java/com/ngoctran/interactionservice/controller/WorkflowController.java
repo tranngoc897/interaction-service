@@ -1,5 +1,7 @@
-package com.ngoctran.interactionservice.workflow;
+package com.ngoctran.interactionservice.controller;
 
+import com.ngoctran.interactionservice.WorkflowHistoryEntity;
+import com.ngoctran.interactionservice.workflow.WorkflowService;
 import com.ngoctran.interactionservice.workflow.onboarding.OnboardingWorkflow;
 
 import java.util.ArrayList;
@@ -19,11 +21,13 @@ import java.util.Map;
 public class WorkflowController {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WorkflowController.class);
-    private final TemporalWorkflowService workflowService;
+    private final WorkflowService workflowService;
 
     /**
      * Start KYC Onboarding Workflow
      */
+
+    /*
     @PostMapping("/kyc/start")
     public ResponseEntity<WorkflowStartResponse> startKYCWorkflow(@RequestBody KYCStartRequest request) {
         log.info("Starting KYC onboarding for case: {}", request.getCaseId());
@@ -37,6 +41,7 @@ public class WorkflowController {
                 "kyc-onboarding-" + request.getCaseId(),
                 "RUNNING"));
     }
+    */
 
     /**
      * Signal: Documents uploaded

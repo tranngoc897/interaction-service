@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ngoctran.interactionservice.dto.NextStepResponse;
 import com.ngoctran.interactionservice.dto.StepSubmissionDto;
 import com.ngoctran.interactionservice.mapping.ProcessMappingRepository;
-import com.ngoctran.interactionservice.workflow.TemporalWorkflowService;
+import com.ngoctran.interactionservice.workflow.WorkflowService;
 import com.ngoctran.interactionservice.task.TaskRepository;
 import com.ngoctran.interactionservice.task.TaskEntity;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ public class CaseService {
 
     private final CaseRepository caseRepo;
     private final ObjectMapper objectMapper;
-    private final TemporalWorkflowService temporalWorkflowService;
+    private final WorkflowService workflowService;
     private final ProcessMappingRepository processMappingRepo;
     private final TaskRepository taskRepo;
 
@@ -82,7 +82,7 @@ public class CaseService {
             try {
                 String simpleWorkflowId = workflowInstanceId.contains(":") ? workflowInstanceId.split(":")[0]
                         : workflowInstanceId;
-                temporalWorkflowService.cancelWorkflow(simpleWorkflowId);
+                workflowService.cancelWorkflow(simpleWorkflowId);
                 log.info("Cancelled Temporal workflow {} for case {}", simpleWorkflowId, caseId);
             } catch (Exception e) {
                 log.warn("Failed to cancel workflow for case {}: {}", caseId, e.getMessage());
@@ -130,7 +130,7 @@ public class CaseService {
             try {
                 String workflowId = caseEntity.getWorkflowInstanceId();
                 String simpleWorkflowId = workflowId.contains(":") ? workflowId.split(":")[0] : workflowId;
-                var progress = temporalWorkflowService.queryWorkflowProgress(simpleWorkflowId);
+                var progress = workflowService.queryWorkflowProgress(simpleWorkflowId);
                 if (progress != null) {
                     nextStep = progress.getCurrentStep();
                     uiModel.put("percentComplete", progress.getPercentComplete());
@@ -158,11 +158,11 @@ public class CaseService {
                 // temporalWorkflowService.signalDocumentsUploaded(signalWorkflowId,
                 // (Map<String, String>) data);
             } else if ("personal-info".equalsIgnoreCase(stepName)) {
-                temporalWorkflowService.signalUserDataUpdated(signalWorkflowId, data);
+                workflowService.signalUserDataUpdated(signalWorkflowId, data);
             } else if ("manual-review".equalsIgnoreCase(stepName)) {
                 boolean approved = Boolean.parseBoolean(String.valueOf(data.getOrDefault("approved", "false")));
                 String reason = String.valueOf(data.getOrDefault("reason", ""));
-                temporalWorkflowService.signalManualReview(signalWorkflowId, approved, reason);
+                workflowService.signalManualReview(signalWorkflowId, approved, reason);
             }
         } catch (Exception e) {
             log.error("Failed to signal workflow for case {}: {}", caseEntity.getId(), e.getMessage());

@@ -31,7 +31,7 @@ Tôi cung cấp detailed guide, bạn implement
 
 ### **Task Queues**
 ```
-KYC_ONBOARDING_QUEUE          → KYC workflows
+ONBOARDING_QUEUE          → KYC workflows
 DOCUMENT_VERIFICATION_QUEUE   → Document processing
 GENERAL_QUEUE                 → General workflows
 ```

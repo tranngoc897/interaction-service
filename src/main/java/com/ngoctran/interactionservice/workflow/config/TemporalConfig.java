@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice.workflow;
+package com.ngoctran.interactionservice.workflow.config;
 
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowClientOptions;
@@ -14,14 +14,6 @@ import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
 
-/**
- * Temporal Configuration for Interaction Service
- * 
- * This configuration sets up:
- * - Connection to Temporal Server
- * - Workflow Client for starting workflows
- * - Worker Factory for executing workflows
- */
 @Configuration
 @Slf4j
 public class TemporalConfig {
@@ -44,13 +36,10 @@ public class TemporalConfig {
     @Bean
     public WorkflowServiceStubs workflowServiceStubs() {
         log.info("Connecting to Temporal Server at {}:{}", temporalHost, temporalPort);
-
         WorkflowServiceStubsOptions options = WorkflowServiceStubsOptions.newBuilder()
                 .setTarget(temporalHost + ":" + temporalPort)
                 .build();
-
         WorkflowServiceStubs service = WorkflowServiceStubs.newServiceStubs(options);
-
         log.info("Successfully connected to Temporal Server");
         return service;
     }
@@ -61,7 +50,6 @@ public class TemporalConfig {
     @Bean
     public WorkflowClient workflowClient(WorkflowServiceStubs serviceStubs) {
         log.info("Creating Workflow Client for namespace: {}", namespace);
-
         WorkflowClientOptions options = WorkflowClientOptions.newBuilder()
                 .setNamespace(namespace)
                 .build();
@@ -78,11 +66,9 @@ public class TemporalConfig {
     @Bean
     public ScheduleClient scheduleClient(WorkflowServiceStubs serviceStubs) {
         log.info("Creating Schedule Client");
-
         ScheduleClientOptions options = ScheduleClientOptions.newBuilder()
                 .setNamespace(namespace)
                 .build();
-
         return ScheduleClient.newInstance(serviceStubs, options);
     }
 
@@ -99,20 +85,12 @@ public class TemporalConfig {
         return factory;
     }
 
-    /**
-     * Shutdown hook to close connections gracefully
-     */
     @Bean
-    public TemporalShutdownHook temporalShutdownHook(
-            WorkflowServiceStubs serviceStubs,
-            WorkerFactory workerFactory) {
-
+    public TemporalShutdownHook temporalShutdownHook(WorkflowServiceStubs serviceStubs,
+                                                     WorkerFactory workerFactory) {
         return new TemporalShutdownHook(serviceStubs, workerFactory);
     }
 
-    /**
-     * Shutdown hook implementation
-     */
     public static class TemporalShutdownHook {
         private final WorkflowServiceStubs serviceStubs;
         private final WorkerFactory workerFactory;
@@ -123,7 +101,6 @@ public class TemporalConfig {
 
             Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
         }
-
         private void shutdown() {
             log.info("Shutting down Temporal connections...");
 

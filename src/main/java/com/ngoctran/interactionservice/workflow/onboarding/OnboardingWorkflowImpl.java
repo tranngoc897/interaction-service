@@ -247,40 +247,6 @@ public class OnboardingWorkflowImpl implements OnboardingWorkflow {
         log.info("Initial data validation passed");
     }
 
-    private void waitForDocuments() {
-        log.info("Waiting for documents to be uploaded");
-        currentStatus = "WAITING_FOR_DOCUMENTS";
-
-        // Wait for documents signal with timeout
-        Workflow.await(Duration.ofHours(24), () -> documentsReceived);
-
-        if (!documentsReceived) {
-            throw new RuntimeException("Timeout waiting for documents");
-        }
-
-        log.info("Documents received");
-    }
-
-    private Map<String, Object> performOCR(String caseId, Map<String, String> documents) {
-        log.info("Performing OCR on documents");
-        currentStatus = "PROCESSING_OCR";
-
-        Map<String, Object> allOCRResults = new HashMap<>();
-
-        for (Map.Entry<String, String> entry : documents.entrySet()) {
-            String docType = entry.getKey();
-            String docUrl = entry.getValue();
-
-            log.info("Processing OCR for document type: {}", docType);
-
-            OCRActivity.OCRResult result = ocrActivity.extractText(docUrl, docType);
-            allOCRResults.put(docType, result.getExtractedData());
-        }
-
-        log.info("OCR processing completed");
-        return allOCRResults;
-    }
-
     private IDVerificationActivity.IDVerificationResult verifyID(
             String caseId,
             Map<String, Object> ocrResults,
@@ -357,15 +323,6 @@ public class OnboardingWorkflowImpl implements OnboardingWorkflow {
         callbackActivity.updateCaseStatus(caseId, result.getStatus());
     }
 
-    private void sendNotification(String caseId, KYCWorkflowResult result) {
-        log.info("Sending notification to user");
-
-        String message = result.getStatus().equals("APPROVED")
-                ? "Your KYC has been approved!"
-                : "Your KYC requires additional review.";
-
-        notificationActivity.sendNotification(caseId, "KYC_RESULT", message);
-    }
 
     private void notifyFailure(String caseId, String interactionId, String errorMessage) {
         try {

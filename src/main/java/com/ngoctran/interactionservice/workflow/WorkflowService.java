@@ -1,9 +1,11 @@
 package com.ngoctran.interactionservice.workflow;
 
+import com.ngoctran.interactionservice.WorkflowHistoryEntity;
 import com.ngoctran.interactionservice.mapping.ProcessMappingEntity;
 import com.ngoctran.interactionservice.mapping.ProcessMappingRepository;
 import com.ngoctran.interactionservice.mapping.enums.EngineType;
 import com.ngoctran.interactionservice.mapping.enums.ProcessStatus;
+import com.ngoctran.interactionservice.workflow.config.TemporalWorkerConfiguration;
 import com.ngoctran.interactionservice.workflow.onboarding.OnboardingWorkflow;
 import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.WorkflowClient;
@@ -21,11 +23,13 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class TemporalWorkflowService {
+public class WorkflowService {
 
-        private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TemporalWorkflowService.class);
-        private final WorkflowClient client;
+        private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WorkflowService.class);
         private final ProcessMappingRepository processMappingRepo;
+
+
+        private final WorkflowClient client;
 
         @Transactional
         public String startKYCOnboardingWorkflow(
@@ -39,7 +43,7 @@ public class TemporalWorkflowService {
                 String workflowId = "kyc-onboarding-" + caseId;
                 WorkflowOptions options = WorkflowOptions.newBuilder()
                                 .setWorkflowId(workflowId)
-                                .setTaskQueue(WorkerConfiguration.KYC_ONBOARDING_QUEUE)
+                                .setTaskQueue(TemporalWorkerConfiguration.ONBOARDING_QUEUE)
                                 .setWorkflowExecutionTimeout(Duration.ofDays(7))
                                 .build();
                 // Create onboarding stub
