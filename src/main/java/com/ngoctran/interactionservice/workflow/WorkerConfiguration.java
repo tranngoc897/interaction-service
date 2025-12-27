@@ -1,34 +1,25 @@
 package com.ngoctran.interactionservice.workflow;
 
-import com.ngoctran.interactionservice.workflow.activity.*;
-import com.ngoctran.interactionservice.workflow.activity.payment.*;
-import com.ngoctran.interactionservice.workflow.activity.onboarding.*;
-import com.ngoctran.interactionservice.workflow.activity.reconciliation.*;
+import com.ngoctran.interactionservice.workflow.activity.CIFActivityImpl;
+import com.ngoctran.interactionservice.workflow.activity.CleanupActivityImpl;
+import com.ngoctran.interactionservice.workflow.activity.CorebankAccountActivityImpl;
+import com.ngoctran.interactionservice.workflow.activity.IDVerificationActivityImpl;
+import com.ngoctran.interactionservice.workflow.activity.InteractionCallbackActivityImpl;
+import com.ngoctran.interactionservice.workflow.activity.KeycloakAccountActivityImpl;
+import com.ngoctran.interactionservice.workflow.activity.NotificationActivityImpl;
+import com.ngoctran.interactionservice.workflow.activity.OCRActivityImpl;
+import com.ngoctran.interactionservice.workflow.activity.OnboardingNotificationActivityImpl;
+import com.ngoctran.interactionservice.workflow.activity.RetailAccountActivityImpl;
+import com.ngoctran.interactionservice.workflow.activity.TaskActivityImpl;
 import com.ngoctran.interactionservice.workflow.onboarding.DocumentProcessingWorkflowImpl;
 import com.ngoctran.interactionservice.workflow.onboarding.DynamicStepWorkflowImpl;
-import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflowImpl;
-import com.ngoctran.interactionservice.workflow.payment.AdvancedPipelineWorkflowImpl;
-import com.ngoctran.interactionservice.workflow.payment.CaseMonitorWorkflowImpl;
-import com.ngoctran.interactionservice.workflow.payment.CleanupWorkflowImpl;
-import com.ngoctran.interactionservice.workflow.reconciliation.ReconciliationWorkflowImpl;
-import com.ngoctran.interactionservice.workflow.payment.PaymentWorkflowImpl;
-import com.ngoctran.interactionservice.workflow.payment.PaymentMonitorWorkflowImpl;
-import io.temporal.client.WorkflowClient;
+import com.ngoctran.interactionservice.workflow.onboarding.OnboardingWorkflowImpl;
 import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Worker Configuration for Temporal
- *
- * Registers workflows and activities with different task queues:
- * - KYC_ONBOARDING_QUEUE: KYC onboarding workflows
- * - DOCUMENT_VERIFICATION_QUEUE: Document verification workflows
- * - GENERAL_QUEUE: General purpose workflows
- * - RECONCILIATION_QUEUE: Payment reconciliation workflows
- */
 @Configuration
 @RequiredArgsConstructor
 public class WorkerConfiguration {
@@ -36,8 +27,6 @@ public class WorkerConfiguration {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WorkerConfiguration.class);
 
     private final WorkerFactory workerFactory;
-    private final WorkflowClient workflowClient;
-
     // Activity implementations
     private final OCRActivityImpl ocrActivity;
     private final IDVerificationActivityImpl idVerificationActivity;
@@ -45,31 +34,11 @@ public class WorkerConfiguration {
     private final InteractionCallbackActivityImpl interactionCallbackActivity;
     private final TaskActivityImpl taskActivity;
     private final CleanupActivityImpl cleanupActivity;
-
-    // Payment activity implementations
-    private final PaymentValidationActivityImpl paymentValidationActivity;
-    private final AccountVerificationActivityImpl accountVerificationActivity;
-    private final ComplianceCheckActivityImpl complianceCheckActivity;
-    private final FraudDetectionActivityImpl fraudDetectionActivity;
-    private final PaymentRoutingActivityImpl paymentRoutingActivity;
-    private final PaymentExecutionActivityImpl paymentExecutionActivity;
-    private final PaymentConfirmationActivityImpl paymentConfirmationActivity;
-    private final PaymentCompensationActivityImpl paymentCompensationActivity;
-    private final IdempotencyCheckActivityImpl idempotencyCheckActivity;
-
-    // Onboarding activity implementations
     private final CIFActivityImpl cifActivity;
     private final CorebankAccountActivityImpl corebankAccountActivity;
     private final RetailAccountActivityImpl retailAccountActivity;
     private final KeycloakAccountActivityImpl keycloakAccountActivity;
     private final OnboardingNotificationActivityImpl onboardingNotificationActivity;
-
-    // Reconciliation activity implementations
-    private final DataCollectionActivityImpl dataCollectionActivity;
-    private final MatchingActivityImpl matchingActivity;
-    private final DiscrepancyAnalysisActivityImpl discrepancyAnalysisActivity;
-    private final EscalationActivityImpl escalationActivity;
-    private final ReportingActivityImpl reportingActivity;
 
     /**
      * Task Queue Names
@@ -89,7 +58,6 @@ public class WorkerConfiguration {
         // Register General Worker
         registerGeneralWorker();
         // Register Reconciliation Worker
-        registerReconciliationWorker();
         // Start all workers
         workerFactory.start();
 
@@ -105,9 +73,8 @@ public class WorkerConfiguration {
         Worker worker = workerFactory.newWorker(KYC_ONBOARDING_QUEUE);
         // Register onboarding implementations
         worker.registerWorkflowImplementationTypes(
-                KYCOnboardingWorkflowImpl.class,
+                OnboardingWorkflowImpl.class,
                 DocumentProcessingWorkflowImpl.class,
-                CaseMonitorWorkflowImpl.class,
                 DynamicStepWorkflowImpl.class);
         // Register activity implementations
         worker.registerActivitiesImplementations(
@@ -151,54 +118,13 @@ public class WorkerConfiguration {
      */
     private void registerGeneralWorker() {
         log.info("Registering General Worker on queue: {}", GENERAL_QUEUE);
-
         Worker worker = workerFactory.newWorker(GENERAL_QUEUE);
-
-        // Register Scheduled Workflow and Dynamic Pipelines
-        worker.registerWorkflowImplementationTypes(
-                CleanupWorkflowImpl.class,
-                AdvancedPipelineWorkflowImpl.class,
-                PaymentWorkflowImpl.class,
-                PaymentMonitorWorkflowImpl.class);
-
         // Register activity implementations
         worker.registerActivitiesImplementations(
-                notificationActivity,
-                interactionCallbackActivity,
-                cleanupActivity,
-                paymentValidationActivity,
-                accountVerificationActivity,
-                complianceCheckActivity,
-                fraudDetectionActivity,
-                paymentRoutingActivity,
-                paymentExecutionActivity,
-                paymentConfirmationActivity,
-                paymentCompensationActivity,
-                idempotencyCheckActivity);
-
-        log.info("General Worker registered successfully");
+            notificationActivity,
+            interactionCallbackActivity,
+            cleanupActivity
+        );
     }
 
-    /**
-     * Register Reconciliation Worker
-     * Handles payment reconciliation workflows
-     */
-    private void registerReconciliationWorker() {
-        log.info("Registering Reconciliation Worker on queue: {}", RECONCILIATION_QUEUE);
-
-        Worker worker = workerFactory.newWorker(RECONCILIATION_QUEUE);
-
-        // Register reconciliation workflow implementation
-        worker.registerWorkflowImplementationTypes(ReconciliationWorkflowImpl.class);
-
-        // Register reconciliation activity implementations
-        worker.registerActivitiesImplementations(
-                dataCollectionActivity,
-                matchingActivity,
-                discrepancyAnalysisActivity,
-                escalationActivity,
-                reportingActivity);
-
-        log.info("Reconciliation Worker registered successfully");
-    }
 }

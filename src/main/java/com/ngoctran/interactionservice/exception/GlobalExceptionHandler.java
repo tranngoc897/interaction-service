@@ -20,7 +20,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ErrorResponse> handleProcessMappingNotFoundException(
             ProcessMappingNotFoundException ex, HttpServletRequest request) {
         log.error("Process mapping not found: {}", ex.getMessage());
-        
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.NOT_FOUND.value())
@@ -28,7 +27,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .message(ex.getMessage())
                 .path(request.getRequestURI())
                 .build();
-                
+
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
 

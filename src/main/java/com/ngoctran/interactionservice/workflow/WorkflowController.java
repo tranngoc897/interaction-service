@@ -1,14 +1,12 @@
 package com.ngoctran.interactionservice.workflow;
 
-import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflow;
-import com.ngoctran.interactionservice.workflow.payment.ScheduleEntity;
-import com.ngoctran.interactionservice.workflow.reconciliation.ReconciliationWorkflow;
+import com.ngoctran.interactionservice.workflow.onboarding.OnboardingWorkflow;
+
 import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -92,10 +90,10 @@ public class WorkflowController {
      * Query onboarding progress
      */
     @GetMapping("/{workflowId}/progress")
-    public ResponseEntity<KYCOnboardingWorkflow.WorkflowProgress> getWorkflowProgress(
+    public ResponseEntity<OnboardingWorkflow.WorkflowProgress> getWorkflowProgress(
             @PathVariable String workflowId) {
         log.info("Getting onboarding progress: {}", workflowId);
-        KYCOnboardingWorkflow.WorkflowProgress progress = workflowService.queryWorkflowProgress(workflowId);
+        OnboardingWorkflow.WorkflowProgress progress = workflowService.queryWorkflowProgress(workflowId);
         return ResponseEntity.ok(progress);
     }
 
@@ -107,131 +105,6 @@ public class WorkflowController {
         log.info("Cancelling onboarding: {}", workflowId);
         workflowService.cancelWorkflow(workflowId);
         return ResponseEntity.ok().build();
-    }
-
-    /**
-     * Start Advanced Dynamic Pipeline
-     */
-    @PostMapping("/pipeline/run")
-    public ResponseEntity<WorkflowStartResponse> startPipeline(@RequestBody PipelineRunRequest request) {
-        log.info("Starting advanced pipeline: {}", request.getPipelineName());
-        String workflowId = workflowService.startAdvancedPipeline(
-                request.getPipelineName(),
-                request.getTasks(),
-                request.getData());
-
-        return ResponseEntity.ok(new WorkflowStartResponse(
-                workflowId,
-                workflowId,
-                "RUNNING"));
-    }
-
-    /**
-     * Create/Update Onboarding Monitor Schedule
-     */
-    @PostMapping("/schedules/onboarding")
-    public ResponseEntity<String> createOnboardingSchedule(@RequestBody OnboardingScheduleRequest request) {
-        log.info("Request to create onboarding schedule: {}", request.getScheduleId());
-        workflowService.createOnboardingMonitorSchedule(request.getScheduleId(), request.getCron());
-        return ResponseEntity.ok("Onboarding schedule created/updated successfully");
-    }
-
-    /**
-     * Create/Update Payment Processing Schedule
-     */
-    @PostMapping("/schedules/payment")
-    public ResponseEntity<String> createPaymentSchedule(@RequestBody OnboardingScheduleRequest request) {
-        log.info("Request to create payment processing schedule: {}", request.getScheduleId());
-        workflowService.createPaymentProcessingSchedule(request.getScheduleId(), request.getCron());
-        return ResponseEntity.ok("Payment processing schedule created/updated successfully");
-    }
-
-    /**
-     * Get all schedules
-     */
-    @GetMapping("/schedules")
-    public ResponseEntity<List<ScheduleResponse>> getAllSchedules() {
-        log.info("Request to get all schedules");
-        List<ScheduleEntity> schedules = workflowService.getAllSchedules();
-        List<ScheduleResponse> responses = schedules.stream()
-                .map(this::convertToScheduleResponse)
-                .collect(java.util.stream.Collectors.toList());
-        return ResponseEntity.ok(responses);
-    }
-
-    /**
-     * Get schedule by ID
-     */
-    @GetMapping("/schedules/{scheduleId}")
-    public ResponseEntity<ScheduleResponse> getSchedule(@PathVariable String scheduleId) {
-        log.info("Request to get schedule: {}", scheduleId);
-        ScheduleEntity schedule = workflowService.getScheduleById(scheduleId);
-        return ResponseEntity.ok(convertToScheduleResponse(schedule));
-    }
-
-    /**
-     * Delete/Pause schedule
-     */
-    @DeleteMapping("/schedules/{scheduleId}")
-    public ResponseEntity<String> deleteSchedule(@PathVariable String scheduleId) {
-        log.info("Request to delete schedule: {}", scheduleId);
-        workflowService.deleteSchedule(scheduleId);
-        return ResponseEntity.ok("Schedule deleted successfully");
-    }
-
-    /**
-     * Stop payment monitoring workflow
-     */
-    @PostMapping("/workflows/{workflowId}/stop-monitoring")
-    public ResponseEntity<String> stopPaymentMonitoring(@PathVariable String workflowId) {
-        log.info("Request to stop payment monitoring workflow: {}", workflowId);
-        workflowService.stopPaymentMonitoring(workflowId);
-        return ResponseEntity.ok("Payment monitoring stopped successfully");
-    }
-
-    /**
-     * Start Payment Workflow Manually (for testing)
-     */
-    @PostMapping("/workflows/payment/start")
-    public ResponseEntity<WorkflowStartResponse> startPaymentWorkflow(@RequestBody PaymentStartRequest request) {
-        log.info("Starting payment workflow manually: {}", request.getPaymentId());
-        String workflowId = workflowService.startPaymentWorkflow(
-                request.getPaymentId(),
-                request.getAccountId(),
-                request.getAmount(),
-                request.getCurrency(),
-                request.getTenantId(),
-                request.getUserId());
-        return ResponseEntity.ok(new WorkflowStartResponse(
-                request.getPaymentId(),
-                workflowId,
-                "RUNNING"));
-    }
-
-    /**
-     * Submit Payment with Priority (Advanced Feature)
-     */
-    @PostMapping("/workflows/payment/submit-priority")
-    public ResponseEntity<String> submitPaymentWithPriority(@RequestBody PriorityPaymentRequest request) {
-        log.info("Submitting payment with priority: {} - {}", request.getPaymentId(), request.getPriority());
-        // In real implementation, this would integrate with PaymentSchedulerAdvanced
-        return ResponseEntity.ok("Payment submitted with priority: " + request.getPriority());
-    }
-
-    /**
-     * Process Batch Payments (Advanced Feature)
-     */
-    @PostMapping("/workflows/payment/process-batch")
-    public ResponseEntity<BatchProcessingResponse> processBatchPayments(@RequestBody BatchPaymentRequest request) {
-        log.info("Processing batch payments: {} items", request.getPaymentIds().size());
-        // In real implementation, this would use PaymentSchedulerAdvanced.processBatchOptimized()
-        BatchProcessingResponse response = new BatchProcessingResponse(
-                request.getPaymentIds().size(),
-                request.getPaymentIds().size(), // Assume all success for demo
-                0,
-                2500L,
-                new ArrayList<>());
-        return ResponseEntity.ok(response);
     }
 
     /**
@@ -258,90 +131,6 @@ public class WorkflowController {
                 Map.of("eventStore", 150, "auditTrail", 150));
         return ResponseEntity.ok(response);
     }
-
-    // ==================== RECONCILIATION WORKFLOW ENDPOINTS ====================
-
-    /**
-     * Start Payment Reconciliation Workflow
-     */
-    @PostMapping("/reconciliation/start")
-    public ResponseEntity<WorkflowStartResponse> startReconciliationWorkflow(@RequestBody ReconciliationStartRequest request) {
-        log.info("Starting payment reconciliation for date: {}, type: {}", request.getDate(), request.getType());
-        String processInstanceId = workflowService.startReconciliationWorkflow(
-                request.getReconciliationId(), request.getDate(), request.getType(), request.getConfig());
-        return ResponseEntity.ok(new WorkflowStartResponse(
-                request.getReconciliationId(),
-                "reconciliation-" + request.getReconciliationId(),
-                "RUNNING"));
-    }
-
-    /**
-     * Get Reconciliation Status
-     */
-/*    @GetMapping("/reconciliation/{workflowId}/status")
-    public ResponseEntity<WorkflowStatusResponse> getReconciliationStatus(@PathVariable String workflowId) {
-        log.info("Getting reconciliation status: {}", workflowId);
-        ReconciliationWorkflow workflow = workflowService.queryReconciliationProgress(workflowId);
-        return ResponseEntity.ok(new WorkflowStatusResponse(workflowId, workflow.getCurrentPhase()));
-    }*/
-
-    /**
-     * Get Reconciliation Progress
-     */
-    @GetMapping("/reconciliation/{workflowId}/progress")
-    public ResponseEntity<ReconciliationWorkflow.ReconciliationProgress> getReconciliationProgress(@PathVariable String workflowId) {
-        log.info("Getting reconciliation progress: {}", workflowId);
-        ReconciliationWorkflow.ReconciliationProgress progress = workflowService.queryReconciliationProgress(workflowId);
-        return ResponseEntity.ok(progress);
-    }
-
-    /**
-     * Get Reconciliation Statistics
-     */
-    @GetMapping("/reconciliation/{workflowId}/stats")
-    public ResponseEntity<ReconciliationWorkflow.ReconciliationStats> getReconciliationStats(@PathVariable String workflowId) {
-        log.info("Getting reconciliation statistics: {}", workflowId);
-        ReconciliationWorkflow.ReconciliationStats stats = workflowService.queryReconciliationStats(workflowId);
-        return ResponseEntity.ok(stats);
-    }
-
-    /**
-     * Signal Manual Resolution for Discrepancy
-     */
-    @PostMapping("/reconciliation/{workflowId}/resolve")
-    public ResponseEntity<Void> resolveDiscrepancy(@PathVariable String workflowId,
-                                                  @RequestBody ManualResolutionRequest request) {
-        log.info("Signaling manual resolution for discrepancy: {} in workflow: {}",
-                request.getDiscrepancyId(), workflowId);
-
-        Map<String, Object> signalData = Map.of(
-                "discrepancyId", request.getDiscrepancyId(),
-                "resolution", Map.of(
-                        "resolution", request.getResolution(),
-                        "notes", request.getNotes(),
-                        "resolvedBy", request.getResolvedBy()
-                )
-        );
-
-        workflowService.signalReconciliationWorkflow(workflowId, "manual_resolution", signalData);
-        return ResponseEntity.ok().build();
-    }
-
-    /**
-     * Signal Additional Data Received
-     */
-    @PostMapping("/reconciliation/{workflowId}/additional-data")
-    public ResponseEntity<Void> addAdditionalData(@PathVariable String workflowId,
-                                                @RequestBody AdditionalDataRequest request) {
-        log.info("Signaling additional data received for source: {} in workflow: {}",
-                request.getSourceId(), workflowId);
-
-        workflowService.signalReconciliationWorkflow(workflowId, "additional_data",
-                Map.of("sourceId", request.getSourceId(), "data", request.getData()));
-        return ResponseEntity.ok().build();
-    }
-
-
 
     // ==================== WORKFLOW HISTORY & ANALYTICS ====================
 
@@ -370,64 +159,6 @@ public class WorkflowController {
 
     // ==================== WORKFLOW SCHEDULING ENDPOINTS ====================
 
-    /**
-     * Schedule Workflow Execution
-     */
-    @PostMapping("/schedule")
-    public ResponseEntity<WorkflowScheduleResponse> scheduleWorkflow(@RequestBody WorkflowScheduleRequest request) {
-        log.info("Scheduling workflow: {} with schedule type: {}", request.getWorkflowType(), request.getScheduleType());
-
-        String scheduledWorkflowId = workflowService.scheduleWorkflow(request.getWorkflowType(),
-                convertToScheduleConfig(request));
-
-        return ResponseEntity.ok(WorkflowScheduleResponse.builder()
-                .scheduledWorkflowId(scheduledWorkflowId)
-                .status("SCHEDULED")
-                .build());
-    }
-
-    /**
-     * List Scheduled Workflows
-     */
-    @GetMapping("/scheduled")
-    public ResponseEntity<List<WorkflowSchedulerService.ScheduledWorkflowSummary>> getScheduledWorkflows(
-            @RequestParam(required = false) String workflowType) {
-
-        log.info("Getting scheduled workflows: type={}", workflowType);
-        // In real implementation, inject WorkflowSchedulerService
-        // List<WorkflowSchedulerService.ScheduledWorkflowSummary> schedules =
-        //         workflowSchedulerService.listScheduledWorkflows(workflowType);
-
-        // Mock response for demo
-        List<WorkflowSchedulerService.ScheduledWorkflowSummary> mockSchedules = List.of(
-                WorkflowSchedulerService.ScheduledWorkflowSummary.builder()
-                        .scheduledWorkflowId("SCH-RECONCILIATION-EOD")
-                        .workflowType("RECONCILIATION")
-                        .cronExpression("0 0 18 * * ?")
-                        .status("ACTIVE")
-                        .description("End of day payment reconciliation")
-                        .build()
-        );
-
-        return ResponseEntity.ok(mockSchedules);
-    }
-
-    // ==================== HELPER METHODS ====================
-
-    private WorkflowSchedulerService.WorkflowScheduleConfig convertToScheduleConfig(WorkflowScheduleRequest request) {
-        return WorkflowSchedulerService.WorkflowScheduleConfig.builder()
-                .scheduleType(request.getScheduleType())
-                .executionDate(request.getExecutionDate())
-                .executionTime(request.getExecutionTime())
-                .dayOfMonth(request.getDayOfMonth())
-                .daysOfWeek(request.getDaysOfWeek())
-                .customCronExpression(request.getCustomCronExpression())
-                .timezone(request.getTimezone())
-                .createdBy(request.getCreatedBy())
-                .description(request.getDescription())
-                .workflowConfig(request.getWorkflowConfig())
-                .build();
-    }
 
     // ==================== DTOs ====================
 
@@ -584,163 +315,7 @@ public class WorkflowController {
         }
     }
 
-    public static class ScheduleResponse {
-        private String scheduleId;
-        private String cronExpression;
-        private String workflowType;
-        private String taskQueue;
-        private String createdBy;
-        private LocalDateTime createdAt;
-        private LocalDateTime updatedAt;
-        private ScheduleStatus status;
-        private String description;
-        private String workflowArguments;
 
-        public ScheduleResponse(String scheduleId, String cronExpression, String workflowType,
-                               String taskQueue, String createdBy, LocalDateTime createdAt,
-                               LocalDateTime updatedAt, ScheduleStatus status, String description,
-                               String workflowArguments) {
-            this.scheduleId = scheduleId;
-            this.cronExpression = cronExpression;
-            this.workflowType = workflowType;
-            this.taskQueue = taskQueue;
-            this.createdBy = createdBy;
-            this.createdAt = createdAt;
-            this.updatedAt = updatedAt;
-            this.status = status;
-            this.description = description;
-            this.workflowArguments = workflowArguments;
-        }
-
-        // Getters
-        public String getScheduleId() { return scheduleId; }
-        public String getCronExpression() { return cronExpression; }
-        public String getWorkflowType() { return workflowType; }
-        public String getTaskQueue() { return taskQueue; }
-        public String getCreatedBy() { return createdBy; }
-        public LocalDateTime getCreatedAt() { return createdAt; }
-        public LocalDateTime getUpdatedAt() { return updatedAt; }
-        public ScheduleStatus getStatus() { return status; }
-        public String getDescription() { return description; }
-        public String getWorkflowArguments() { return workflowArguments; }
-    }
-
-    private ScheduleResponse convertToScheduleResponse(ScheduleEntity entity) {
-        return new ScheduleResponse(
-                entity.getScheduleId(),
-                entity.getCronExpression(),
-                entity.getWorkflowType(),
-                entity.getTaskQueue(),
-                entity.getCreatedBy(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt(),
-                entity.getStatus(),
-                entity.getDescription(),
-                entity.getWorkflowArguments()
-        );
-    }
-
-    // ==================== Payment Workflow DTOs ====================
-
-    public static class PaymentStartRequest {
-        private String paymentId;
-        private String accountId;
-        private double amount;
-        private String currency;
-        private String tenantId;
-        private String userId;
-
-        // Getters and setters
-        public String getPaymentId() { return paymentId; }
-        public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
-
-        public String getAccountId() { return accountId; }
-        public void setAccountId(String accountId) { this.accountId = accountId; }
-
-        public double getAmount() { return amount; }
-        public void setAmount(double amount) { this.amount = amount; }
-
-        public String getCurrency() { return currency; }
-        public void setCurrency(String currency) { this.currency = currency; }
-
-        public String getTenantId() { return tenantId; }
-        public void setTenantId(String tenantId) { this.tenantId = tenantId; }
-
-        public String getUserId() { return userId; }
-        public void setUserId(String userId) { this.userId = userId; }
-    }
-
-    public static class PriorityPaymentRequest {
-        private String paymentId;
-        private String accountId;
-        private double amount;
-        private String currency;
-        private String priority;
-        private String tenantId;
-        private String userId;
-
-        // Getters and setters
-        public String getPaymentId() { return paymentId; }
-        public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
-
-        public String getAccountId() { return accountId; }
-        public void setAccountId(String accountId) { this.accountId = accountId; }
-
-        public double getAmount() { return amount; }
-        public void setAmount(double amount) { this.amount = amount; }
-
-        public String getCurrency() { return currency; }
-        public void setCurrency(String currency) { this.currency = currency; }
-
-        public String getPriority() { return priority; }
-        public void setPriority(String priority) { this.priority = priority; }
-
-        public String getTenantId() { return tenantId; }
-        public void setTenantId(String tenantId) { this.tenantId = tenantId; }
-
-        public String getUserId() { return userId; }
-        public void setUserId(String userId) { this.userId = userId; }
-    }
-
-    public static class BatchPaymentRequest {
-        private List<String> paymentIds;
-        private String tenantId;
-        private String userId;
-
-        // Getters and setters
-        public List<String> getPaymentIds() { return paymentIds; }
-        public void setPaymentIds(List<String> paymentIds) { this.paymentIds = paymentIds; }
-
-        public String getTenantId() { return tenantId; }
-        public void setTenantId(String tenantId) { this.tenantId = tenantId; }
-
-        public String getUserId() { return userId; }
-        public void setUserId(String userId) { this.userId = userId; }
-    }
-
-    public static class BatchProcessingResponse {
-        private int totalPayments;
-        private int successCount;
-        private int failureCount;
-        private long processingTimeMs;
-        private List<String> failedPaymentIds;
-
-        public BatchProcessingResponse(int totalPayments, int successCount, int failureCount,
-                                     long processingTimeMs, List<String> failedPaymentIds) {
-            this.totalPayments = totalPayments;
-            this.successCount = successCount;
-            this.failureCount = failureCount;
-            this.processingTimeMs = processingTimeMs;
-            this.failedPaymentIds = failedPaymentIds;
-        }
-
-        // Getters
-        public int getTotalPayments() { return totalPayments; }
-        public int getSuccessCount() { return successCount; }
-        public int getFailureCount() { return failureCount; }
-        public long getProcessingTimeMs() { return processingTimeMs; }
-        public List<String> getFailedPaymentIds() { return failedPaymentIds; }
-    }
 
     public static class DLQStatusResponse {
         private int queueSize;
@@ -794,61 +369,6 @@ public class WorkflowController {
         public Map<String, Integer> getLoadBalancingMetrics() { return loadBalancingMetrics; }
         public Map<String, Integer> getEventStoreMetrics() { return eventStoreMetrics; }
     }
-
-    // ==================== RECONCILIATION WORKFLOW DTOs ====================
-
-    public static class ReconciliationStartRequest {
-        private String reconciliationId;
-        private String date;
-        private String type;
-        private Map<String, Object> config;
-
-        // Getters and setters
-        public String getReconciliationId() { return reconciliationId; }
-        public void setReconciliationId(String reconciliationId) { this.reconciliationId = reconciliationId; }
-
-        public String getDate() { return date; }
-        public void setDate(String date) { this.date = date; }
-
-        public String getType() { return type; }
-        public void setType(String type) { this.type = type; }
-
-        public Map<String, Object> getConfig() { return config; }
-        public void setConfig(Map<String, Object> config) { this.config = config; }
-    }
-
-    public static class ManualResolutionRequest {
-        private String discrepancyId;
-        private String resolution;
-        private String notes;
-        private String resolvedBy;
-
-        // Getters and setters
-        public String getDiscrepancyId() { return discrepancyId; }
-        public void setDiscrepancyId(String discrepancyId) { this.discrepancyId = discrepancyId; }
-
-        public String getResolution() { return resolution; }
-        public void setResolution(String resolution) { this.resolution = resolution; }
-
-        public String getNotes() { return notes; }
-        public void setNotes(String notes) { this.notes = notes; }
-
-        public String getResolvedBy() { return resolvedBy; }
-        public void setResolvedBy(String resolvedBy) { this.resolvedBy = resolvedBy; }
-    }
-
-    public static class AdditionalDataRequest {
-        private String sourceId;
-        private Map<String, Object> data;
-
-        // Getters and setters
-        public String getSourceId() { return sourceId; }
-        public void setSourceId(String sourceId) { this.sourceId = sourceId; }
-
-        public Map<String, Object> getData() { return data; }
-        public void setData(Map<String, Object> data) { this.data = data; }
-    }
-
 
 
     // ==================== WORKFLOW SCHEDULING DTOs ====================

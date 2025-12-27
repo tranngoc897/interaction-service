@@ -451,7 +451,7 @@ package com.ngoctran.interactionservice.workflow.service;
 import com.ngoctran.interactionservice.mapping.ProcessMappingEntity;
 import com.ngoctran.interactionservice.mapping.ProcessMappingRepository;
 import com.ngoctran.interactionservice.workflow.WorkerConfiguration;
-import com.ngoctran.interactionservice.workflow.onboarding.KYCOnboardingWorkflow;
+import com.ngoctran.interactionservice.workflow.onboarding.OnboardingWorkflow;
 import io.temporal.api.common.v1.WorkflowExecution;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
@@ -496,8 +496,8 @@ public class TemporalWorkflowService {
         .build();
 
     // Create onboarding stub
-    KYCOnboardingWorkflow workflow = workflowClient.newWorkflowStub(
-        KYCOnboardingWorkflow.class,
+    OnboardingWorkflow workflow = workflowClient.newWorkflowStub(
+        OnboardingWorkflow.class,
         options
     );
 
@@ -523,8 +523,8 @@ public class TemporalWorkflowService {
   public void signalDocumentsUploaded(String workflowId, Map<String, String> documents) {
     log.info("Sending documents uploaded signal to onboarding: {}", workflowId);
 
-    KYCOnboardingWorkflow workflow = workflowClient.newWorkflowStub(
-        KYCOnboardingWorkflow.class,
+    OnboardingWorkflow workflow = workflowClient.newWorkflowStub(
+        OnboardingWorkflow.class,
         workflowId
     );
 
@@ -539,8 +539,8 @@ public class TemporalWorkflowService {
   public String queryWorkflowStatus(String workflowId) {
     log.info("Querying onboarding status: {}", workflowId);
 
-    KYCOnboardingWorkflow workflow = workflowClient.newWorkflowStub(
-        KYCOnboardingWorkflow.class,
+    OnboardingWorkflow workflow = workflowClient.newWorkflowStub(
+        OnboardingWorkflow.class,
         workflowId
     );
 
@@ -550,11 +550,11 @@ public class TemporalWorkflowService {
   /**
    * Query onboarding progress
    */
-  public KYCOnboardingWorkflow.WorkflowProgress queryWorkflowProgress(String workflowId) {
+  public OnboardingWorkflow.WorkflowProgress queryWorkflowProgress(String workflowId) {
     log.info("Querying onboarding progress: {}", workflowId);
 
-    KYCOnboardingWorkflow workflow = workflowClient.newWorkflowStub(
-        KYCOnboardingWorkflow.class,
+    OnboardingWorkflow workflow = workflowClient.newWorkflowStub(
+        OnboardingWorkflow.class,
         workflowId
     );
 
