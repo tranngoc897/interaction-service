@@ -29,6 +29,13 @@ spring:
         jdbc:
           time_zone: UTC
 
+# Camunda REST Client Configuration
+camunda:
+  bpm:
+    client:
+      base-url: http://localhost:8080/engine-rest
+      async-response-timeout: 10000
+
 # Server Configuration
 server:
   port: 8080

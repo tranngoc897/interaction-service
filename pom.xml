@@ -127,6 +127,13 @@
       <version>7.21.0</version>
     </dependency>
 
+    <!-- Camunda REST Client -->
+    <dependency>
+      <groupId>org.camunda.bpm</groupId>
+      <artifactId>camunda-external-task-client</artifactId>
+      <version>7.21.0</version>
+    </dependency>
+
     <!-- Spring Events for Event Bus -->
     <dependency>
       <groupId>org.springframework</groupId>
