@@ -22,15 +22,110 @@
     <!-- Document Upload -->
     <bpmn:userTask id="Task_UploadDocuments" name="Upload Required Documents">
       <bpmn:incoming>Flow_2</bpmn:incoming>
-      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+      <bpmn:outgoing>Flow_2a</bpmn:outgoing>
     </bpmn:userTask>
+
+    <!-- Data Validation -->
+    <bpmn:serviceTask id="Task_DataValidation" name="Validate Applicant Data"
+                      camunda:class="com.ngoctran.interactionservice.delegate.DataValidationDelegate">
+      <bpmn:incoming>Flow_2a</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Data Validation Error Boundary Event -->
+    <bpmn:boundaryEvent id="Error_ValidationFailed" name="Validation Failed" attachedToRef="Task_DataValidation">
+      <bpmn:outgoing>Flow_ValidationError</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Error_DATA_VALIDATION"/>
+    </bpmn:boundaryEvent>
+
+    <!-- OCR Processing -->
+    <bpmn:serviceTask id="Task_OcrProcessing" name="OCR Document Processing"
+                      camunda:class="com.ngoctran.interactionservice.delegate.OcrProcessingDelegate"
+                      camunda:asyncBefore="true"
+                      camunda:asyncAfter="true">
+      <bpmn:extensionElements>
+        <camunda:failedJobRetryTimeCycle>R3/PT5M</camunda:failedJobRetryTimeCycle>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_3a</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- OCR Error Boundary Event -->
+    <bpmn:boundaryEvent id="Error_OcrFailed" name="OCR Failed" attachedToRef="Task_OcrProcessing">
+      <bpmn:outgoing>Flow_OcrError</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Error_OCR_PROCESSING"/>
+    </bpmn:boundaryEvent>
+
+    <!-- Document Verification -->
+    <bpmn:serviceTask id="Task_DocumentVerification" name="Verify Documents"
+                      camunda:class="com.ngoctran.interactionservice.delegate.DocumentVerificationDelegate"
+                      camunda:asyncBefore="true"
+                      camunda:asyncAfter="true">
+      <bpmn:extensionElements>
+        <camunda:failedJobRetryTimeCycle>R3/PT5M</camunda:failedJobRetryTimeCycle>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_3a</bpmn:incoming>
+      <bpmn:outgoing>Flow_3b</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Document Verification Error Boundary Event -->
+    <bpmn:boundaryEvent id="Error_VerificationFailed" name="Verification Failed" attachedToRef="Task_DocumentVerification">
+      <bpmn:outgoing>Flow_VerificationError</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Error_DOCUMENT_VERIFICATION"/>
+    </bpmn:boundaryEvent>
+
+    <!-- Credit Check -->
+    <bpmn:serviceTask id="Task_CreditCheck" name="Credit Score Check"
+                      camunda:class="com.ngoctran.interactionservice.delegate.CreditCheckDelegate"
+                      camunda:asyncBefore="true"
+                      camunda:asyncAfter="true">
+      <bpmn:extensionElements>
+        <camunda:failedJobRetryTimeCycle>R3/PT10M</camunda:failedJobRetryTimeCycle>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_3b</bpmn:incoming>
+      <bpmn:outgoing>Flow_3c</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Credit Check Error Boundary Event -->
+    <bpmn:boundaryEvent id="Error_CreditCheckFailed" name="Credit Check Failed" attachedToRef="Task_CreditCheck">
+      <bpmn:outgoing>Flow_CreditError</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Error_CREDIT_CHECK"/>
+    </bpmn:boundaryEvent>
 
     <!-- Compliance Check -->
     <bpmn:serviceTask id="Task_ComplianceCheck" name="AML/KYC Compliance Check"
-                      camunda:class="com.ngoctran.interactionservice.delegate.ComplianceDelegate">
-      <bpmn:incoming>Flow_3</bpmn:incoming>
+                      camunda:class="com.ngoctran.interactionservice.delegate.ComplianceDelegate"
+                      camunda:asyncBefore="true"
+                      camunda:asyncAfter="true">
+      <bpmn:extensionElements>
+        <camunda:failedJobRetryTimeCycle>R3/PT5M</camunda:failedJobRetryTimeCycle>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_3c</bpmn:incoming>
       <bpmn:outgoing>Flow_4</bpmn:outgoing>
     </bpmn:serviceTask>
+
+    <!-- Compliance Error Boundary Event -->
+    <bpmn:boundaryEvent id="Error_ComplianceFailed" name="Compliance Failed" attachedToRef="Task_ComplianceCheck">
+      <bpmn:outgoing>Flow_ComplianceError</bpmn:outgoing>
+      <bpmn:errorEventDefinition errorRef="Error_COMPLIANCE_CHECK"/>
+    </bpmn:boundaryEvent>
+
+    <!-- Error Handling Task -->
+    <bpmn:serviceTask id="Task_HandleError" name="Handle Processing Error"
+                      camunda:class="com.ngoctran.interactionservice.delegate.ErrorHandlingDelegate">
+      <bpmn:incoming>Flow_ValidationError</bpmn:incoming>
+      <bpmn:incoming>Flow_OcrError</bpmn:incoming>
+      <bpmn:incoming>Flow_VerificationError</bpmn:incoming>
+      <bpmn:incoming>Flow_CreditError</bpmn:incoming>
+      <bpmn:incoming>Flow_ComplianceError</bpmn:incoming>
+      <bpmn:outgoing>Flow_ErrorHandled</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Error End Event -->
+    <bpmn:endEvent id="EndEvent_Error" name="Processing Failed">
+      <bpmn:incoming>Flow_ErrorHandled</bpmn:incoming>
+      <bpmn:errorEventDefinition errorRef="Error_PROCESSING_FAILED"/>
+    </bpmn:endEvent>
 
     <!-- Manual Review Gateway -->
     <bpmn:exclusiveGateway id="Gateway_ManualReview" name="Manual Review Required?">
@@ -59,10 +154,17 @@
       <bpmn:outgoing>Flow_5</bpmn:outgoing>
     </bpmn:serviceTask>
 
+    <!-- Send SMS Notification -->
+    <bpmn:serviceTask id="Task_SendSms" name="Send SMS Notification"
+                      camunda:class="com.ngoctran.interactionservice.delegate.SmsNotificationDelegate">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_5a</bpmn:outgoing>
+    </bpmn:serviceTask>
+
     <!-- Send Welcome Email -->
     <bpmn:serviceTask id="Task_SendWelcomeEmail" name="Send Welcome Email"
                       camunda:class="com.ngoctran.interactionservice.delegate.NotificationDelegate">
-      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:incoming>Flow_5a</bpmn:incoming>
       <bpmn:outgoing>Flow_6</bpmn:outgoing>
     </bpmn:serviceTask>
 
@@ -79,8 +181,22 @@
     <!-- Sequence Flows -->
     <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_CollectPersonalInfo" />
     <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_CollectPersonalInfo" targetRef="Task_UploadDocuments" />
-    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_UploadDocuments" targetRef="Task_ComplianceCheck" />
+    <bpmn:sequenceFlow id="Flow_2a" sourceRef="Task_UploadDocuments" targetRef="Task_DataValidation" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_DataValidation" targetRef="Task_OcrProcessing" />
+    <bpmn:sequenceFlow id="Flow_3a" sourceRef="Task_OcrProcessing" targetRef="Task_DocumentVerification" />
+    <bpmn:sequenceFlow id="Flow_3b" sourceRef="Task_DocumentVerification" targetRef="Task_CreditCheck" />
+    <bpmn:sequenceFlow id="Flow_3c" sourceRef="Task_CreditCheck" targetRef="Task_ComplianceCheck" />
     <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_ComplianceCheck" targetRef="Gateway_ManualReview" />
+    
+    <!-- Error Flows -->
+    <bpmn:sequenceFlow id="Flow_ValidationError" sourceRef="Error_ValidationFailed" targetRef="Task_HandleError" />
+    <bpmn:sequenceFlow id="Flow_OcrError" sourceRef="Error_OcrFailed" targetRef="Task_HandleError" />
+    <bpmn:sequenceFlow id="Flow_VerificationError" sourceRef="Error_VerificationFailed" targetRef="Task_HandleError" />
+    <bpmn:sequenceFlow id="Flow_CreditError" sourceRef="Error_CreditCheckFailed" targetRef="Task_HandleError" />
+    <bpmn:sequenceFlow id="Flow_ComplianceError" sourceRef="Error_ComplianceFailed" targetRef="Task_HandleError" />
+    <bpmn:sequenceFlow id="Flow_ErrorHandled" sourceRef="Task_HandleError" targetRef="EndEvent_Error" />
+    
+    <!-- Gateway Flows -->
     <bpmn:sequenceFlow id="Flow_Approved" sourceRef="Gateway_ManualReview" targetRef="Task_CreateAccount">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${complianceStatus == 'PASSED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
@@ -94,8 +210,12 @@
     <bpmn:sequenceFlow id="Flow_Rejected" sourceRef="Gateway_ReviewDecision" targetRef="EndEvent_Rejected">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${reviewDecision == 'REJECTED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_CreateAccount" targetRef="Task_SendWelcomeEmail" />
-    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_SendWelcomeEmail" targetRef="EndEvent_Approved" />
+    
+    <!-- Success Flows -->
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_CreateAccount" targetRef="Task_SendSms" />
+    <bpmn:sequenceFlow id="Flow_5a" sourceRef="Task_SendSms" targetRef="Task_SendWelcomeEmail" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_SendWelcomeEmail" targetRef="EndEvent_Approved" /></bpmn:parameter>
+<parameter name="StartLine">181
 
   </bpmn:process>
 
