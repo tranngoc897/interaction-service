@@ -1,6 +1,6 @@
 package com.ngoctran.interactionservice.config;
 
-
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
@@ -11,6 +11,9 @@ import org.springframework.web.client.RestTemplate;
  */
 @Configuration
 public class CamundaConfiguration {
+
+    @Value("${camunda.bpm.client.base-url:http://localhost:8080/engine-rest}")
+    private String camundaBaseUrl;
 
     /**
      * RestTemplate for Camunda REST API calls
@@ -25,6 +28,6 @@ public class CamundaConfiguration {
      */
     @Bean
     public String camundaBaseUrl() {
-        return "http://localhost:8080/engine-rest";
+        return camundaBaseUrl;
     }
 }

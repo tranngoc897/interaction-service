@@ -27,7 +27,7 @@ public class DmnDecisionService {
     private final String camundaBaseUrl;
 
     public DmnDecisionService(RestTemplate camundaRestTemplate, ObjectMapper objectMapper,
-                            @Value("${camunda.bpm.client.base-url:http://localhost:8080/engine-rest}") String camundaBaseUrl) {
+        @Value("${camunda.bpm.client.base-url:http://localhost:8080/engine-rest}") String camundaBaseUrl) {
         this.restTemplate = camundaRestTemplate;
         this.objectMapper = objectMapper;
         this.camundaBaseUrl = camundaBaseUrl;

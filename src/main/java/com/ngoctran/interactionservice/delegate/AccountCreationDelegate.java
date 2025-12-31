@@ -2,6 +2,7 @@ package com.ngoctran.interactionservice.delegate;
 
 import com.ngoctran.interactionservice.cases.CaseEntity;
 import com.ngoctran.interactionservice.cases.CaseRepository;
+import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.slf4j.Logger;
@@ -23,9 +24,11 @@ public class AccountCreationDelegate implements JavaDelegate {
     private static final Logger log = LoggerFactory.getLogger(AccountCreationDelegate.class);
 
     private final CaseRepository caseRepository;
+    private final WorkflowEventPublisher eventPublisher;
 
-    public AccountCreationDelegate(CaseRepository caseRepository) {
+    public AccountCreationDelegate(CaseRepository caseRepository, WorkflowEventPublisher eventPublisher) {
         this.caseRepository = caseRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -88,6 +91,11 @@ public class AccountCreationDelegate implements JavaDelegate {
 
             log.info("Account created successfully: accountNumber={}, customerId={}, customer={}",
                     accountNumber, customerId, customerName);
+
+            // Publish case update event
+            eventPublisher.publishCaseUpdateEvent(caseId, "ACCOUNT_CREATION",
+                    Map.of("accountNumber", accountNumber, "customerId", customerId),
+                    Map.of("status", "APPROVED", "action", "ACCOUNT_CREATED"));
 
         } catch (Exception e) {
             log.error("Account creation failed: {}", e.getMessage(), e);

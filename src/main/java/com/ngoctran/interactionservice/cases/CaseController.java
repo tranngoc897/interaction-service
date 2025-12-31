@@ -42,17 +42,6 @@ public class CaseController {
         return ResponseEntity.ok(myCaseService.submitStep(caseId, submission));
     }
 
-    @GetMapping("/{caseId}/tasks")
-    public ResponseEntity<?> getTasks(@PathVariable UUID caseId) {
-        return ResponseEntity.ok(myCaseService.getTasksByCase(caseId));
-    }
-
-    @PostMapping("/{caseId}/cancel")
-    public ResponseEntity<?> cancelCase(@PathVariable UUID caseId) {
-        myCaseService.cancelCase(caseId);
-        return ResponseEntity.ok(Map.of("message", "Case cancelled successfully"));
-    }
-
     @GetMapping("/{caseId}/history")
     public ResponseEntity<?> getHistory(@PathVariable UUID caseId) {
         CaseEntity caseEntity = myCaseService.getCase(caseId);

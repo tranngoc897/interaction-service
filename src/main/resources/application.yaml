@@ -44,3 +44,22 @@ spring.jackson:
   serialization:
     write-dates-as-timestamps: false
   time-zone: UTC
+
+# Kafka Configuration
+  kafka:
+    bootstrap-servers: localhost:29092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: true
+    template:
+      default-topic: workflow-events
+
+camunda.bpm:
+  history-level: full
+  database:
+    schema-update: true
+  job-execution:
+    enabled: true
+    deployment-aware: true

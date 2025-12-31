@@ -1,6 +1,7 @@
 package com.ngoctran.interactionservice.bpmn;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,12 +26,15 @@ public class BpmnProcessService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final WorkflowEventPublisher eventPublisher;
     private final String camundaBaseUrl;
 
     public BpmnProcessService(RestTemplate camundaRestTemplate, ObjectMapper objectMapper,
-                            @Value("${camunda.bpm.client.base-url:http://localhost:8080/engine-rest}") String camundaBaseUrl) {
+            WorkflowEventPublisher eventPublisher,
+            @Value("${camunda.bpm.client.base-url:http://localhost:8080/engine-rest}") String camundaBaseUrl) {
         this.restTemplate = camundaRestTemplate;
         this.objectMapper = objectMapper;
+        this.eventPublisher = eventPublisher;
         this.camundaBaseUrl = camundaBaseUrl;
     }
 
@@ -56,9 +60,18 @@ public class BpmnProcessService {
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
             ResponseEntity<Deployment> response = restTemplate.postForEntity(url, entity, Deployment.class);
+            Deployment body = response.getBody();
 
-            log.info("Successfully deployed process: {}", response.getBody().id);
-            return response.getBody();
+            if (body != null) {
+                log.info("Successfully deployed process: {}", body.id);
+
+                // Publish deployment event
+                eventPublisher.publishWorkflowStateEvent(body.id,
+                        processKey, "NONE", "DEPLOYED",
+                        Map.of("name", processName));
+            }
+
+            return body;
         } catch (Exception e) {
             log.error("Failed to deploy BPMN process: {}", processKey, e);
             throw new RuntimeException("BPMN deployment failed: " + e.getMessage(), e);
@@ -68,7 +81,8 @@ public class BpmnProcessService {
     /**
      * Start a process instance via REST API
      */
-    public ProcessInstance startProcess(String processDefinitionKey, String businessKey, Map<String, Object> variables) {
+    public ProcessInstance startProcess(String processDefinitionKey, String businessKey,
+            Map<String, Object> variables) {
         log.info("Starting process instance: key={}, businessKey={}", processDefinitionKey, businessKey);
 
         try {
@@ -200,6 +214,11 @@ public class BpmnProcessService {
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
             restTemplate.postForEntity(url, entity, String.class);
+
+            // Publish signal event
+            eventPublisher.publishWorkflowStateEvent(processInstanceId, "UNKNOWN",
+                    "RUNNING", "SIGNALED",
+                    Map.of("signalName", signalName, "data", signalData != null ? signalData : Map.of()));
         } catch (Exception e) {
             log.error("Failed to signal process: {}", processInstanceId, e);
             throw new RuntimeException("Signal failed: " + e.getMessage(), e);
@@ -227,6 +246,11 @@ public class BpmnProcessService {
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
             restTemplate.postForEntity(url, entity, String.class);
+
+            // Publish message event
+            eventPublisher.publishWorkflowStateEvent(businessKey, "UNKNOWN",
+                    "RUNNING", "MESSAGE_CORRELATED",
+                    Map.of("messageName", messageName, "data", messageData != null ? messageData : Map.of()));
         } catch (Exception e) {
             log.error("Failed to correlate message: {}", messageName, e);
             throw new RuntimeException("Message correlation failed: " + e.getMessage(), e);
@@ -300,6 +324,10 @@ public class BpmnProcessService {
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
             restTemplate.put(url, entity);
+
+            // Publish suspend event
+            eventPublisher.publishWorkflowStateEvent(processInstanceId, "UNKNOWN",
+                    "RUNNING", "SUSPENDED", Map.of());
         } catch (Exception e) {
             log.error("Failed to suspend process instance: {}", processInstanceId, e);
             throw new RuntimeException("Process suspend failed: " + e.getMessage(), e);
@@ -323,6 +351,10 @@ public class BpmnProcessService {
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
             restTemplate.put(url, entity);
+
+            // Publish activate event
+            eventPublisher.publishWorkflowStateEvent(processInstanceId, "UNKNOWN",
+                    "SUSPENDED", "ACTIVE", Map.of());
         } catch (Exception e) {
             log.error("Failed to activate process instance: {}", processInstanceId, e);
             throw new RuntimeException("Process activate failed: " + e.getMessage(), e);
@@ -348,12 +380,18 @@ public class BpmnProcessService {
      * Helper method to determine variable type for REST API
      */
     private String getVariableType(Object value) {
-        if (value == null) return "Null";
-        if (value instanceof String) return "String";
-        if (value instanceof Integer) return "Integer";
-        if (value instanceof Long) return "Long";
-        if (value instanceof Double) return "Double";
-        if (value instanceof Boolean) return "Boolean";
+        if (value == null)
+            return "Null";
+        if (value instanceof String)
+            return "String";
+        if (value instanceof Integer)
+            return "Integer";
+        if (value instanceof Long)
+            return "Long";
+        if (value instanceof Double)
+            return "Double";
+        if (value instanceof Boolean)
+            return "Boolean";
         return "Object";
     }
 }

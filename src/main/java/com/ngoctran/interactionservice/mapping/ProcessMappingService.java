@@ -3,6 +3,7 @@ package com.ngoctran.interactionservice.mapping;
 import com.ngoctran.interactionservice.mapping.enums.EngineType;
 import com.ngoctran.interactionservice.mapping.enums.ProcessStatus;
 import com.ngoctran.interactionservice.mapping.exception.ProcessMappingNotFoundException;
+import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 public class ProcessMappingService {
 
     private final ProcessMappingRepository processMappingRepo;
+    private final WorkflowEventPublisher eventPublisher;
 
     @Transactional
     public ProcessMappingEntity createProcessMapping(
@@ -70,11 +72,17 @@ public class ProcessMappingService {
         mapping.setStatus(ProcessStatus.RUNNING);
         mapping.setStartedAt(LocalDateTime.now());
 
-        // Note: businessKey and metadata are currently not supported by the existing
-        // table schema
         // and are ignored in this implementation to prevent schema-validation errors.
+        ProcessMappingEntity saved = processMappingRepo.save(mapping);
 
-        return processMappingRepo.save(mapping);
+        // Publish workflow state event
+        eventPublisher.publishWorkflowStateEvent(saved.getProcessInstanceId(),
+                saved.getProcessDefinitionKey(),
+                "NONE",
+                "RUNNING",
+                Map.of("caseId", caseId, "userId", userId));
+
+        return saved;
     }
 
     @Transactional
@@ -83,6 +91,13 @@ public class ProcessMappingService {
                 .orElseThrow(() -> new ProcessMappingNotFoundException(processInstanceId));
         mapping.markCompleted();
         processMappingRepo.save(mapping);
+
+        // Publish workflow state event
+        eventPublisher.publishWorkflowStateEvent(mapping.getProcessInstanceId(),
+                mapping.getProcessDefinitionKey(),
+                "RUNNING",
+                "COMPLETED",
+                Map.of("caseId", mapping.getCaseId()));
     }
 
     @Transactional
@@ -91,6 +106,13 @@ public class ProcessMappingService {
                 .orElseThrow(() -> new ProcessMappingNotFoundException(processInstanceId));
         mapping.markFailed(errorMessage);
         processMappingRepo.save(mapping);
+
+        // Publish workflow state event
+        eventPublisher.publishWorkflowStateEvent(mapping.getProcessInstanceId(),
+                mapping.getProcessDefinitionKey(),
+                "RUNNING",
+                "FAILED",
+                Map.of("caseId", mapping.getCaseId(), "error", errorMessage));
     }
 
     @Transactional
@@ -99,6 +121,13 @@ public class ProcessMappingService {
                 .orElseThrow(() -> new ProcessMappingNotFoundException(processInstanceId));
         mapping.markCancelled();
         processMappingRepo.save(mapping);
+
+        // Publish workflow state event
+        eventPublisher.publishWorkflowStateEvent(mapping.getProcessInstanceId(),
+                mapping.getProcessDefinitionKey(),
+                "RUNNING",
+                "CANCELLED",
+                Map.of("caseId", mapping.getCaseId()));
     }
 
     @Transactional

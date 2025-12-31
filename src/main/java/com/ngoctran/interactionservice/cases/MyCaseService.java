@@ -5,11 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ngoctran.interactionservice.dto.NextStepResponse;
 import com.ngoctran.interactionservice.dto.StepSubmissionDto;
 import com.ngoctran.interactionservice.mapping.ProcessMappingRepository;
-import com.ngoctran.interactionservice.task.TaskRepository;
-import com.ngoctran.interactionservice.task.TaskEntity;
 import com.ngoctran.interactionservice.bpmn.BpmnProcessService;
 import com.ngoctran.interactionservice.compliance.ComplianceService;
 import com.ngoctran.interactionservice.dmn.DmnDecisionService;
+import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -28,22 +27,23 @@ public class MyCaseService {
     private final CaseRepository caseRepo;
     private final ObjectMapper objectMapper;
     private final ProcessMappingRepository processMappingRepo;
-    private final TaskRepository taskRepo;
     private final BpmnProcessService bpmnProcessService;
     private final ComplianceService complianceService;
     private final DmnDecisionService dmnDecisionService;
+    private final WorkflowEventPublisher eventPublisher;
 
     public MyCaseService(CaseRepository caseRepo, ObjectMapper objectMapper,
-            ProcessMappingRepository processMappingRepo, TaskRepository taskRepo,
+            ProcessMappingRepository processMappingRepo,
             BpmnProcessService bpmnProcessService, ComplianceService complianceService,
-            DmnDecisionService dmnDecisionService) {
+            DmnDecisionService dmnDecisionService, WorkflowEventPublisher eventPublisher) {
         this.caseRepo = caseRepo;
         this.objectMapper = objectMapper;
         this.processMappingRepo = processMappingRepo;
-        this.taskRepo = taskRepo;
+
         this.bpmnProcessService = bpmnProcessService;
         this.complianceService = complianceService;
         this.dmnDecisionService = dmnDecisionService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -63,6 +63,13 @@ public class MyCaseService {
 
         caseEntity = caseRepo.save(caseEntity);
         log.info("Created new case with ID: {} for customer: {}", caseEntity.getId(), caseEntity.getCustomerId());
+
+        // Publish case creation event
+        eventPublisher.publishCaseUpdateEvent(caseEntity.getId().toString(),
+                caseEntity.getCaseDefinitionKey(),
+                initialData,
+                Map.of("action", "CREATE"));
+
         return caseEntity.getId();
     }
 
@@ -83,31 +90,6 @@ public class MyCaseService {
         } else {
             return caseRepo.findAll();
         }
-    }
-
-    @Transactional(readOnly = true)
-    public List<TaskEntity> getTasksByCase(UUID caseId) {
-        return taskRepo.findByCaseId(caseId);
-    }
-
-    @Transactional
-    public void cancelCase(UUID caseId) {
-        CaseEntity caseEntity = getCase(caseId);
-        caseEntity.setStatus("CANCELLED");
-
-        // Cancel BPMN process if exists
-        String bpmnProcessId = caseEntity.getBpmnProcessId();
-        if (bpmnProcessId != null) {
-            try {
-                bpmnProcessService.deleteProcessInstance(bpmnProcessId, "Case cancelled");
-                log.info("Cancelled BPMN process {} for case {}", bpmnProcessId, caseId);
-            } catch (Exception e) {
-                log.warn("Failed to cancel BPMN process for case {}: {}", caseId, e.getMessage());
-            }
-        }
-
-        caseRepo.save(caseEntity);
-        log.info("Case {} cancelled", caseId);
     }
 
     @Transactional
@@ -138,6 +120,13 @@ public class MyCaseService {
         handleWorkflowSignals(caseEntity, submission);
 
         caseRepo.save(caseEntity);
+
+        // Publish interaction step event
+        eventPublisher.publishInteractionStepEvent(caseId.toString(),
+                caseEntity.getCaseDefinitionKey(),
+                submission.getStepName(),
+                "SUBMIT",
+                submission.getStepData());
 
         // 5. Determine Response (Next Step context)
         String nextStep = "COMPLETED";
@@ -262,6 +251,13 @@ public class MyCaseService {
         caseEntity.setWorkflowState(toJson(workflowState));
         caseRepo.save(caseEntity);
         log.info("Updated workflow state for case: {}", caseId);
+
+        // Publish workflow state event
+        eventPublisher.publishWorkflowStateEvent(caseId.toString(),
+                "CASE_WORKFLOW",
+                "UPDATING",
+                "UPDATED",
+                workflowState);
     }
 
     /**
@@ -413,6 +409,12 @@ public class MyCaseService {
 
         updateEpicData(caseId, epicData);
         log.info("Added milestone {} to epic {} for case {}", milestoneKey, epicKey, caseId);
+
+        // Publish milestone event
+        eventPublisher.publishMilestoneEvent(caseId.toString(),
+                milestoneKey,
+                "STARTED".equals(status) ? "MILESTONE_STARTED" : "MILESTONE_REACHED",
+                Map.of("epicKey", epicKey, "name", name, "status", status));
     }
 
     /**
@@ -442,6 +444,12 @@ public class MyCaseService {
             epicData.put("epics", epics);
             updateEpicData(caseId, epicData);
             log.info("Completed milestone {} in epic {} for case {}", milestoneKey, epicKey, caseId);
+
+            // Publish milestone event
+            eventPublisher.publishMilestoneEvent(caseId.toString(),
+                    milestoneKey,
+                    "MILESTONE_COMPLETED",
+                    Map.of("epicKey", epicKey, "status", "COMPLETED"));
         }
     }
 
@@ -494,6 +502,13 @@ public class MyCaseService {
 
         updateComplianceStatus(caseId, complianceStatus);
         log.info("Added compliance check {} with status {} for case {}", checkType, status, caseId);
+
+        // Publish compliance event
+        eventPublisher.publishComplianceEvent(caseId.toString(),
+                "UNKNOWN", // applicantId might not be available here directly from call
+                checkType,
+                status,
+                checkResult);
     }
 
     /**
@@ -533,6 +548,13 @@ public class MyCaseService {
             caseRepo.save(caseEntity);
 
             log.info("Started BPMN process {} for case {}", processInstance.id, caseId);
+
+            // Publish workflow state event
+            eventPublisher.publishWorkflowStateEvent(processInstance.id,
+                    processDefinitionKey,
+                    "NONE",
+                    "STARTED",
+                    variables);
         } catch (Exception e) {
             log.error("Failed to start BPMN process for case {}: {}", caseId, e.getMessage());
             throw new RuntimeException("BPMN process start failed: " + e.getMessage(), e);

@@ -2,6 +2,7 @@ package com.ngoctran.interactionservice.delegate;
 
 import com.ngoctran.interactionservice.compliance.ComplianceService;
 import com.ngoctran.interactionservice.dmn.DmnDecisionService;
+import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.slf4j.Logger;
@@ -21,10 +22,13 @@ public class ComplianceCheckDelegate implements JavaDelegate {
 
     private final ComplianceService complianceService;
     private final DmnDecisionService dmnDecisionService;
+    private final WorkflowEventPublisher eventPublisher;
 
-    public ComplianceCheckDelegate(ComplianceService complianceService, DmnDecisionService dmnDecisionService) {
+    public ComplianceCheckDelegate(ComplianceService complianceService, DmnDecisionService dmnDecisionService,
+            WorkflowEventPublisher eventPublisher) {
         this.complianceService = complianceService;
         this.dmnDecisionService = dmnDecisionService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -73,7 +77,15 @@ public class ComplianceCheckDelegate implements JavaDelegate {
             execution.setVariable("sanctionsStatus", sanctionsResult.getStatus());
 
             log.info("Compliance check completed: passed={}, riskLevel={}, aml={}, kyc={}, sanctions={}",
-                    overallPassed, riskLevel, amlResult.getStatus(), kycResult.getStatus(), sanctionsResult.getStatus());
+                    overallPassed, riskLevel, amlResult.getStatus(), kycResult.getStatus(),
+                    sanctionsResult.getStatus());
+
+            // Publish compliance event
+            eventPublisher.publishComplianceEvent(caseId, applicantId, "OVERALL", overallStatus,
+                    Map.of("amlStatus", amlResult.getStatus(),
+                            "kycStatus", kycResult.getStatus(),
+                            "sanctionsStatus", sanctionsResult.getStatus(),
+                            "riskLevel", riskLevel));
 
         } catch (Exception e) {
             log.error("Compliance check failed: {}", e.getMessage(), e);

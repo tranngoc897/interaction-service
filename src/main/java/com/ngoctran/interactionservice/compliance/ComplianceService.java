@@ -1,6 +1,7 @@
 package com.ngoctran.interactionservice.compliance;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,12 +25,14 @@ public class ComplianceService {
 
     private final ComplianceCheckRepository complianceCheckRepository;
     private final ObjectMapper objectMapper;
+    private final WorkflowEventPublisher eventPublisher;
 
     /**
      * Perform AML screening
      */
     @Transactional
-    public ComplianceCheckEntity performAmlScreening(String caseId, String applicantId, Map<String, Object> applicantData) {
+    public ComplianceCheckEntity performAmlScreening(String caseId, String applicantId,
+            Map<String, Object> applicantData) {
         log.info("Performing AML screening: caseId={}, applicantId={}", caseId, applicantId);
 
         try {
@@ -58,7 +61,12 @@ public class ComplianceService {
                 check.setManualReviewRequired(Boolean.TRUE);
             }
 
-            return complianceCheckRepository.save(check);
+            ComplianceCheckEntity saved = complianceCheckRepository.save(check);
+
+            // Publish compliance event
+            eventPublisher.publishComplianceEvent(caseId, applicantId, "AML", saved.getStatus(), amlResult);
+
+            return saved;
 
         } catch (Exception e) {
             log.error("AML screening failed: {}", e.getMessage(), e);
@@ -80,7 +88,8 @@ public class ComplianceService {
      * Perform KYC verification
      */
     @Transactional
-    public ComplianceCheckEntity performKycVerification(String caseId, String applicantId, Map<String, Object> verificationData) {
+    public ComplianceCheckEntity performKycVerification(String caseId, String applicantId,
+            Map<String, Object> verificationData) {
         log.info("Performing KYC verification: caseId={}, applicantId={}", caseId, applicantId);
 
         try {
@@ -103,7 +112,12 @@ public class ComplianceService {
             check.setManualReviewRequired(!passed);
             check.setAuditTrail(createAuditEntry("KYC_CHECK_COMPLETED", "System", "KYC verification completed"));
 
-            return complianceCheckRepository.save(check);
+            ComplianceCheckEntity saved = complianceCheckRepository.save(check);
+
+            // Publish compliance event
+            eventPublisher.publishComplianceEvent(caseId, applicantId, "KYC", saved.getStatus(), kycResult);
+
+            return saved;
 
         } catch (Exception e) {
             log.error("KYC verification failed: {}", e.getMessage(), e);
@@ -124,7 +138,8 @@ public class ComplianceService {
      * Perform sanctions screening
      */
     @Transactional
-    public ComplianceCheckEntity performSanctionsScreening(String caseId, String applicantId, Map<String, Object> applicantData) {
+    public ComplianceCheckEntity performSanctionsScreening(String caseId, String applicantId,
+            Map<String, Object> applicantData) {
         log.info("Performing sanctions screening: caseId={}, applicantId={}", caseId, applicantId);
 
         try {
@@ -145,9 +160,15 @@ public class ComplianceService {
             check.setCheckResult(checkResultJson);
             check.setRiskLevel(hasHits ? "HIGH" : "LOW");
             check.setManualReviewRequired(hasHits);
-            check.setAuditTrail(createAuditEntry("SANCTIONS_CHECK_COMPLETED", "System", "Sanctions screening completed"));
+            check.setAuditTrail(
+                    createAuditEntry("SANCTIONS_CHECK_COMPLETED", "System", "Sanctions screening completed"));
 
-            return complianceCheckRepository.save(check);
+            ComplianceCheckEntity saved = complianceCheckRepository.save(check);
+
+            // Publish compliance event
+            eventPublisher.publishComplianceEvent(caseId, applicantId, "SANCTIONS", saved.getStatus(), sanctionsResult);
+
+            return saved;
 
         } catch (Exception e) {
             log.error("Sanctions screening failed: {}", e.getMessage(), e);
@@ -194,7 +215,14 @@ public class ComplianceService {
                 "Decision: " + decision + ". Comments: " + comments);
         check.setAuditTrail(check.getAuditTrail() + "," + auditEntry);
 
-        return complianceCheckRepository.save(check);
+        ComplianceCheckEntity saved = complianceCheckRepository.save(check);
+
+        // Publish compliance event
+        eventPublisher.publishComplianceEvent(saved.getCaseId(), saved.getApplicantId(), "MANUAL_REVIEW",
+                saved.getStatus(),
+                Map.of("decision", decision, "reviewer", reviewer, "comments", comments));
+
+        return saved;
     }
 
     /**
@@ -225,8 +253,8 @@ public class ComplianceService {
         List<ComplianceCheckEntity> checks = complianceCheckRepository
                 .findByCaseIdAndApplicantId(caseId, applicantId);
 
-        return checks.stream().allMatch(check ->
-                "PASSED".equals(check.getStatus()) && !Boolean.TRUE.equals(check.getManualReviewRequired()));
+        return checks.stream().allMatch(
+                check -> "PASSED".equals(check.getStatus()) && !Boolean.TRUE.equals(check.getManualReviewRequired()));
     }
 
     /**
@@ -255,8 +283,7 @@ public class ComplianceService {
                 "failed", failed,
                 "pending", pending,
                 "reviewNeeded", reviewNeeded,
-                "overallStatus", overallStatus
-        );
+                "overallStatus", overallStatus);
     }
 
     /**
@@ -287,8 +314,7 @@ public class ComplianceService {
                 "amlHits", List.of(),
                 "riskScore", Math.random() * 100,
                 "checkedAt", LocalDateTime.now(),
-                "hasMatches", false
-        );
+                "hasMatches", false);
     }
 
     private Map<String, Object> performExternalKycCheck(Map<String, Object> verificationData) {
@@ -298,8 +324,7 @@ public class ComplianceService {
                 "verified", Math.random() > 0.1, // 90% pass rate
                 "confidence", Math.random() * 100,
                 "biometricMatch", Math.random() > 0.05,
-                "documentValid", Math.random() > 0.05
-        );
+                "documentValid", Math.random() > 0.05);
     }
 
     private Map<String, Object> checkSanctionsLists(Map<String, Object> applicantData) {
@@ -308,14 +333,15 @@ public class ComplianceService {
         return Map.of(
                 "hasSanctionsHits", Math.random() > 0.95, // 5% hit rate
                 "sanctionsLists", List.of("OFAC", "EU_SANCTIONS"),
-                "checkedAt", LocalDateTime.now()
-        );
+                "checkedAt", LocalDateTime.now());
     }
 
     private String determineRiskLevel(Map<String, Object> amlResult) {
         double riskScore = ((Number) amlResult.getOrDefault("riskScore", 0)).doubleValue();
-        if (riskScore > 70) return "HIGH";
-        if (riskScore > 30) return "MEDIUM";
+        if (riskScore > 70)
+            return "HIGH";
+        if (riskScore > 30)
+            return "MEDIUM";
         return "LOW";
     }
 
@@ -330,8 +356,7 @@ public class ComplianceService {
                     "timestamp", LocalDateTime.now(),
                     "action", action,
                     "user", user,
-                    "details", details
-            );
+                    "details", details);
             return objectMapper.writeValueAsString(auditEntry);
         } catch (Exception e) {
             log.warn("Failed to create audit entry", e);
