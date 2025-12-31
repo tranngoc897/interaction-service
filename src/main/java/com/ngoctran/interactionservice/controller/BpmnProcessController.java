@@ -1,5 +1,6 @@
-package com.ngoctran.interactionservice.bpmn;
+package com.ngoctran.interactionservice.controller;
 
+import com.ngoctran.interactionservice.bpmn.BpmnProcessService;
 import org.camunda.bpm.engine.repository.Deployment;
 import org.camunda.bpm.engine.repository.ProcessDefinition;
 import org.camunda.bpm.engine.runtime.ProcessInstance;
