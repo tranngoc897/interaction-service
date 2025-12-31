@@ -47,4 +47,17 @@ public class CaseController {
         CaseEntity caseEntity = myCaseService.getCase(caseId);
         return ResponseEntity.ok(caseEntity.getAuditTrail());
     }
+
+    @GetMapping("/definitions/{key}/schema")
+    public ResponseEntity<String> getCaseSchema(@PathVariable String key) {
+        return ResponseEntity.ok(myCaseService.getCaseSchema(key));
+    }
+
+    @PostMapping("/migrate")
+    public ResponseEntity<?> migrateCases(@RequestBody Map<String, Object> request) {
+        String sourceDefId = (String) request.get("sourceDefId");
+        String targetDefId = (String) request.get("targetDefId");
+        List<String> caseIds = (List<String>) request.get("caseIds");
+        return ResponseEntity.ok(myCaseService.migrateBpmVersion(sourceDefId, targetDefId, caseIds));
+    }
 }

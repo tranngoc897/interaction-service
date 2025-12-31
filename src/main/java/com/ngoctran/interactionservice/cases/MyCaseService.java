@@ -31,11 +31,13 @@ public class MyCaseService {
     private final ComplianceService complianceService;
     private final DmnDecisionService dmnDecisionService;
     private final WorkflowEventPublisher eventPublisher;
+    private final CaseDefinitionRepository caseDefinitionRepo;
 
     public MyCaseService(CaseRepository caseRepo, ObjectMapper objectMapper,
             ProcessMappingRepository processMappingRepo,
             BpmnProcessService bpmnProcessService, ComplianceService complianceService,
-            DmnDecisionService dmnDecisionService, WorkflowEventPublisher eventPublisher) {
+            DmnDecisionService dmnDecisionService, WorkflowEventPublisher eventPublisher,
+            CaseDefinitionRepository caseDefinitionRepo) {
         this.caseRepo = caseRepo;
         this.objectMapper = objectMapper;
         this.processMappingRepo = processMappingRepo;
@@ -44,6 +46,7 @@ public class MyCaseService {
         this.complianceService = complianceService;
         this.dmnDecisionService = dmnDecisionService;
         this.eventPublisher = eventPublisher;
+        this.caseDefinitionRepo = caseDefinitionRepo;
     }
 
     @Transactional
@@ -825,5 +828,46 @@ public class MyCaseService {
     private String determineOverallComplianceStatus(Object amlResult, Object kycResult, Object sanctionsResult) {
         // Simple logic - in real implementation, use proper status checking
         return "PASSED"; // Default to passed for now
+    }
+
+    /**
+     * Get the JSON Schema for a specific case definition for dynamic forms
+     */
+    public String getCaseSchema(String definitionKey) {
+        log.info("Getting schema for case definition: {}", definitionKey);
+        return caseDefinitionRepo.findById(definitionKey)
+                .map(CaseDefinitionEntity::getCaseSchema)
+                .orElseThrow(() -> new RuntimeException("Case definition not found: " + definitionKey));
+    }
+
+    /**
+     * Migrate process instances from an old BPMN version to a new one
+     */
+    @Transactional
+    public Map<String, Object> migrateBpmVersion(String sourceDefId, String targetDefId, List<String> caseIds) {
+        log.info("Migrating BPMN version for {} cases: {} -> {}", caseIds.size(), sourceDefId, targetDefId);
+
+        List<String> processInstanceIds = new ArrayList<>();
+        for (String caseId : caseIds) {
+            caseRepo.findById(UUID.fromString(caseId)).ifPresent(entity -> {
+                if (entity.getWorkflowInstanceId() != null) {
+                    processInstanceIds.add(entity.getWorkflowInstanceId());
+                }
+            });
+        }
+
+        if (processInstanceIds.isEmpty()) {
+            return Map.of("status", "SKIPPED", "message", "No active process instances found for provided cases");
+        }
+
+        // 1. Generate plan
+        Map<String, Object> plan = bpmnProcessService.generateMigrationPlan(sourceDefId, targetDefId);
+
+        // 2. Execute plan
+        bpmnProcessService.executeMigrationPlan(plan, processInstanceIds);
+
+        // 3. Update local mapping if needed (optional)
+
+        return Map.of("status", "SUCCESS", "migratedInstances", processInstanceIds.size(), "targetDefId", targetDefId);
     }
 }

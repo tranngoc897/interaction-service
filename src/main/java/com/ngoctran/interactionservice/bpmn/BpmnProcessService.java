@@ -15,7 +15,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * BPMN Process Service - Manages BPMN process deployment and execution via REST API
+ * BPMN Process Service - Manages BPMN process deployment and execution via REST
+ * API
  * Connects to external Camunda server via HTTP REST calls
  * Similar to ABB onboarding's BPMN orchestration
  */
@@ -373,6 +374,59 @@ public class BpmnProcessService {
         } catch (Exception e) {
             log.warn("Failed to get process history for business key: {}", businessKey, e);
             return List.of();
+        }
+    }
+
+    /**
+     * Generate a migration plan between two process definitions
+     */
+    public Map<String, Object> generateMigrationPlan(String sourceDefinitionId, String targetDefinitionId) {
+        log.info("Generating migration plan: source={}, target={}", sourceDefinitionId, targetDefinitionId);
+        try {
+            String url = camundaBaseUrl + "/migration/generate";
+            Map<String, Object> request = new HashMap<>();
+            request.put("sourceProcessDefinitionId", sourceDefinitionId);
+            request.put("targetProcessDefinitionId", targetDefinitionId);
+            request.put("updateEventTriggers", true);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("Failed to generate migration plan", e);
+            throw new RuntimeException("Migration plan generation failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Execute a migration plan for specific process instances
+     */
+    public void executeMigrationPlan(Map<String, Object> migrationPlan, List<String> processInstanceIds) {
+        log.info("Executing migration plan for {} instances", processInstanceIds.size());
+        try {
+            String url = camundaBaseUrl + "/migration/execute";
+            Map<String, Object> request = new HashMap<>();
+            request.put("migrationPlan", migrationPlan);
+            request.put("processInstanceIds", processInstanceIds);
+            request.put("skipCustomListeners", true);
+            request.put("skipIoMappings", true);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            restTemplate.postForEntity(url, entity, String.class);
+
+            eventPublisher.publishWorkflowStateEvent("SYSTEM", "BPMN_MIGRATION",
+                    "RUNNING", "MIGRATED",
+                    Map.of("instanceCount", processInstanceIds.size(), "target",
+                            migrationPlan.get("targetProcessDefinitionId")));
+        } catch (Exception e) {
+            log.error("Failed to execute migration plan", e);
+            throw new RuntimeException("Migration execution failed: " + e.getMessage());
         }
     }
 
