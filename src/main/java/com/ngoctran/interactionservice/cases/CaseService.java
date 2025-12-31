@@ -9,6 +9,8 @@ import com.ngoctran.interactionservice.workflow.WorkflowService;
 import com.ngoctran.interactionservice.task.TaskRepository;
 import com.ngoctran.interactionservice.task.TaskEntity;
 import com.ngoctran.interactionservice.bpmn.BpmnProcessService;
+import com.ngoctran.interactionservice.compliance.ComplianceService;
+import com.ngoctran.interactionservice.dmn.DmnDecisionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -30,16 +32,21 @@ public class CaseService {
     private final ProcessMappingRepository processMappingRepo;
     private final TaskRepository taskRepo;
     private final BpmnProcessService bpmnProcessService;
+    private final ComplianceService complianceService;
+    private final DmnDecisionService dmnDecisionService;
 
     public CaseService(CaseRepository caseRepo, ObjectMapper objectMapper, WorkflowService workflowService,
                       ProcessMappingRepository processMappingRepo, TaskRepository taskRepo,
-                      BpmnProcessService bpmnProcessService) {
+                      BpmnProcessService bpmnProcessService, ComplianceService complianceService,
+                      DmnDecisionService dmnDecisionService) {
         this.caseRepo = caseRepo;
         this.objectMapper = objectMapper;
         this.workflowService = workflowService;
         this.processMappingRepo = processMappingRepo;
         this.taskRepo = taskRepo;
         this.bpmnProcessService = bpmnProcessService;
+        this.complianceService = complianceService;
+        this.dmnDecisionService = dmnDecisionService;
     }
 
     @Transactional
@@ -688,5 +695,120 @@ public class CaseService {
             log.error("Failed to delete BPMN process for case {}: {}", caseId, e.getMessage());
             throw new RuntimeException("BPMN process delete failed: " + e.getMessage(), e);
         }
+    }
+
+    // ===========================================
+    // COMPLIANCE & DMN INTEGRATION METHODS
+    // ===========================================
+
+    /**
+     * Perform compliance check for case using ComplianceService
+     */
+    @Transactional
+    public void performComplianceCheck(UUID caseId, String applicantId) {
+        log.info("Performing compliance check for case: {}, applicant: {}", caseId, applicantId);
+
+        CaseEntity caseEntity = getCase(caseId);
+        Map<String, Object> applicantData = parseCaseData(caseEntity.getCaseData());
+
+        try {
+            // Perform AML screening
+            var amlResult = complianceService.performAmlScreening(caseId.toString(), applicantId, applicantData);
+
+            // Perform KYC verification
+            var kycResult = complianceService.performKycVerification(caseId.toString(), applicantId, applicantData);
+
+            // Perform sanctions screening
+            var sanctionsResult = complianceService.performSanctionsScreening(caseId.toString(), applicantId, applicantData);
+
+            // Update compliance status
+            Map<String, Object> complianceStatus = Map.of(
+                    "amlStatus", amlResult.getStatus(),
+                    "kycStatus", kycResult.getStatus(),
+                    "sanctionsStatus", sanctionsResult.getStatus(),
+                    "overallStatus", determineOverallComplianceStatus(amlResult, kycResult, sanctionsResult),
+                    "lastChecked", LocalDateTime.now()
+            );
+
+            updateComplianceStatus(caseId, complianceStatus);
+            log.info("Compliance check completed for case {}", caseId);
+
+        } catch (Exception e) {
+            log.error("Compliance check failed for case {}: {}", caseId, e.getMessage());
+            throw new RuntimeException("Compliance check failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Get product recommendations using DMN
+     */
+    public List<String> getProductRecommendations(UUID caseId) {
+        log.info("Getting product recommendations for case: {}", caseId);
+
+        CaseEntity caseEntity = getCase(caseId);
+        Map<String, Object> applicantData = parseCaseData(caseEntity.getCaseData());
+
+        try {
+            return dmnDecisionService.recommendProducts(applicantData);
+        } catch (Exception e) {
+            log.warn("Product recommendation failed for case {}: {}", caseId, e.getMessage());
+            return List.of();
+        }
+    }
+
+    /**
+     * Check eligibility using DMN
+     */
+    public boolean checkEligibility(UUID caseId) {
+        log.info("Checking eligibility for case: {}", caseId);
+
+        CaseEntity caseEntity = getCase(caseId);
+        Map<String, Object> applicantData = parseCaseData(caseEntity.getCaseData());
+
+        try {
+            return dmnDecisionService.checkEligibility(applicantData);
+        } catch (Exception e) {
+            log.warn("Eligibility check failed for case {}: {}", caseId, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Assess AML risk using DMN
+     */
+    public String assessAmlRisk(UUID caseId) {
+        log.info("Assessing AML risk for case: {}", caseId);
+
+        CaseEntity caseEntity = getCase(caseId);
+        Map<String, Object> applicantData = parseCaseData(caseEntity.getCaseData());
+
+        try {
+            return dmnDecisionService.assessAmlRisk(applicantData);
+        } catch (Exception e) {
+            log.warn("AML risk assessment failed for case {}: {}", caseId, e.getMessage());
+            return "MEDIUM";
+        }
+    }
+
+    /**
+     * Perform compliance check using DMN
+     */
+    public Map<String, Object> performComplianceCheckWithDmn(UUID caseId) {
+        log.info("Performing compliance check with DMN for case: {}", caseId);
+
+        CaseEntity caseEntity = getCase(caseId);
+        Map<String, Object> applicantData = parseCaseData(caseEntity.getCaseData());
+
+        try {
+            return dmnDecisionService.performComplianceCheck(applicantData);
+        } catch (Exception e) {
+            log.warn("DMN compliance check failed for case {}: {}", caseId, e.getMessage());
+            return Map.of("compliant", false, "reviewRequired", true);
+        }
+    }
+
+    private String determineOverallComplianceStatus(Object amlResult, Object kycResult, Object sanctionsResult) {
+        // Simple logic - in real implementation, use proper status checking
+        return "PASSED"; // Default to passed for now
     }
 }

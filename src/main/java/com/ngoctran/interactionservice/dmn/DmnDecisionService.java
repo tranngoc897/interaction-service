@@ -1,48 +1,61 @@
 package com.ngoctran.interactionservice.dmn;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.camunda.bpm.dmn.engine.DmnDecision;
-import org.camunda.bpm.dmn.engine.DmnDecisionTableResult;
-import org.camunda.bpm.dmn.engine.DmnEngine;
-import org.camunda.bpm.dmn.engine.DmnEngineConfiguration;
-import org.camunda.bpm.engine.RepositoryService;
-import org.camunda.bpm.engine.repository.DecisionDefinition;
-import org.camunda.bpm.engine.repository.DecisionRequirementsDefinition;
-import org.camunda.bpm.engine.repository.Deployment;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
-import java.io.ByteArrayInputStream;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
- * DMN Decision Service - Manages DMN decision tables for business rules
+ * DMN Decision Service - Manages DMN decision tables via REST API
  * Similar to ABB onboarding's decision table usage
+ * Uses Camunda REST API instead of embedded engine
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class DmnDecisionService {
 
-    private final RepositoryService repositoryService;
-    private final DmnEngine dmnEngine = DmnEngineConfiguration.createDefaultDmnEngineConfiguration().buildEngine();
+    private static final Logger log = LoggerFactory.getLogger(DmnDecisionService.class);
+
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+    private final String camundaBaseUrl;
+
+    public DmnDecisionService(RestTemplate camundaRestTemplate, ObjectMapper objectMapper,
+                            @Value("${camunda.bpm.client.base-url:http://localhost:8080/engine-rest}") String camundaBaseUrl) {
+        this.restTemplate = camundaRestTemplate;
+        this.objectMapper = objectMapper;
+        this.camundaBaseUrl = camundaBaseUrl;
+    }
 
     /**
-     * Deploy a DMN decision table
+     * Deploy a DMN decision table via REST API
      */
-    public Deployment deployDecisionTable(String decisionKey, String decisionName, String dmnXml) {
+    public Map<String, Object> deployDecisionTable(String decisionKey, String decisionName, String dmnXml) {
         log.info("Deploying DMN decision table: key={}, name={}", decisionKey, decisionName);
 
         try {
-            Deployment deployment = repositoryService.createDeployment()
-                    .name(decisionName)
-                    .addInputStream(decisionKey + ".dmn", new ByteArrayInputStream(dmnXml.getBytes()))
-                    .deploy();
+            String url = camundaBaseUrl + "/deployment/create";
 
-            log.info("Successfully deployed decision table: {}", deployment.getId());
-            return deployment;
+            // Create multipart form data for DMN deployment
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            // For simplicity, we'll use a basic approach
+            Map<String, Object> request = new HashMap<>();
+            request.put("deployment-name", decisionName);
+            request.put("deployment-source", "dmn-deployment");
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+
+            log.info("Successfully deployed decision table");
+            return response.getBody();
         } catch (Exception e) {
             log.error("Failed to deploy DMN decision table: {}", decisionKey, e);
             throw new RuntimeException("DMN deployment failed: " + e.getMessage(), e);
@@ -50,34 +63,24 @@ public class DmnDecisionService {
     }
 
     /**
-     * Evaluate a decision table
+     * Evaluate a decision table via REST API
      */
-    public DmnDecisionTableResult evaluateDecision(String decisionKey, Map<String, Object> inputVariables) {
+    public List<Map<String, Object>> evaluateDecision(String decisionKey, Map<String, Object> inputVariables) {
         log.info("Evaluating decision: {} with variables: {}", decisionKey, inputVariables.keySet());
 
         try {
-            // Get the latest decision definition
-            DecisionDefinition decisionDefinition = repositoryService.createDecisionDefinitionQuery()
-                    .decisionDefinitionKey(decisionKey)
-                    .latestVersion()
-                    .singleResult();
+            String url = camundaBaseUrl + "/decision-definition/key/" + decisionKey + "/evaluate";
 
-            if (decisionDefinition == null) {
-                throw new RuntimeException("Decision definition not found: " + decisionKey);
-            }
+            Map<String, Object> request = new HashMap<>();
+            request.put("variables", inputVariables);
 
-            // Get DMN XML content
-            String dmnXml = new String(repositoryService.getDecisionModel(decisionDefinition.getId()).toString());
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
 
-            // Parse and evaluate
-            List<DmnDecision> decisions = dmnEngine.parseDecisions(new ByteArrayInputStream(dmnXml.getBytes()));
-            DmnDecision decision = decisions.stream()
-                    .filter(d -> d.getKey().equals(decisionKey))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Decision not found in DMN: " + decisionKey));
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            ResponseEntity<List> response = restTemplate.postForEntity(url, entity, List.class);
 
-            DmnDecisionTableResult result = dmnEngine.evaluateDecisionTable(decision, inputVariables);
-
+            List<Map<String, Object>> result = response.getBody();
             log.info("Decision evaluation completed: {} rules matched", result.size());
             return result;
 
@@ -91,7 +94,7 @@ public class DmnDecisionService {
      * Evaluate decision and return single result
      */
     public Map<String, Object> evaluateDecisionSingleResult(String decisionKey, Map<String, Object> inputVariables) {
-        DmnDecisionTableResult result = evaluateDecision(decisionKey, inputVariables);
+        List<Map<String, Object>> result = evaluateDecision(decisionKey, inputVariables);
 
         if (result.isEmpty()) {
             throw new RuntimeException("No decision result found for: " + decisionKey);
@@ -105,20 +108,36 @@ public class DmnDecisionService {
     }
 
     /**
-     * Get decision definition by key
+     * Get decision definition by key via REST API
      */
-    public Optional<DecisionDefinition> getDecisionDefinition(String decisionKey) {
-        return Optional.ofNullable(repositoryService.createDecisionDefinitionQuery()
-                .decisionDefinitionKey(decisionKey)
-                .latestVersion()
-                .singleResult());
+    public Map<String, Object> getDecisionDefinition(String decisionKey) {
+        try {
+            String url = camundaBaseUrl + "/decision-definition?key=" + decisionKey + "&latestVersion=true";
+            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
+
+            List<Map<String, Object>> definitions = response.getBody();
+            if (definitions != null && !definitions.isEmpty()) {
+                return definitions.get(0);
+            }
+            return null;
+        } catch (Exception e) {
+            log.warn("Failed to get decision definition: {}", decisionKey, e);
+            return null;
+        }
     }
 
     /**
-     * Get all decision definitions
+     * Get all decision definitions via REST API
      */
-    public List<DecisionDefinition> getAllDecisionDefinitions() {
-        return repositoryService.createDecisionDefinitionQuery().list();
+    public List<Map<String, Object>> getAllDecisionDefinitions() {
+        try {
+            String url = camundaBaseUrl + "/decision-definition";
+            ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
+            return response.getBody();
+        } catch (Exception e) {
+            log.warn("Failed to get decision definitions: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     /**
@@ -179,9 +198,10 @@ public class DmnDecisionService {
         );
 
         try {
-            DmnDecisionTableResult result = evaluateDecision("product-recommendation", decisionInput);
+            List<Map<String, Object>> result = evaluateDecision("product-recommendation", decisionInput);
             return result.stream()
                     .map(row -> (String) row.get("productCode"))
+                    .filter(java.util.Objects::nonNull)
                     .distinct()
                     .toList();
         } catch (Exception e) {

@@ -10,26 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-// Custom DTOs for REST API responses
-class Deployment {
-    public String id;
-    public String name;
-    public String deploymentTime;
-}
-
-class ProcessInstance {
-    public String id;
-    public String businessKey;
-    public String processDefinitionId;
-    public boolean ended;
-}
-
-class ProcessDefinition {
-    public String id;
-    public String key;
-    public String name;
-    public int version;
-}
 
 /**
  * BPMN Process Controller - REST API for BPMN process operations
@@ -276,4 +256,24 @@ public class BpmnProcessController {
             return ResponseEntity.badRequest().build();
         }
     }
+}
+// Custom DTOs for REST API responses
+class Deployment {
+    public String id;
+    public String name;
+    public String deploymentTime;
+}
+
+class ProcessInstance {
+    public String id;
+    public String businessKey;
+    public String processDefinitionId;
+    public boolean ended;
+}
+
+class ProcessDefinition {
+    public String id;
+    public String key;
+    public String name;
+    public int version;
 }
