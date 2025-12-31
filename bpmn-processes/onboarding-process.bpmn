@@ -4,8 +4,15 @@
                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
                   xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
                   xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   id="Definitions_1"
                   targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:error id="Error_DATA_VALIDATION" name="Data Validation Error" errorCode="DATA_VALIDATION_ERROR" />
+  <bpmn:error id="Error_OCR_PROCESSING" name="OCR Processing Error" errorCode="OCR_PROCESSING_ERROR" />
+  <bpmn:error id="Error_DOCUMENT_VERIFICATION" name="Document Verification Error" errorCode="DOCUMENT_VERIFICATION_ERROR" />
+  <bpmn:error id="Error_CREDIT_CHECK" name="Credit Check Error" errorCode="CREDIT_CHECK_ERROR" />
+  <bpmn:error id="Error_COMPLIANCE_CHECK" name="Compliance Check Error" errorCode="COMPLIANCE_CHECK_ERROR" />
+  <bpmn:error id="Error_PROCESSING_FAILED" name="Processing Failed" errorCode="PROCESSING_FAILED" />
   <bpmn:process id="onboarding-process" name="Customer Onboarding Process" isExecutable="true">
 
     <!-- Start Event -->
@@ -143,7 +150,7 @@
     <!-- Review Decision Gateway -->
     <bpmn:exclusiveGateway id="Gateway_ReviewDecision" name="Review Decision">
       <bpmn:incoming>Flow_ReviewDecision</bpmn:incoming>
-      <bpmn:outgoing>Flow_Approved</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Approved_Review</bpmn:outgoing>
       <bpmn:outgoing>Flow_Rejected</bpmn:outgoing>
     </bpmn:exclusiveGateway>
 
@@ -151,6 +158,7 @@
     <bpmn:serviceTask id="Task_CreateAccount" name="Create Customer Account"
                       camunda:class="com.ngoctran.interactionservice.delegate.AccountCreationDelegate">
       <bpmn:incoming>Flow_Approved</bpmn:incoming>
+      <bpmn:incoming>Flow_Approved_Review</bpmn:incoming>
       <bpmn:outgoing>Flow_5</bpmn:outgoing>
     </bpmn:serviceTask>
 
@@ -204,7 +212,7 @@
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${complianceStatus == 'REVIEW_NEEDED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_ReviewDecision" sourceRef="Task_ManualReview" targetRef="Gateway_ReviewDecision" />
-    <bpmn:sequenceFlow id="Flow_Approved" sourceRef="Gateway_ReviewDecision" targetRef="Task_CreateAccount">
+    <bpmn:sequenceFlow id="Flow_Approved_Review" sourceRef="Gateway_ReviewDecision" targetRef="Task_CreateAccount">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${reviewDecision == 'APPROVED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_Rejected" sourceRef="Gateway_ReviewDecision" targetRef="EndEvent_Rejected">
@@ -214,14 +222,176 @@
     <!-- Success Flows -->
     <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_CreateAccount" targetRef="Task_SendSms" />
     <bpmn:sequenceFlow id="Flow_5a" sourceRef="Task_SendSms" targetRef="Task_SendWelcomeEmail" />
-    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_SendWelcomeEmail" targetRef="EndEvent_Approved" /></bpmn:parameter>
-<parameter name="StartLine">181
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_SendWelcomeEmail" targetRef="EndEvent_Approved" />
 
   </bpmn:process>
 
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="onboarding-process">
-      <!-- BPMN Diagram elements would go here -->
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
+        <dc:Bounds x="179" y="159" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CollectPersonalInfo_di" bpmnElement="Task_CollectPersonalInfo">
+        <dc:Bounds x="270" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_UploadDocuments_di" bpmnElement="Task_UploadDocuments">
+        <dc:Bounds x="430" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DataValidation_di" bpmnElement="Task_DataValidation">
+        <dc:Bounds x="590" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_OcrProcessing_di" bpmnElement="Task_OcrProcessing">
+        <dc:Bounds x="750" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DocumentVerification_di" bpmnElement="Task_DocumentVerification">
+        <dc:Bounds x="910" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CreditCheck_di" bpmnElement="Task_CreditCheck">
+        <dc:Bounds x="1070" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ComplianceCheck_di" bpmnElement="Task_ComplianceCheck">
+        <dc:Bounds x="1230" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ManualReview_di" bpmnElement="Gateway_ManualReview" isMarkerVisible="true">
+        <dc:Bounds x="1385" y="152" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ManualReview_di" bpmnElement="Task_ManualReview">
+        <dc:Bounds x="1490" y="250" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ReviewDecision_di" bpmnElement="Gateway_ReviewDecision" isMarkerVisible="true">
+        <dc:Bounds x="1645" y="265" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CreateAccount_di" bpmnElement="Task_CreateAccount">
+        <dc:Bounds x="1750" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SendSms_di" bpmnElement="Task_SendSms">
+        <dc:Bounds x="1910" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SendWelcomeEmail_di" bpmnElement="Task_SendWelcomeEmail">
+        <dc:Bounds x="2070" y="137" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Approved_di" bpmnElement="EndEvent_Approved">
+        <dc:Bounds x="2232" y="159" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Rejected_di" bpmnElement="EndEvent_Rejected">
+        <dc:Bounds x="1782" y="382" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_HandleError_di" bpmnElement="Task_HandleError">
+        <dc:Bounds x="910" y="440" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Error_di" bpmnElement="EndEvent_Error">
+        <dc:Bounds x="1072" y="462" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Error_ValidationFailed_di" bpmnElement="Error_ValidationFailed">
+        <dc:Bounds x="622" y="199" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Error_OcrFailed_di" bpmnElement="Error_OcrFailed">
+        <dc:Bounds x="782" y="199" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Error_VerificationFailed_di" bpmnElement="Error_VerificationFailed">
+        <dc:Bounds x="942" y="199" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Error_CreditCheckFailed_di" bpmnElement="Error_CreditCheckFailed">
+        <dc:Bounds x="1102" y="199" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Error_ComplianceFailed_di" bpmnElement="Error_ComplianceFailed">
+        <dc:Bounds x="1262" y="199" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="215" y="177" />
+        <di:waypoint x="270" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="370" y="177" />
+        <di:waypoint x="430" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2a_di" bpmnElement="Flow_2a">
+        <di:waypoint x="530" y="177" />
+        <di:waypoint x="590" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="690" y="177" />
+        <di:waypoint x="750" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3a_di" bpmnElement="Flow_3a">
+        <di:waypoint x="850" y="177" />
+        <di:waypoint x="910" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3b_di" bpmnElement="Flow_3b">
+        <di:waypoint x="1010" y="177" />
+        <di:waypoint x="1070" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3c_di" bpmnElement="Flow_3c">
+        <di:waypoint x="1170" y="177" />
+        <di:waypoint x="1230" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="1330" y="177" />
+        <di:waypoint x="1385" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Approved_di" bpmnElement="Flow_Approved">
+        <di:waypoint x="1435" y="177" />
+        <di:waypoint x="1750" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ManualReview_di" bpmnElement="Flow_ManualReview">
+        <di:waypoint x="1410" y="202" />
+        <di:waypoint x="1410" y="290" />
+        <di:waypoint x="1490" y="290" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ReviewDecision_di" bpmnElement="Flow_ReviewDecision">
+        <di:waypoint x="1590" y="290" />
+        <di:waypoint x="1645" y="290" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Approved_Review_di" bpmnElement="Flow_Approved_Review">
+        <di:waypoint x="1695" y="290" />
+        <di:waypoint x="1800" y="290" />
+        <di:waypoint x="1800" y="217" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Rejected_di" bpmnElement="Flow_Rejected">
+        <di:waypoint x="1670" y="315" />
+        <di:waypoint x="1670" y="400" />
+        <di:waypoint x="1782" y="400" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="1850" y="177" />
+        <di:waypoint x="1910" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5a_di" bpmnElement="Flow_5a">
+        <di:waypoint x="2010" y="177" />
+        <di:waypoint x="2070" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="2170" y="177" />
+        <di:waypoint x="2232" y="177" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ValidationError_di" bpmnElement="Flow_ValidationError">
+        <di:waypoint x="640" y="217" />
+        <di:waypoint x="640" y="480" />
+        <di:waypoint x="910" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_OcrError_di" bpmnElement="Flow_OcrError">
+        <di:waypoint x="800" y="217" />
+        <di:waypoint x="800" y="480" />
+        <di:waypoint x="910" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_VerificationError_di" bpmnElement="Flow_VerificationError">
+        <di:waypoint x="960" y="217" />
+        <di:waypoint x="960" y="440" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CreditError_di" bpmnElement="Flow_CreditError">
+        <di:waypoint x="1120" y="217" />
+        <di:waypoint x="1120" y="480" />
+        <di:waypoint x="1010" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ComplianceError_di" bpmnElement="Flow_ComplianceError">
+        <di:waypoint x="1280" y="217" />
+        <di:waypoint x="1280" y="480" />
+        <di:waypoint x="1010" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ErrorHandled_di" bpmnElement="Flow_ErrorHandled">
+        <di:waypoint x="1010" y="480" />
+        <di:waypoint x="1072" y="480" />
+      </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>
