@@ -1,7 +1,7 @@
 package com.ngoctran.interactionservice.workflow;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -11,9 +11,9 @@ import java.util.Map;
  * This is a placeholder implementation for ABB onboarding integration
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class WorkflowService {
+
+    private static final Logger log = LoggerFactory.getLogger(WorkflowService.class);
 
     /**
      * Cancel a workflow by its ID

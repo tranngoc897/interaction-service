@@ -529,10 +529,10 @@ public class CaseService {
             var processInstance = bpmnProcessService.startProcess(processDefinitionKey, caseId.toString(), variables);
 
             // Update case with BPMN process ID
-            caseEntity.setBpmnProcessId(processInstance.getId());
+            caseEntity.setBpmnProcessId(processInstance.id);
             caseRepo.save(caseEntity);
 
-            log.info("Started BPMN process {} for case {}", processInstance.getId(), caseId);
+            log.info("Started BPMN process {} for case {}", processInstance.id, caseId);
         } catch (Exception e) {
             log.error("Failed to start BPMN process for case {}: {}", caseId, e.getMessage());
             throw new RuntimeException("BPMN process start failed: " + e.getMessage(), e);

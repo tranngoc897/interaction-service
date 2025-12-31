@@ -108,4 +108,9 @@ public class ProcessMappingEntity {
         this.status = ProcessStatus.CANCELLED;
         this.completedAt = LocalDateTime.now();
     }
+
+    // Manual getter for processInstanceId (needed by CaseService)
+    public String getProcessInstanceId() {
+        return processInstanceId;
+    }
 }

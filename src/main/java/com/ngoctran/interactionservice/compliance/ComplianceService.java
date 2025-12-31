@@ -2,7 +2,8 @@ package com.ngoctran.interactionservice.compliance;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,8 +18,9 @@ import java.util.Optional;
  */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class ComplianceService {
+
+    private static final Logger log = LoggerFactory.getLogger(ComplianceService.class);
 
     private final ComplianceCheckRepository complianceCheckRepository;
     private final ObjectMapper objectMapper;
@@ -39,17 +41,16 @@ public class ComplianceService {
             String checkResultJson = objectMapper.writeValueAsString(amlResult);
             String riskLevel = determineRiskLevel(amlResult);
 
-            ComplianceCheckEntity check = ComplianceCheckEntity.builder()
-                    .caseId(caseId)
-                    .applicantId(applicantId)
-                    .checkType("AML")
-                    .status("PASSED") // Default to passed, change based on result
-                    .checkData(checkDataJson)
-                    .checkResult(checkResultJson)
-                    .riskLevel(riskLevel)
-                    .manualReviewRequired(Boolean.FALSE)
-                    .auditTrail(createAuditEntry("AML_CHECK_COMPLETED", "System", "Automated AML screening completed"))
-                    .build();
+            ComplianceCheckEntity check = new ComplianceCheckEntity();
+            check.setCaseId(caseId);
+            check.setApplicantId(applicantId);
+            check.setCheckType("AML");
+            check.setStatus("PASSED"); // Default to passed, change based on result
+            check.setCheckData(checkDataJson);
+            check.setCheckResult(checkResultJson);
+            check.setRiskLevel(riskLevel);
+            check.setManualReviewRequired(Boolean.FALSE);
+            check.setAuditTrail(createAuditEntry("AML_CHECK_COMPLETED", "System", "Automated AML screening completed"));
 
             // Determine if manual review is needed
             if ("HIGH".equals(riskLevel) || hasAmlHits(amlResult)) {
@@ -63,14 +64,13 @@ public class ComplianceService {
             log.error("AML screening failed: {}", e.getMessage(), e);
 
             // Create failed check record
-            ComplianceCheckEntity failedCheck = ComplianceCheckEntity.builder()
-                    .caseId(caseId)
-                    .applicantId(applicantId)
-                    .checkType("AML")
-                    .status("FAILED")
-                    .manualReviewRequired(Boolean.TRUE)
-                    .auditTrail(createAuditEntry("AML_CHECK_FAILED", "System", e.getMessage()))
-                    .build();
+            ComplianceCheckEntity failedCheck = new ComplianceCheckEntity();
+            failedCheck.setCaseId(caseId);
+            failedCheck.setApplicantId(applicantId);
+            failedCheck.setCheckType("AML");
+            failedCheck.setStatus("FAILED");
+            failedCheck.setManualReviewRequired(Boolean.TRUE);
+            failedCheck.setAuditTrail(createAuditEntry("AML_CHECK_FAILED", "System", e.getMessage()));
 
             return complianceCheckRepository.save(failedCheck);
         }
@@ -92,31 +92,29 @@ public class ComplianceService {
             String checkResultJson = objectMapper.writeValueAsString(kycResult);
             boolean passed = (Boolean) kycResult.getOrDefault("verified", false);
 
-            ComplianceCheckEntity check = ComplianceCheckEntity.builder()
-                    .caseId(caseId)
-                    .applicantId(applicantId)
-                    .checkType("KYC")
-                    .status(passed ? "PASSED" : "FAILED")
-                    .checkData(checkDataJson)
-                    .checkResult(checkResultJson)
-                    .riskLevel(passed ? "LOW" : "HIGH")
-                    .manualReviewRequired(!passed)
-                    .auditTrail(createAuditEntry("KYC_CHECK_COMPLETED", "System", "KYC verification completed"))
-                    .build();
+            ComplianceCheckEntity check = new ComplianceCheckEntity();
+            check.setCaseId(caseId);
+            check.setApplicantId(applicantId);
+            check.setCheckType("KYC");
+            check.setStatus(passed ? "PASSED" : "FAILED");
+            check.setCheckData(checkDataJson);
+            check.setCheckResult(checkResultJson);
+            check.setRiskLevel(passed ? "LOW" : "HIGH");
+            check.setManualReviewRequired(!passed);
+            check.setAuditTrail(createAuditEntry("KYC_CHECK_COMPLETED", "System", "KYC verification completed"));
 
             return complianceCheckRepository.save(check);
 
         } catch (Exception e) {
             log.error("KYC verification failed: {}", e.getMessage(), e);
 
-            ComplianceCheckEntity failedCheck = ComplianceCheckEntity.builder()
-                    .caseId(caseId)
-                    .applicantId(applicantId)
-                    .checkType("KYC")
-                    .status("FAILED")
-                    .manualReviewRequired(Boolean.TRUE)
-                    .auditTrail(createAuditEntry("KYC_CHECK_FAILED", "System", e.getMessage()))
-                    .build();
+            ComplianceCheckEntity failedCheck = new ComplianceCheckEntity();
+            failedCheck.setCaseId(caseId);
+            failedCheck.setApplicantId(applicantId);
+            failedCheck.setCheckType("KYC");
+            failedCheck.setStatus("FAILED");
+            failedCheck.setManualReviewRequired(Boolean.TRUE);
+            failedCheck.setAuditTrail(createAuditEntry("KYC_CHECK_FAILED", "System", e.getMessage()));
 
             return complianceCheckRepository.save(failedCheck);
         }
@@ -138,31 +136,29 @@ public class ComplianceService {
             String checkResultJson = objectMapper.writeValueAsString(sanctionsResult);
             boolean hasHits = (Boolean) sanctionsResult.getOrDefault("hasSanctionsHits", false);
 
-            ComplianceCheckEntity check = ComplianceCheckEntity.builder()
-                    .caseId(caseId)
-                    .applicantId(applicantId)
-                    .checkType("SANCTIONS")
-                    .status(hasHits ? "REVIEW_NEEDED" : "PASSED")
-                    .checkData(checkDataJson)
-                    .checkResult(checkResultJson)
-                    .riskLevel(hasHits ? "HIGH" : "LOW")
-                    .manualReviewRequired(hasHits)
-                    .auditTrail(createAuditEntry("SANCTIONS_CHECK_COMPLETED", "System", "Sanctions screening completed"))
-                    .build();
+            ComplianceCheckEntity check = new ComplianceCheckEntity();
+            check.setCaseId(caseId);
+            check.setApplicantId(applicantId);
+            check.setCheckType("SANCTIONS");
+            check.setStatus(hasHits ? "REVIEW_NEEDED" : "PASSED");
+            check.setCheckData(checkDataJson);
+            check.setCheckResult(checkResultJson);
+            check.setRiskLevel(hasHits ? "HIGH" : "LOW");
+            check.setManualReviewRequired(hasHits);
+            check.setAuditTrail(createAuditEntry("SANCTIONS_CHECK_COMPLETED", "System", "Sanctions screening completed"));
 
             return complianceCheckRepository.save(check);
 
         } catch (Exception e) {
             log.error("Sanctions screening failed: {}", e.getMessage(), e);
 
-            ComplianceCheckEntity failedCheck = ComplianceCheckEntity.builder()
-                    .caseId(caseId)
-                    .applicantId(applicantId)
-                    .checkType("SANCTIONS")
-                    .status("FAILED")
-                    .manualReviewRequired(Boolean.TRUE)
-                    .auditTrail(createAuditEntry("SANCTIONS_CHECK_FAILED", "System", e.getMessage()))
-                    .build();
+            ComplianceCheckEntity failedCheck = new ComplianceCheckEntity();
+            failedCheck.setCaseId(caseId);
+            failedCheck.setApplicantId(applicantId);
+            failedCheck.setCheckType("SANCTIONS");
+            failedCheck.setStatus("FAILED");
+            failedCheck.setManualReviewRequired(Boolean.TRUE);
+            failedCheck.setAuditTrail(createAuditEntry("SANCTIONS_CHECK_FAILED", "System", e.getMessage()));
 
             return complianceCheckRepository.save(failedCheck);
         }

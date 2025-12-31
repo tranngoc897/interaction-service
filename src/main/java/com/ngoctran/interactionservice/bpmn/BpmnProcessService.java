@@ -13,27 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-// Camunda REST API DTOs
-class Deployment {
-    public String id;
-    public String name;
-    public String deploymentTime;
-}
-
-class ProcessInstance {
-    public String id;
-    public String businessKey;
-    public String processDefinitionId;
-    public boolean ended;
-}
-
-class ProcessDefinition {
-    public String id;
-    public String key;
-    public String name;
-    public int version;
-}
-
 /**
  * BPMN Process Service - Manages BPMN process deployment and execution via REST API
  * Connects to external Camunda server via HTTP REST calls

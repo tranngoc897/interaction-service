@@ -1,9 +1,6 @@
 package com.ngoctran.interactionservice.controller;
 
 import com.ngoctran.interactionservice.bpmn.BpmnProcessService;
-import org.camunda.bpm.engine.repository.Deployment;
-import org.camunda.bpm.engine.repository.ProcessDefinition;
-import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +9,27 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+// Custom DTOs for REST API responses
+class Deployment {
+    public String id;
+    public String name;
+    public String deploymentTime;
+}
+
+class ProcessInstance {
+    public String id;
+    public String businessKey;
+    public String processDefinitionId;
+    public boolean ended;
+}
+
+class ProcessDefinition {
+    public String id;
+    public String key;
+    public String name;
+    public int version;
+}
 
 /**
  * BPMN Process Controller - REST API for BPMN process operations
@@ -33,7 +51,7 @@ public class BpmnProcessController {
      * Deploy a BPMN process
      */
     @PostMapping("/deploy")
-    public ResponseEntity<Deployment> deployProcess(
+    public ResponseEntity<com.ngoctran.interactionservice.controller.Deployment> deployProcess(
             @RequestParam String processKey,
             @RequestParam String processName,
             @RequestBody String bpmnXml) {
@@ -41,8 +59,13 @@ public class BpmnProcessController {
         log.info("Deploying BPMN process: key={}, name={}", processKey, processName);
 
         try {
-            Deployment deployment = bpmnProcessService.deployProcess(processKey, processName, bpmnXml);
-            return ResponseEntity.ok(deployment);
+            com.ngoctran.interactionservice.bpmn.Deployment deployment = bpmnProcessService.deployProcess(processKey, processName, bpmnXml);
+            // Convert to controller DTO
+            com.ngoctran.interactionservice.controller.Deployment result = new com.ngoctran.interactionservice.controller.Deployment();
+            result.id = deployment.id;
+            result.name = deployment.name;
+            result.deploymentTime = deployment.deploymentTime;
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Failed to deploy BPMN process", e);
             return ResponseEntity.badRequest().build();
@@ -53,7 +76,7 @@ public class BpmnProcessController {
      * Start a process instance
      */
     @PostMapping("/start")
-    public ResponseEntity<ProcessInstance> startProcess(
+    public ResponseEntity<com.ngoctran.interactionservice.controller.ProcessInstance> startProcess(
             @RequestParam String processDefinitionKey,
             @RequestParam(required = false) String businessKey,
             @RequestBody(required = false) Map<String, Object> variables) {
@@ -61,8 +84,14 @@ public class BpmnProcessController {
         log.info("Starting process instance: key={}, businessKey={}", processDefinitionKey, businessKey);
 
         try {
-            ProcessInstance instance = bpmnProcessService.startProcess(processDefinitionKey, businessKey, variables);
-            return ResponseEntity.ok(instance);
+            com.ngoctran.interactionservice.bpmn.ProcessInstance instance = bpmnProcessService.startProcess(processDefinitionKey, businessKey, variables);
+            // Convert to controller DTO
+            com.ngoctran.interactionservice.controller.ProcessInstance result = new com.ngoctran.interactionservice.controller.ProcessInstance();
+            result.id = instance.id;
+            result.businessKey = instance.businessKey;
+            result.processDefinitionId = instance.processDefinitionId;
+            result.ended = instance.ended;
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Failed to start process instance", e);
             return ResponseEntity.badRequest().build();
@@ -73,18 +102,39 @@ public class BpmnProcessController {
      * Get process instance by business key
      */
     @GetMapping("/instance/{businessKey}")
-    public ResponseEntity<ProcessInstance> getProcessInstance(@PathVariable String businessKey) {
-        Optional<ProcessInstance> instance = bpmnProcessService.getProcessInstance(businessKey);
-        return instance.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<com.ngoctran.interactionservice.controller.ProcessInstance> getProcessInstance(@PathVariable String businessKey) {
+        Optional<com.ngoctran.interactionservice.bpmn.ProcessInstance> instanceOpt = bpmnProcessService.getProcessInstance(businessKey);
+        if (instanceOpt.isPresent()) {
+            com.ngoctran.interactionservice.bpmn.ProcessInstance instance = instanceOpt.get();
+            // Convert to controller DTO
+            com.ngoctran.interactionservice.controller.ProcessInstance result = new com.ngoctran.interactionservice.controller.ProcessInstance();
+            result.id = instance.id;
+            result.businessKey = instance.businessKey;
+            result.processDefinitionId = instance.processDefinitionId;
+            result.ended = instance.ended;
+            return ResponseEntity.ok(result);
+        }
+        return ResponseEntity.notFound().build();
     }
 
     /**
      * Get process instances by definition key
      */
     @GetMapping("/instances")
-    public ResponseEntity<List<ProcessInstance>> getProcessInstances(@RequestParam String processDefinitionKey) {
-        List<ProcessInstance> instances = bpmnProcessService.getProcessInstances(processDefinitionKey);
-        return ResponseEntity.ok(instances);
+    public ResponseEntity<List<com.ngoctran.interactionservice.controller.ProcessInstance>> getProcessInstances(@RequestParam String processDefinitionKey) {
+        List<com.ngoctran.interactionservice.bpmn.ProcessInstance> instances = bpmnProcessService.getProcessInstances(processDefinitionKey);
+        // Convert to controller DTOs
+        List<com.ngoctran.interactionservice.controller.ProcessInstance> result = instances.stream()
+            .map(instance -> {
+                com.ngoctran.interactionservice.controller.ProcessInstance dto = new com.ngoctran.interactionservice.controller.ProcessInstance();
+                dto.id = instance.id;
+                dto.businessKey = instance.businessKey;
+                dto.processDefinitionId = instance.processDefinitionId;
+                dto.ended = instance.ended;
+                return dto;
+            })
+            .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(result);
     }
 
     /**
@@ -175,9 +225,19 @@ public class BpmnProcessController {
      * Get process definition
      */
     @GetMapping("/definition/{processDefinitionKey}")
-    public ResponseEntity<ProcessDefinition> getProcessDefinition(@PathVariable String processDefinitionKey) {
-        Optional<ProcessDefinition> definition = bpmnProcessService.getProcessDefinition(processDefinitionKey);
-        return definition.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<com.ngoctran.interactionservice.controller.ProcessDefinition> getProcessDefinition(@PathVariable String processDefinitionKey) {
+        Optional<com.ngoctran.interactionservice.bpmn.ProcessDefinition> definitionOpt = bpmnProcessService.getProcessDefinition(processDefinitionKey);
+        if (definitionOpt.isPresent()) {
+            com.ngoctran.interactionservice.bpmn.ProcessDefinition definition = definitionOpt.get();
+            // Convert to controller DTO
+            com.ngoctran.interactionservice.controller.ProcessDefinition result = new com.ngoctran.interactionservice.controller.ProcessDefinition();
+            result.id = definition.id;
+            result.key = definition.key;
+            result.name = definition.name;
+            result.version = definition.version;
+            return ResponseEntity.ok(result);
+        }
+        return ResponseEntity.notFound().build();
     }
 
     /**
