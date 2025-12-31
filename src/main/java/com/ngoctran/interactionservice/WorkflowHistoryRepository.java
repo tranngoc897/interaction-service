@@ -88,7 +88,7 @@ public interface WorkflowHistoryRepository extends JpaRepository<WorkflowHistory
         /**
          * Find history with specific metadata key (JSON query for PostgreSQL)
          */
-        @Query(value = "SELECT * FROM workflow_history WHERE metadata::jsonb ?? :key", nativeQuery = true)
+        @Query(value = "SELECT * FROM workflow_history WHERE metadata::jsonb ?1 :key", nativeQuery = true)
         List<WorkflowHistoryEntity> findByMetadataKey(@Param("key") String metadataKey);
 
         /**
