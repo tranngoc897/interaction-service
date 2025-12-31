@@ -1,7 +1,7 @@
 package com.ngoctran.interactionservice.task;
 
 import com.ngoctran.interactionservice.cases.CaseEntity;
-import com.ngoctran.interactionservice.interaction.InteractionEntity;
+import com.ngoctran.interactionservice.session.InteractionEntity;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;

@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  camunda-db:
+    image: postgres:13
+    container_name: camunda-postgres
+    environment:
+      POSTGRES_DB: camunda
+      POSTGRES_USER: camunda
+      POSTGRES_PASSWORD: camunda
+    ports:
+      - "5432:5432"
+    volumes:
+      - camunda_db_data:/var/lib/postgresql/data
+    networks:
+      - camunda-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U camunda -d camunda"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  camunda:
+    image: camunda/camunda-bpm-platform:7.21.0
+    container_name: camunda-platform
+    environment:
+      DB_DRIVER: org.postgresql.Driver
+      DB_URL: jdbc:postgresql://camunda-db:5432/camunda
+      DB_USERNAME: camunda
+      DB_PASSWORD: camunda
+      WAIT_FOR: camunda-db:5432
+    ports:
+      - "8080:8080"
+    depends_on:
+      camunda-db:
+        condition: service_healthy
+    networks:
+      - camunda-network
+    volumes:
+      - ./bpmn-processes:/camunda/conf/bpmn
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/camunda-welcome"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  camunda_db_data:
+
+networks:
+  camunda-network:
+    driver: bridge

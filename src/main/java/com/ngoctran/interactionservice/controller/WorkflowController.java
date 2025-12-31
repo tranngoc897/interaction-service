@@ -1,3 +1,4 @@
+/*
 package com.ngoctran.interactionservice.controller;
 
 import com.ngoctran.interactionservice.WorkflowHistoryEntity;
@@ -12,9 +13,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+*/
 /**
  * REST Controller for Temporal Workflow operations
- */
+ *//*
+
 @RestController
 @RequestMapping("/api/workflows")
 @RequiredArgsConstructor
@@ -23,11 +26,14 @@ public class WorkflowController {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WorkflowController.class);
     private final WorkflowService workflowService;
 
-    /**
+    */
+/**
      * Start KYC Onboarding Workflow
-     */
+     *//*
 
-    /*
+
+    */
+/*
     @PostMapping("/kyc/start")
     public ResponseEntity<WorkflowStartResponse> startKYCWorkflow(@RequestBody KYCStartRequest request) {
         log.info("Starting KYC onboarding for case: {}", request.getCaseId());
@@ -41,11 +47,14 @@ public class WorkflowController {
                 "kyc-onboarding-" + request.getCaseId(),
                 "RUNNING"));
     }
-    */
+    *//*
 
-    /**
+
+    */
+/**
      * Signal: Documents uploaded
-     */
+     *//*
+
     @PostMapping("/{workflowId}/signal/documents")
     public ResponseEntity<Void> signalDocumentsUploaded(
             @PathVariable String workflowId,
@@ -56,9 +65,11 @@ public class WorkflowController {
         return ResponseEntity.ok().build();
     }
 
-    /**
+    */
+/**
      * Signal: User data updated
-     */
+     *//*
+
     @PostMapping("/{workflowId}/signal/user-data")
     public ResponseEntity<Void> signalUserDataUpdated(
             @PathVariable String workflowId,
@@ -69,9 +80,11 @@ public class WorkflowController {
         return ResponseEntity.ok().build();
     }
 
-    /**
+    */
+/**
      * Signal: Manual review
-     */
+     *//*
+
     @PostMapping("/{workflowId}/signal/manual-review")
     public ResponseEntity<Void> signalManualReview(
             @PathVariable String workflowId,
@@ -91,9 +104,11 @@ public class WorkflowController {
         return ResponseEntity.ok(new WorkflowStatusResponse(workflowId, status));
     }
 
-    /**
+    */
+/**
      * Query onboarding progress
-     */
+     *//*
+
     @GetMapping("/{workflowId}/progress")
     public ResponseEntity<OnboardingWorkflow.WorkflowProgress> getWorkflowProgress(
             @PathVariable String workflowId) {
@@ -102,9 +117,11 @@ public class WorkflowController {
         return ResponseEntity.ok(progress);
     }
 
-    /**
+    */
+/**
      * Cancel onboarding
-     */
+     *//*
+
     @PostMapping("/{workflowId}/cancel")
     public ResponseEntity<Void> cancelWorkflow(@PathVariable String workflowId) {
         log.info("Cancelling onboarding: {}", workflowId);
@@ -112,9 +129,11 @@ public class WorkflowController {
         return ResponseEntity.ok().build();
     }
 
-    /**
+    */
+/**
      * Get Dead Letter Queue Status (Advanced Feature)
-     */
+     *//*
+
     @GetMapping("/workflows/dlq/status")
     public ResponseEntity<DLQStatusResponse> getDLQStatus() {
         log.info("Getting DLQ status");
@@ -123,9 +142,11 @@ public class WorkflowController {
         return ResponseEntity.ok(response);
     }
 
-    /**
+    */
+/**
      * Get Advanced Scheduler Metrics
-     */
+     *//*
+
     @GetMapping("/workflows/advanced/metrics")
     public ResponseEntity<AdvancedMetricsResponse> getAdvancedMetrics() {
         log.info("Getting advanced scheduler metrics");
@@ -139,9 +160,11 @@ public class WorkflowController {
 
     // ==================== WORKFLOW HISTORY & ANALYTICS ====================
 
-    /**
+    */
+/**
      * Get Workflow History
-     */
+     *//*
+
     @GetMapping("/{workflowId}/history")
     public ResponseEntity<List<WorkflowHistoryEntity>> getWorkflowHistory(@PathVariable String workflowId) {
         log.info("Getting workflow history for: {}", workflowId);
@@ -149,9 +172,11 @@ public class WorkflowController {
         return ResponseEntity.ok(history);
     }
 
-    /**
+    */
+/**
      * Get Workflow Statistics
-     */
+     *//*
+
     @GetMapping("/statistics")
     public ResponseEntity<Map<String, Object>> getWorkflowStatistics(
             @RequestParam(required = false) String workflowType,
@@ -461,3 +486,4 @@ public class WorkflowController {
         public String getStatus() { return status; }
     }
 }
+*/

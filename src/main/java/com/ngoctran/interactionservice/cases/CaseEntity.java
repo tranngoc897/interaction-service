@@ -56,6 +56,32 @@ public class CaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     private String sla;
 
+    // ABB Onboarding Pattern Fields
+    @Column(name = "resume_token", columnDefinition = "text")
+    private String resumeToken;
+
+    @Column(name = "workflow_state", columnDefinition = "text")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private String workflowState;
+
+    @Column(name = "epic_data", columnDefinition = "text")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private String epicData;
+
+    @Column(name = "compliance_status", columnDefinition = "text")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private String complianceStatus;
+
+    @Column(name = "joint_account_data", columnDefinition = "text")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private String jointAccountData;
+
+    @Column(name = "bpmn_process_id", length = 255)
+    private String bpmnProcessId;
+
+    @Column(name = "expires_at", columnDefinition = "timestamptz")
+    private Instant expiresAt;
+
     @Column(name = "created_at", columnDefinition = "timestamptz default now()")
     private Instant createdAt;
 
@@ -183,5 +209,62 @@ public class CaseEntity {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    // ABB Onboarding Pattern Getters and Setters
+    public String getResumeToken() {
+        return resumeToken;
+    }
+
+    public void setResumeToken(String resumeToken) {
+        this.resumeToken = resumeToken;
+    }
+
+    public String getWorkflowState() {
+        return workflowState;
+    }
+
+    public void setWorkflowState(String workflowState) {
+        this.workflowState = workflowState;
+    }
+
+    public String getEpicData() {
+        return epicData;
+    }
+
+    public void setEpicData(String epicData) {
+        this.epicData = epicData;
+    }
+
+    public String getComplianceStatus() {
+        return complianceStatus;
+    }
+
+    public void setComplianceStatus(String complianceStatus) {
+        this.complianceStatus = complianceStatus;
+    }
+
+    public String getJointAccountData() {
+        return jointAccountData;
+    }
+
+    public void setJointAccountData(String jointAccountData) {
+        this.jointAccountData = jointAccountData;
+    }
+
+    public String getBpmnProcessId() {
+        return bpmnProcessId;
+    }
+
+    public void setBpmnProcessId(String bpmnProcessId) {
+        this.bpmnProcessId = bpmnProcessId;
+    }
+
+    public Instant getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(Instant expiresAt) {
+        this.expiresAt = expiresAt;
     }
 }

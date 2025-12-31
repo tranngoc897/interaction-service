@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="Definitions_1"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="onboarding-process" name="Customer Onboarding Process" isExecutable="true">
+
+    <!-- Start Event -->
+    <bpmn:startEvent id="StartEvent_1" name="Onboarding Started">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- Personal Information Collection -->
+    <bpmn:userTask id="Task_CollectPersonalInfo" name="Collect Personal Information">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- Document Upload -->
+    <bpmn:userTask id="Task_UploadDocuments" name="Upload Required Documents">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- Compliance Check -->
+    <bpmn:serviceTask id="Task_ComplianceCheck" name="AML/KYC Compliance Check"
+                      camunda:class="com.ngoctran.interactionservice.compliance.ComplianceDelegate">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Manual Review Gateway -->
+    <bpmn:exclusiveGateway id="Gateway_ManualReview" name="Manual Review Required?">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_Approved</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ManualReview</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Manual Review Task -->
+    <bpmn:userTask id="Task_ManualReview" name="Manual Review">
+      <bpmn:incoming>Flow_ManualReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_ReviewDecision</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <!-- Review Decision Gateway -->
+    <bpmn:exclusiveGateway id="Gateway_ReviewDecision" name="Review Decision">
+      <bpmn:incoming>Flow_ReviewDecision</bpmn:incoming>
+      <bpmn:outgoing>Flow_Approved</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Rejected</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Account Creation -->
+    <bpmn:serviceTask id="Task_CreateAccount" name="Create Customer Account"
+                      camunda:class="com.ngoctran.interactionservice.account.AccountCreationDelegate">
+      <bpmn:incoming>Flow_Approved</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Send Welcome Email -->
+    <bpmn:serviceTask id="Task_SendWelcomeEmail" name="Send Welcome Email"
+                      camunda:class="com.ngoctran.interactionservice.notification.EmailDelegate">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- End Event - Approved -->
+    <bpmn:endEvent id="EndEvent_Approved" name="Onboarding Completed">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- End Event - Rejected -->
+    <bpmn:endEvent id="EndEvent_Rejected" name="Onboarding Rejected">
+      <bpmn:incoming>Flow_Rejected</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_CollectPersonalInfo" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_CollectPersonalInfo" targetRef="Task_UploadDocuments" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_UploadDocuments" targetRef="Task_ComplianceCheck" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_ComplianceCheck" targetRef="Gateway_ManualReview" />
+    <bpmn:sequenceFlow id="Flow_Approved" sourceRef="Gateway_ManualReview" targetRef="Task_CreateAccount">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${complianceStatus == 'PASSED'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ManualReview" sourceRef="Gateway_ManualReview" targetRef="Task_ManualReview">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${complianceStatus == 'REVIEW_NEEDED'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ReviewDecision" sourceRef="Task_ManualReview" targetRef="Gateway_ReviewDecision" />
+    <bpmn:sequenceFlow id="Flow_Approved" sourceRef="Gateway_ReviewDecision" targetRef="Task_CreateAccount">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${reviewDecision == 'APPROVED'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Rejected" sourceRef="Gateway_ReviewDecision" targetRef="EndEvent_Rejected">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${reviewDecision == 'REJECTED'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_CreateAccount" targetRef="Task_SendWelcomeEmail" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_SendWelcomeEmail" targetRef="EndEvent_Approved" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="onboarding-process">
+      <!-- BPMN Diagram elements would go here -->
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

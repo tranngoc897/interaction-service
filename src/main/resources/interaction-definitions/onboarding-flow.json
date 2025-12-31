@@ -1,0 +1,249 @@
+{
+  "key": "onboarding-flow",
+  "version": 1,
+  "schemaId": "interaction-definition-schema@1",
+  "caseDefinitionKey": "onboarding-case",
+  "steps": [
+    {
+      "name": "init",
+      "enabled": "true",
+      "entryPoint": true,
+      "handlers": [
+        {
+          "name": "validate-initial-data",
+          "postExecutions": [
+            "create-case-record",
+            "start-data-gathering-milestone"
+          ],
+          "transitions": [
+            {
+              "condition": "success()",
+              "step": "product-selection"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "product-selection",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "fetch-applicant"
+        },
+        {
+          "name": "submit-product-selection",
+          "transitions": [
+            {
+              "condition": "success()",
+              "step": "personal-info"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "personal-info",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "fetch-applicant"
+        },
+        {
+          "name": "submit-personal-info",
+          "transitions": [
+            {
+              "condition": "success()",
+              "step": "address-collection"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "address-collection",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "fetch-applicant"
+        },
+        {
+          "name": "submit-address",
+          "transitions": [
+            {
+              "condition": "success()",
+              "step": "document-upload"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "document-upload",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "fetch-applicant"
+        },
+        {
+          "name": "upload-documents",
+          "postExecutions": [
+            "complete-data-gathering-milestone",
+            "start-verification-milestone"
+          ],
+          "transitions": [
+            {
+              "condition": "success()",
+              "step": "document-processing"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "document-processing",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "process-ocr",
+          "transitions": [
+            {
+              "condition": "success()",
+              "step": "id-verification"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "id-verification",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "verify-identity",
+          "transitions": [
+            {
+              "condition": "success()",
+              "step": "aml-check"
+            },
+            {
+              "condition": "errors.size() > 0 && errors['verification-failed'] != null",
+              "step": "manual-review"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "aml-check",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "perform-aml-screening",
+          "transitions": [
+            {
+              "condition": "success()",
+              "step": "citizenship-verification"
+            },
+            {
+              "condition": "errors.size() > 0 && errors['aml-failed'] != null",
+              "step": "manual-review"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "citizenship-verification",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "verify-citizenship",
+          "transitions": [
+            {
+              "condition": "success()",
+              "step": "account-creation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "account-creation",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "create-customer-account",
+          "postExecutions": [
+            "complete-verification-milestone",
+            "start-account-creation-milestone"
+          ],
+          "transitions": [
+            {
+              "condition": "success()",
+              "step": "notification-setup"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "notification-setup",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "setup-notifications",
+          "transitions": [
+            {
+              "condition": "success()",
+              "step": "final-confirmation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "final-confirmation",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "send-completion-notifications",
+          "postExecutions": [
+            "complete-account-creation-milestone",
+            "complete-onboarding"
+          ]
+        }
+      ],
+      "exitPoint": true
+    },
+    {
+      "name": "manual-review",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "queue-for-manual-review",
+          "transitions": [
+            {
+              "condition": "approved",
+              "step": "account-creation"
+            },
+            {
+              "condition": "rejected",
+              "step": "onboarding-failed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "onboarding-failed",
+      "enabled": "true",
+      "handlers": [
+        {
+          "name": "send-failure-notifications"
+        }
+      ],
+      "exitPoint": true
+    }
+  ]
+}
