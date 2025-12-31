@@ -27,7 +27,7 @@
 
     <!-- Compliance Check -->
     <bpmn:serviceTask id="Task_ComplianceCheck" name="AML/KYC Compliance Check"
-                      camunda:class="com.ngoctran.interactionservice.compliance.ComplianceDelegate">
+                      camunda:class="com.ngoctran.interactionservice.delegate.ComplianceDelegate">
       <bpmn:incoming>Flow_3</bpmn:incoming>
       <bpmn:outgoing>Flow_4</bpmn:outgoing>
     </bpmn:serviceTask>
@@ -54,14 +54,14 @@
 
     <!-- Account Creation -->
     <bpmn:serviceTask id="Task_CreateAccount" name="Create Customer Account"
-                      camunda:class="com.ngoctran.interactionservice.account.AccountCreationDelegate">
+                      camunda:class="com.ngoctran.interactionservice.delegate.AccountCreationDelegate">
       <bpmn:incoming>Flow_Approved</bpmn:incoming>
       <bpmn:outgoing>Flow_5</bpmn:outgoing>
     </bpmn:serviceTask>
 
     <!-- Send Welcome Email -->
     <bpmn:serviceTask id="Task_SendWelcomeEmail" name="Send Welcome Email"
-                      camunda:class="com.ngoctran.interactionservice.notification.EmailDelegate">
+                      camunda:class="com.ngoctran.interactionservice.delegate.NotificationDelegate">
       <bpmn:incoming>Flow_5</bpmn:incoming>
       <bpmn:outgoing>Flow_6</bpmn:outgoing>
     </bpmn:serviceTask>
