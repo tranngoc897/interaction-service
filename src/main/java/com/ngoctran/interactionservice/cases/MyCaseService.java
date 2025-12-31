@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ngoctran.interactionservice.dto.NextStepResponse;
 import com.ngoctran.interactionservice.dto.StepSubmissionDto;
 import com.ngoctran.interactionservice.mapping.ProcessMappingRepository;
-import com.ngoctran.interactionservice.workflow.WorkflowService;
 import com.ngoctran.interactionservice.task.TaskRepository;
 import com.ngoctran.interactionservice.task.TaskEntity;
 import com.ngoctran.interactionservice.bpmn.BpmnProcessService;
@@ -28,20 +27,18 @@ public class MyCaseService {
 
     private final CaseRepository caseRepo;
     private final ObjectMapper objectMapper;
-    private final WorkflowService workflowService;
     private final ProcessMappingRepository processMappingRepo;
     private final TaskRepository taskRepo;
     private final BpmnProcessService bpmnProcessService;
     private final ComplianceService complianceService;
     private final DmnDecisionService dmnDecisionService;
 
-    public MyCaseService(CaseRepository caseRepo, ObjectMapper objectMapper, WorkflowService workflowService,
-                      ProcessMappingRepository processMappingRepo, TaskRepository taskRepo,
-                      BpmnProcessService bpmnProcessService, ComplianceService complianceService,
-                      DmnDecisionService dmnDecisionService) {
+    public MyCaseService(CaseRepository caseRepo, ObjectMapper objectMapper,
+            ProcessMappingRepository processMappingRepo, TaskRepository taskRepo,
+            BpmnProcessService bpmnProcessService, ComplianceService complianceService,
+            DmnDecisionService dmnDecisionService) {
         this.caseRepo = caseRepo;
         this.objectMapper = objectMapper;
-        this.workflowService = workflowService;
         this.processMappingRepo = processMappingRepo;
         this.taskRepo = taskRepo;
         this.bpmnProcessService = bpmnProcessService;
@@ -98,16 +95,14 @@ public class MyCaseService {
         CaseEntity caseEntity = getCase(caseId);
         caseEntity.setStatus("CANCELLED");
 
-        // Cancel Temporal workflow if exists
-        String workflowInstanceId = caseEntity.getWorkflowInstanceId();
-        if (workflowInstanceId != null) {
+        // Cancel BPMN process if exists
+        String bpmnProcessId = caseEntity.getBpmnProcessId();
+        if (bpmnProcessId != null) {
             try {
-                String simpleWorkflowId = workflowInstanceId.contains(":") ? workflowInstanceId.split(":")[0]
-                        : workflowInstanceId;
-                workflowService.cancelWorkflow(simpleWorkflowId);
-                log.info("Cancelled Temporal workflow {} for case {}", simpleWorkflowId, caseId);
+                bpmnProcessService.deleteProcessInstance(bpmnProcessId, "Case cancelled");
+                log.info("Cancelled BPMN process {} for case {}", bpmnProcessId, caseId);
             } catch (Exception e) {
-                log.warn("Failed to cancel workflow for case {}: {}", caseId, e.getMessage());
+                log.warn("Failed to cancel BPMN process for case {}: {}", caseId, e.getMessage());
             }
         }
 
@@ -133,11 +128,11 @@ public class MyCaseService {
         // 3. Update Current Step
         caseEntity.setCurrentStep(submission.getStepName());
 
-        // 4. Find and Handle Workflow Signals (Temporal)
-        if (caseEntity.getWorkflowInstanceId() == null) {
+        // 4. Find and Handle Workflow Signals
+        if (caseEntity.getBpmnProcessId() == null) {
             processMappingRepo.findRunningProcessesByCaseId(caseId)
                     .stream().findFirst()
-                    .ifPresent(p -> caseEntity.setWorkflowInstanceId(p.getProcessInstanceId()));
+                    .ifPresent(p -> caseEntity.setBpmnProcessId(p.getProcessInstanceId()));
         }
 
         handleWorkflowSignals(caseEntity, submission);
@@ -148,17 +143,14 @@ public class MyCaseService {
         String nextStep = "COMPLETED";
         Map<String, Object> uiModel = new HashMap<>();
 
-        if (caseEntity.getWorkflowInstanceId() != null) {
+        if (caseEntity.getBpmnProcessId() != null) {
             try {
-                String workflowId = caseEntity.getWorkflowInstanceId();
-                String simpleWorkflowId = workflowId.contains(":") ? workflowId.split(":")[0] : workflowId;
-                var progress = workflowService.queryWorkflowProgress(simpleWorkflowId);
-                if (progress != null) {
-                    nextStep = progress.getCurrentStep();
-                    uiModel.put("percentComplete", progress.getPercentComplete());
-                }
+                String processId = caseEntity.getBpmnProcessId();
+                // Query BPMN variables or state if needed
+                // For now, we'll keep the current step from the entity
+                nextStep = caseEntity.getCurrentStep();
             } catch (Exception e) {
-                log.warn("Could not query workflow progress for case {}: {}", caseId, e.getMessage());
+                log.warn("Could not query BPMN progress for case {}: {}", caseId, e.getMessage());
             }
         }
 
@@ -167,27 +159,24 @@ public class MyCaseService {
 
     @SuppressWarnings("unchecked")
     private void handleWorkflowSignals(CaseEntity caseEntity, StepSubmissionDto submission) {
-        String workflowId = caseEntity.getWorkflowInstanceId();
-        if (workflowId == null)
+        String bpmnProcessId = caseEntity.getBpmnProcessId();
+        if (bpmnProcessId == null)
             return;
 
-        String signalWorkflowId = workflowId.contains(":") ? workflowId.split(":")[0] : workflowId;
         String stepName = submission.getStepName();
         Map<String, Object> data = submission.getStepData();
 
         try {
-            if ("document-upload".equalsIgnoreCase(stepName)) {
-                // temporalWorkflowService.signalDocumentsUploaded(signalWorkflowId,
-                // (Map<String, String>) data);
-            } else if ("personal-info".equalsIgnoreCase(stepName)) {
-                workflowService.signalUserDataUpdated(signalWorkflowId, data);
+            if ("personal-info".equalsIgnoreCase(stepName)) {
+                bpmnProcessService.updateVariables(bpmnProcessId, data);
             } else if ("manual-review".equalsIgnoreCase(stepName)) {
                 boolean approved = Boolean.parseBoolean(String.valueOf(data.getOrDefault("approved", "false")));
                 String reason = String.valueOf(data.getOrDefault("reason", ""));
-                workflowService.signalManualReview(signalWorkflowId, approved, reason);
+                bpmnProcessService.signalProcess(bpmnProcessId, "manualReviewSignal",
+                        Map.of("approved", approved, "reason", reason));
             }
         } catch (Exception e) {
-            log.error("Failed to signal workflow for case {}: {}", caseEntity.getId(), e.getMessage());
+            log.error("Failed to signal BPMN process for case {}: {}", caseEntity.getId(), e.getMessage());
         }
     }
 
@@ -389,7 +378,7 @@ public class MyCaseService {
     public boolean canResumeWorkflow(UUID caseId) {
         CaseEntity caseEntity = getCase(caseId);
         return "PAUSED".equals(caseEntity.getStatus()) &&
-               (caseEntity.getExpiresAt() == null || caseEntity.getExpiresAt().isAfter(Instant.now()));
+                (caseEntity.getExpiresAt() == null || caseEntity.getExpiresAt().isAfter(Instant.now()));
     }
 
     /**
@@ -432,7 +421,8 @@ public class MyCaseService {
     @Transactional
     public void completeMilestone(UUID caseId, String epicKey, String milestoneKey) {
         Map<String, Object> epicData = getEpicData(caseId);
-        if (epicData == null) return;
+        if (epicData == null)
+            return;
 
         @SuppressWarnings("unchecked")
         Map<String, Object> epics = (Map<String, Object>) epicData.getOrDefault("epics", new HashMap<>());
@@ -460,7 +450,8 @@ public class MyCaseService {
      */
     public String getMilestoneStatus(UUID caseId, String epicKey, String milestoneKey) {
         Map<String, Object> epicData = getEpicData(caseId);
-        if (epicData == null) return null;
+        if (epicData == null)
+            return null;
 
         @SuppressWarnings("unchecked")
         Map<String, Object> epics = (Map<String, Object>) epicData.getOrDefault("epics", new HashMap<>());
@@ -485,7 +476,8 @@ public class MyCaseService {
         }
 
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> checks = (List<Map<String, Object>>) complianceStatus.getOrDefault("checks", new ArrayList<>());
+        List<Map<String, Object>> checks = (List<Map<String, Object>>) complianceStatus.getOrDefault("checks",
+                new ArrayList<>());
 
         Map<String, Object> check = new HashMap<>();
         check.put("checkType", checkType);
@@ -509,7 +501,8 @@ public class MyCaseService {
      */
     public String getOverallComplianceStatus(UUID caseId) {
         Map<String, Object> complianceStatus = getComplianceStatus(caseId);
-        if (complianceStatus == null) return "UNKNOWN";
+        if (complianceStatus == null)
+            return "UNKNOWN";
         return (String) complianceStatus.getOrDefault("overallStatus", "UNKNOWN");
     }
 
@@ -719,7 +712,8 @@ public class MyCaseService {
             var kycResult = complianceService.performKycVerification(caseId.toString(), applicantId, applicantData);
 
             // Perform sanctions screening
-            var sanctionsResult = complianceService.performSanctionsScreening(caseId.toString(), applicantId, applicantData);
+            var sanctionsResult = complianceService.performSanctionsScreening(caseId.toString(), applicantId,
+                    applicantData);
 
             // Update compliance status
             Map<String, Object> complianceStatus = Map.of(
@@ -727,8 +721,7 @@ public class MyCaseService {
                     "kycStatus", kycResult.getStatus(),
                     "sanctionsStatus", sanctionsResult.getStatus(),
                     "overallStatus", determineOverallComplianceStatus(amlResult, kycResult, sanctionsResult),
-                    "lastChecked", LocalDateTime.now()
-            );
+                    "lastChecked", LocalDateTime.now());
 
             updateComplianceStatus(caseId, complianceStatus);
             log.info("Compliance check completed for case {}", caseId);
