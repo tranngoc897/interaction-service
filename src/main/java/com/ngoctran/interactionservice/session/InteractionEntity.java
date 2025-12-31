@@ -14,7 +14,8 @@ import java.util.UUID;
  * Interaction Instance - represents a user's journey/session
  *
  * Relationship: Many Interactions can belong to ONE Case
- * - Multiple journeys for the same case (e.g., onboarding, update, add document)
+ * - Multiple journeys for the same case (e.g., onboarding, update, add
+ * document)
  * - Multi-channel interactions (web, mobile, call center)
  * - Resume/retry scenarios
  */
@@ -42,7 +43,7 @@ public class InteractionEntity {
     private Long interactionDefinitionVersion;
 
     /**
-     * Foreign key to flow_case.id
+     * Foreign key to flw_case.id
      * Many interactions can belong to one case (1:N relationship)
      */
     @Column(name = "case_id")

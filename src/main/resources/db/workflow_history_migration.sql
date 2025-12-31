@@ -118,7 +118,7 @@ ALTER TABLE flw_case ADD COLUMN IF NOT EXISTS epic_data TEXT; -- JSON epic/miles
 ALTER TABLE flw_case ADD COLUMN IF NOT EXISTS compliance_status TEXT; -- JSON compliance check results
 ALTER TABLE flw_case ADD COLUMN IF NOT EXISTS joint_account_data TEXT; -- JSON joint account info
 ALTER TABLE flw_case ADD COLUMN IF NOT EXISTS bpmn_process_id VARCHAR(255); -- BPMN process instance ID
-ALTER TABLE flw_case ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP; -- For cleanup
+ALTER TABLE flw_case ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ; -- For cleanup
 
 -- Create indexes for case_definitions
 CREATE INDEX IF NOT EXISTS idx_case_definitions_key ON case_definitions(key);

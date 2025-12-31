@@ -20,18 +20,18 @@ import java.util.Map;
  * Based on SchedulerInstructionHistoryChangeEntity pattern
  * Tracks all state changes and actions performed on workflows
  */
-   @Entity
-   @Data
-   @Builder
-   @Table(name = "workflow_history")
-   @NoArgsConstructor
-   @AllArgsConstructor
-   public class WorkflowHistoryEntity {
+@Entity
+@Data
+@Builder
+@Table(name = "workflow_history")
+@NoArgsConstructor
+@AllArgsConstructor
+public class WorkflowHistoryEntity {
 
-       @Id
-       @Column(name = "history_id", columnDefinition = "uuid")
-       @JdbcTypeCode(SqlTypes.UUID)
-       private UUID historyId;
+    @Id
+    @Column(name = "history_id", columnDefinition = "uuid")
+    @JdbcTypeCode(SqlTypes.UUID)
+    private UUID historyId;
 
     @Column(name = "workflow_id", nullable = false)
     private String workflowId;
@@ -45,8 +45,10 @@ import java.util.Map;
     private WorkflowExecutionStatus statusBefore;
 
     @Enumerated(EnumType.STRING)
-    private WorkflowExecutionStatus statusAfter;
+    private WorkflowExecutionStatus status;
 
+    @Enumerated(EnumType.STRING)
+    private WorkflowExecutionStatus statusAfter;
     private String changedBy; // userId or SYSTEM
 
     @Column(name = "changed_at", nullable = false)
@@ -107,7 +109,7 @@ import java.util.Map;
      * Create a new history entry for workflow start
      */
     public static WorkflowHistoryEntity createWorkflowStart(String workflowId, String workflowType,
-                                                          String startedBy, Map<String, Object> initialData) {
+            String startedBy, Map<String, Object> initialData) {
         WorkflowHistoryEntity entity = new WorkflowHistoryEntity();
         entity.setHistoryId(UUID.randomUUID());
         entity.setWorkflowId(workflowId);
@@ -126,9 +128,9 @@ import java.util.Map;
      * Create a new history entry for status change
      */
     public static WorkflowHistoryEntity createStatusChange(String workflowId, String workflowType,
-                                                         WorkflowExecutionStatus fromStatus,
-                                                         WorkflowExecutionStatus toStatus,
-                                                         String changedBy, String reason) {
+            WorkflowExecutionStatus fromStatus,
+            WorkflowExecutionStatus toStatus,
+            String changedBy, String reason) {
         WorkflowHistoryEntity entity = new WorkflowHistoryEntity();
         entity.setHistoryId(UUID.randomUUID());
         entity.setWorkflowId(workflowId);
@@ -146,8 +148,8 @@ import java.util.Map;
      * Create a new history entry for signal received
      */
     public static WorkflowHistoryEntity createSignalReceived(String workflowId, String workflowType,
-                                                           String signalName, Map<String, Object> signalData,
-                                                           String sentBy) {
+            String signalName, Map<String, Object> signalData,
+            String sentBy) {
         WorkflowHistoryEntity entity = new WorkflowHistoryEntity();
         entity.setHistoryId(UUID.randomUUID());
         entity.setWorkflowId(workflowId);
@@ -164,8 +166,8 @@ import java.util.Map;
      * Create a new history entry for workflow failure
      */
     public static WorkflowHistoryEntity createWorkflowFailure(String workflowId, String workflowType,
-                                                            String error, String errorDetails,
-                                                            String failedBy) {
+            String error, String errorDetails,
+            String failedBy) {
         WorkflowHistoryEntity entity = new WorkflowHistoryEntity();
         entity.setHistoryId(UUID.randomUUID());
         entity.setWorkflowId(workflowId);
@@ -179,6 +181,5 @@ import java.util.Map;
         entity.setReason("Workflow execution failed");
         return entity;
     }
-
 
 }

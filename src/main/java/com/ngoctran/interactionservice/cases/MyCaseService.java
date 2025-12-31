@@ -22,9 +22,9 @@ import java.util.*;
 import java.util.UUID;
 
 @Service
-public class CaseService {
+public class MyCaseService {
 
-    private static final Logger log = LoggerFactory.getLogger(CaseService.class);
+    private static final Logger log = LoggerFactory.getLogger(MyCaseService.class);
 
     private final CaseRepository caseRepo;
     private final ObjectMapper objectMapper;
@@ -35,7 +35,7 @@ public class CaseService {
     private final ComplianceService complianceService;
     private final DmnDecisionService dmnDecisionService;
 
-    public CaseService(CaseRepository caseRepo, ObjectMapper objectMapper, WorkflowService workflowService,
+    public MyCaseService(CaseRepository caseRepo, ObjectMapper objectMapper, WorkflowService workflowService,
                       ProcessMappingRepository processMappingRepo, TaskRepository taskRepo,
                       BpmnProcessService bpmnProcessService, ComplianceService complianceService,
                       DmnDecisionService dmnDecisionService) {

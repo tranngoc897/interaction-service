@@ -109,7 +109,7 @@ public class ProcessMappingEntity {
         this.completedAt = LocalDateTime.now();
     }
 
-    // Manual getter for processInstanceId (needed by CaseService)
+    // Manual getter for processInstanceId (needed by MyCaseService)
     public String getProcessInstanceId() {
         return processInstanceId;
     }

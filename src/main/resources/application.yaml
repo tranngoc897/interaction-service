@@ -4,7 +4,7 @@ spring:
     name: interaction-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5433/case_data
+    url: jdbc:postgresql://localhost:5433/ob_camunda
     username: postgres
     password: admin
     driver-class-name: org.postgresql.Driver

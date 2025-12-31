@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS flw_case_def (
 );
 
 -- Bảng Case thực tế (Instances)
-CREATE TABLE IF NOT EXISTS flow_case (
+CREATE TABLE IF NOT EXISTS flw_case (
     id UUID PRIMARY KEY,
     version INTEGER DEFAULT 0,
     case_definition_key VARCHAR(255),
@@ -27,9 +27,9 @@ CREATE TABLE IF NOT EXISTS flow_case (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_flow_case_status ON flow_case(status);
-CREATE INDEX idx_flow_case_customer ON flow_case(customer_id);
-CREATE INDEX idx_flow_case_workflow ON flow_case(workflow_instance_id);
+CREATE INDEX idx_flow_case_status ON flw_case(status);
+CREATE INDEX idx_flow_case_customer ON flw_case(customer_id);
+CREATE INDEX idx_flow_case_workflow ON flw_case(workflow_instance_id);
 
 
 -- =============================================================================
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS flw_int (
     user_id VARCHAR(36),
     interaction_definition_key VARCHAR(255),
     interaction_definition_version BIGINT,
-    case_id VARCHAR(36),       -- Link tới flow_case.id (kiểu string để linh động)
+    case_id VARCHAR(36),       -- Link tới flw_case.id (kiểu string để linh động)
     case_version BIGINT,
     step_name VARCHAR(255),    -- Bước hiện tại khách hàng đang ở
     step_status VARCHAR(20),   -- PENDING, COMPLETED...
@@ -74,7 +74,7 @@ CREATE INDEX idx_flw_int_user_id ON flw_int(user_id);
 CREATE TABLE IF NOT EXISTS flw_task (
     id UUID PRIMARY KEY,
     version INTEGER DEFAULT 0,
-    case_id UUID NOT NULL REFERENCES flow_case(id), -- Ràng buộc cứng với Case
+    case_id UUID NOT NULL REFERENCES flw_case(id), -- Ràng buộc cứng với Case
     interaction_id VARCHAR(36),
     task_type VARCHAR(50) NOT NULL,
     status VARCHAR(20) NOT NULL,
@@ -144,6 +144,6 @@ END;
 $$ language 'plpgsql';
 
 CREATE TRIGGER trg_update_flow_case_updated_at
-    BEFORE UPDATE ON flow_case
+    BEFORE UPDATE ON flw_case
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
