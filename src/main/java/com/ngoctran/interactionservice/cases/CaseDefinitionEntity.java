@@ -29,6 +29,7 @@ public class CaseDefinitionEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     private String caseSchema;
 
+/*
     @Column(name = "interaction_flow_json", columnDefinition = "text")
     @JdbcTypeCode(SqlTypes.JSON)
     private String interactionFlowJson;
@@ -36,6 +37,7 @@ public class CaseDefinitionEntity {
     @Column(name = "simple_steps_json", columnDefinition = "text")
     @JdbcTypeCode(SqlTypes.JSON)
     private String simpleStepsJson; // From InteractionDefinitionEntity - simple UI flows
+*/
 
 
     // ABB Onboarding Pattern Fields
@@ -150,7 +152,7 @@ public class CaseDefinitionEntity {
         this.updatedBy = updatedBy;
     }
 
-    public String getInteractionFlowJson() {
+/*    public String getInteractionFlowJson() {
         return interactionFlowJson;
     }
 
@@ -164,5 +166,5 @@ public class CaseDefinitionEntity {
 
     public void setSimpleStepsJson(String simpleStepsJson) {
         this.simpleStepsJson = simpleStepsJson;
-    }
+    }*/
 }
