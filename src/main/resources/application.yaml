@@ -2,13 +2,11 @@
 spring:
   application:
     name: interaction-service
-
   datasource:
     url: jdbc:postgresql://localhost:5433/ob_camunda
     username: postgres
     password: admin
     driver-class-name: org.postgresql.Driver
-
   jpa:
     hibernate:
       ddl-auto: validate
@@ -19,6 +17,19 @@ spring:
         format_sql: true
         jdbc:
           time_zone: UTC
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
+  kafka:
+    bootstrap-servers: localhost:29092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: true
+    template:
+      default-topic: workflow-events
 
 # Camunda REST Client Configuration
 camunda:
@@ -26,6 +37,12 @@ camunda:
     client:
       base-url: http://localhost:8080/engine-rest
       async-response-timeout: 10000
+    history-level: full
+    database:
+      schema-update: true
+    job-execution:
+      enabled: true
+      deployment-aware: true
 
 # Server Configuration
 server:
@@ -38,28 +55,3 @@ logging:
     com.ngoctran.interactionservice: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-
-# Jackson Configuration
-spring.jackson:
-  serialization:
-    write-dates-as-timestamps: false
-  time-zone: UTC
-
-# Kafka Configuration
-  kafka:
-    bootstrap-servers: localhost:29092
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        spring.json.add.type.headers: true
-    template:
-      default-topic: workflow-events
-
-camunda.bpm:
-  history-level: full
-  database:
-    schema-update: true
-  job-execution:
-    enabled: true
-    deployment-aware: true
