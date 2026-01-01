@@ -23,13 +23,11 @@ public class DmnDecisionService {
     private static final Logger log = LoggerFactory.getLogger(DmnDecisionService.class);
 
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
     private final String camundaBaseUrl;
 
     public DmnDecisionService(RestTemplate camundaRestTemplate, ObjectMapper objectMapper,
         @Value("${camunda.bpm.client.base-url:http://localhost:8080/engine-rest}") String camundaBaseUrl) {
         this.restTemplate = camundaRestTemplate;
-        this.objectMapper = objectMapper;
         this.camundaBaseUrl = camundaBaseUrl;
     }
 
