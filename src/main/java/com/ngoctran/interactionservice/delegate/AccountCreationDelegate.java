@@ -33,6 +33,7 @@ public class AccountCreationDelegate implements JavaDelegate {
 
     @Override
     public void execute(DelegateExecution execution) throws Exception {
+        long startTime = System.currentTimeMillis();
         log.info("Executing account creation for process: {}", execution.getProcessInstanceId());
 
         try {
@@ -48,6 +49,9 @@ public class AccountCreationDelegate implements JavaDelegate {
                 execution.setVariable("accountCreated", false);
                 execution.setVariable("accountCreationStatus", "FAILED");
                 execution.setVariable("accountCreationError", "Missing required data");
+
+                long duration = System.currentTimeMillis() - startTime;
+                eventPublisher.publishPerformanceEvent(caseId, "ACCOUNT_CREATION", duration, "FAILED_MISSING_DATA");
                 return;
             }
 
@@ -75,6 +79,9 @@ public class AccountCreationDelegate implements JavaDelegate {
                 execution.setVariable("accountCreated", false);
                 execution.setVariable("accountCreationStatus", "FAILED");
                 execution.setVariable("accountCreationError", "Core banking system error");
+
+                long duration = System.currentTimeMillis() - startTime;
+                eventPublisher.publishPerformanceEvent(caseId, "ACCOUNT_CREATION", duration, "FAILED_CORE_BANKING");
                 return;
             }
 
@@ -97,8 +104,19 @@ public class AccountCreationDelegate implements JavaDelegate {
                     Map.of("accountNumber", accountNumber, "customerId", customerId),
                     Map.of("status", "APPROVED", "action", "ACCOUNT_CREATED"));
 
+            // Publish account created event
+            eventPublisher.publishAccountCreatedEvent(caseId, customerId, accountNumber, customerName, "SAVINGS");
+
+            // Publish Performance Event
+            long duration = System.currentTimeMillis() - startTime;
+            eventPublisher.publishPerformanceEvent(caseId, "ACCOUNT_CREATION", duration, "SUCCESS");
+
         } catch (Exception e) {
             log.error("Account creation failed: {}", e.getMessage(), e);
+            long duration = System.currentTimeMillis() - startTime;
+            String caseId = (String) execution.getVariable("caseId");
+            eventPublisher.publishPerformanceEvent(caseId, "ACCOUNT_CREATION", duration, "ERROR");
+
             execution.setVariable("accountCreated", false);
             execution.setVariable("accountCreationStatus", "ERROR");
             execution.setVariable("accountCreationError", e.getMessage());

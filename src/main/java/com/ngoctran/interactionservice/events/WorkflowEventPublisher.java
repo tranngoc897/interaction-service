@@ -23,8 +23,10 @@ public class WorkflowEventPublisher {
     /**
      * Publish milestone event
      */
-    public void publishMilestoneEvent(String caseId, String milestoneKey, String eventType, Map<String, Object> eventData) {
-        log.info("Publishing milestone event: caseId={}, milestoneKey={}, eventType={}", caseId, milestoneKey, eventType);
+    public void publishMilestoneEvent(String caseId, String milestoneKey, String eventType,
+            Map<String, Object> eventData) {
+        log.info("Publishing milestone event: caseId={}, milestoneKey={}, eventType={}", caseId, milestoneKey,
+                eventType);
 
         MilestoneEvent event = MilestoneEvent.builder()
                 .caseId(caseId)
@@ -49,7 +51,8 @@ public class WorkflowEventPublisher {
     /**
      * Publish workflow state change event
      */
-    public void publishWorkflowStateEvent(String workflowId, String workflowType, String oldState, String newState, Map<String, Object> context) {
+    public void publishWorkflowStateEvent(String workflowId, String workflowType, String oldState, String newState,
+            Map<String, Object> context) {
         log.info("Publishing workflow state event: workflowId={}, {} -> {}", workflowId, oldState, newState);
 
         WorkflowStateEvent event = WorkflowStateEvent.builder()
@@ -76,8 +79,10 @@ public class WorkflowEventPublisher {
     /**
      * Publish compliance check event
      */
-    public void publishComplianceEvent(String caseId, String applicantId, String checkType, String status, Map<String, Object> checkResult) {
-        log.info("Publishing compliance event: caseId={}, applicantId={}, checkType={}, status={}", caseId, applicantId, checkType, status);
+    public void publishComplianceEvent(String caseId, String applicantId, String checkType, String status,
+            Map<String, Object> checkResult) {
+        log.info("Publishing compliance event: caseId={}, applicantId={}, checkType={}, status={}", caseId, applicantId,
+                checkType, status);
 
         ComplianceEvent event = ComplianceEvent.builder()
                 .caseId(caseId)
@@ -103,7 +108,8 @@ public class WorkflowEventPublisher {
     /**
      * Publish joint account event
      */
-    public void publishJointAccountEvent(String caseId, String primaryApplicantId, String coApplicantId, String eventType, Map<String, Object> eventData) {
+    public void publishJointAccountEvent(String caseId, String primaryApplicantId, String coApplicantId,
+            String eventType, Map<String, Object> eventData) {
         log.info("Publishing joint account event: caseId={}, primary={}, coApplicant={}, eventType={}",
                 caseId, primaryApplicantId, coApplicantId, eventType);
 
@@ -131,7 +137,8 @@ public class WorkflowEventPublisher {
     /**
      * Publish case update event
      */
-    public void publishCaseUpdateEvent(String caseId, String caseDefinitionKey, Map<String, Object> caseData, Map<String, Object> changes) {
+    public void publishCaseUpdateEvent(String caseId, String caseDefinitionKey, Map<String, Object> caseData,
+            Map<String, Object> changes) {
         log.info("Publishing case update event: caseId={}, caseDefinitionKey={}", caseId, caseDefinitionKey);
 
         CaseUpdateEvent event = CaseUpdateEvent.builder()
@@ -157,7 +164,8 @@ public class WorkflowEventPublisher {
     /**
      * Publish interaction step event
      */
-    public void publishInteractionStepEvent(String caseId, String interactionKey, String stepName, String action, Map<String, Object> stepData) {
+    public void publishInteractionStepEvent(String caseId, String interactionKey, String stepName, String action,
+            Map<String, Object> stepData) {
         log.info("Publishing interaction step event: caseId={}, interactionKey={}, stepName={}, action={}",
                 caseId, interactionKey, stepName, action);
 
@@ -179,6 +187,121 @@ public class WorkflowEventPublisher {
             log.debug("Published interaction step event to Kafka: {}", event);
         } catch (Exception e) {
             log.warn("Failed to publish interaction step event to Kafka: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Publish system error event (Group 1)
+     */
+    public void publishSystemErrorEvent(String caseId, String processInstanceId, String source, String code,
+            String message, String severity, boolean retryable, Map<String, Object> context) {
+        log.error("Publishing system error event: source={}, code={}, severity={}", source, code, severity);
+
+        SystemErrorEvent event = SystemErrorEvent.builder()
+                .caseId(caseId)
+                .processInstanceId(processInstanceId)
+                .errorSource(source)
+                .errorCode(code)
+                .errorMessage(message)
+                .severity(severity)
+                .retryable(retryable)
+                .errorContext(context)
+                .timestamp(System.currentTimeMillis())
+                .build();
+
+        eventPublisher.publishEvent(event);
+        try {
+            kafkaTemplate.send("system-error-events", caseId != null ? caseId : "system", event);
+        } catch (Exception e) {
+            log.warn("Failed to publish system error event to Kafka: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Publish performance metrics event (Group 1)
+     */
+    public void publishPerformanceEvent(String caseId, String stepName, long durationMs, String status) {
+        PerformanceMetricsEvent event = PerformanceMetricsEvent.builder()
+                .caseId(caseId)
+                .stepName(stepName)
+                .durationMs(durationMs)
+                .status(status)
+                .timestamp(System.currentTimeMillis())
+                .build();
+
+        eventPublisher.publishEvent(event);
+        try {
+            kafkaTemplate.send("performance-metrics", caseId, event);
+        } catch (Exception e) {
+            log.warn("Failed to publish performance event to Kafka: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Publish document processed event (Group 2)
+     */
+    public void publishDocumentProcessedEvent(String caseId, String docType, String status, double confidence,
+            boolean verified, Map<String, Object> metadata) {
+        DocumentProcessedEvent event = DocumentProcessedEvent.builder()
+                .caseId(caseId)
+                .documentType(docType)
+                .status(status)
+                .confidenceScore(confidence)
+                .verificationResult(verified)
+                .metadata(metadata)
+                .timestamp(System.currentTimeMillis())
+                .build();
+
+        eventPublisher.publishEvent(event);
+        try {
+            kafkaTemplate.send("document-events", caseId, event);
+        } catch (Exception e) {
+            log.warn("Failed to publish document processed event to Kafka: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Publish credit check event (Group 2)
+     */
+    public void publishCreditCheckEvent(String caseId, int score, String rating, String risk, boolean passed,
+            Map<String, Object> details) {
+        CreditCheckEvent event = CreditCheckEvent.builder()
+                .caseId(caseId)
+                .creditScore(score)
+                .creditRating(rating)
+                .riskCategory(risk)
+                .passed(passed)
+                .bureauDetails(details)
+                .timestamp(System.currentTimeMillis())
+                .build();
+
+        eventPublisher.publishEvent(event);
+        try {
+            kafkaTemplate.send("credit-check-events", caseId, event);
+        } catch (Exception e) {
+            log.warn("Failed to publish credit check event to Kafka: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Publish account created event (Group 2)
+     */
+    public void publishAccountCreatedEvent(String caseId, String customerId, String accountNumber, String customerName,
+            String accountType) {
+        AccountCreatedEvent event = AccountCreatedEvent.builder()
+                .caseId(caseId)
+                .customerId(customerId)
+                .accountNumber(accountNumber)
+                .customerName(customerName)
+                .accountType(accountType)
+                .timestamp(System.currentTimeMillis())
+                .build();
+
+        eventPublisher.publishEvent(event);
+        try {
+            kafkaTemplate.send("account-events", caseId, event);
+        } catch (Exception e) {
+            log.warn("Failed to publish account created event to Kafka: {}", e.getMessage());
         }
     }
 }

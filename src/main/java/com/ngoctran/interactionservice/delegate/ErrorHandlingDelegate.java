@@ -1,5 +1,6 @@
 package com.ngoctran.interactionservice.delegate;
 
+import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
 import org.camunda.bpm.engine.delegate.BpmnError;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
@@ -19,6 +20,11 @@ import java.util.Map;
 public class ErrorHandlingDelegate implements JavaDelegate {
 
     private static final Logger log = LoggerFactory.getLogger(ErrorHandlingDelegate.class);
+    private final WorkflowEventPublisher eventPublisher;
+
+    public ErrorHandlingDelegate(WorkflowEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
 
     @Override
     public void execute(DelegateExecution execution) throws Exception {
@@ -45,6 +51,12 @@ public class ErrorHandlingDelegate implements JavaDelegate {
                     errorSource,
                     errorCode,
                     errorMessage);
+
+            // Publish system error event
+            String severity = (String) errorRecord.get("severity");
+            boolean retryable = (boolean) errorRecord.get("retryable");
+            eventPublisher.publishSystemErrorEvent(caseId, execution.getProcessInstanceId(),
+                    errorSource, errorCode, errorMessage, severity, retryable, errorRecord);
 
             // Save error record (in production, save to database)
             saveErrorRecord(errorRecord);

@@ -1,5 +1,6 @@
 package com.ngoctran.interactionservice.delegate;
 
+import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.slf4j.Logger;
@@ -17,9 +18,15 @@ import java.util.Map;
 public class OcrProcessingDelegate implements JavaDelegate {
 
     private static final Logger log = LoggerFactory.getLogger(OcrProcessingDelegate.class);
+    private final WorkflowEventPublisher eventPublisher;
+
+    public OcrProcessingDelegate(WorkflowEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
 
     @Override
     public void execute(DelegateExecution execution) throws Exception {
+        long startTime = System.currentTimeMillis();
         log.info("Executing OCR processing for process: {}", execution.getProcessInstanceId());
 
         try {
@@ -83,8 +90,27 @@ public class OcrProcessingDelegate implements JavaDelegate {
             log.info("OCR processing completed: success={}, documentsProcessed={}",
                     allSuccessful, ocrResults.size());
 
+            // Publish Performance Event
+            long duration = System.currentTimeMillis() - startTime;
+            eventPublisher.publishPerformanceEvent(caseId, "OCR_PROCESSING", duration,
+                    allSuccessful ? "SUCCESS" : "PARTIAL_SUCCESS");
+
+            // Publish Document Processed Events for each document
+            ocrResults.forEach((docType, resultObj) -> {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> result = (Map<String, Object>) resultObj;
+                String status = (String) result.get("status");
+                double confidence = (double) result.getOrDefault("confidence", 0.0);
+                eventPublisher.publishDocumentProcessedEvent(caseId, docType, status, confidence,
+                        "SUCCESS".equals(status), result);
+            });
+
         } catch (Exception e) {
             log.error("OCR processing failed: {}", e.getMessage(), e);
+            long duration = System.currentTimeMillis() - startTime;
+            String caseId = (String) execution.getVariable("caseId");
+            eventPublisher.publishPerformanceEvent(caseId, "OCR_PROCESSING", duration, "FAILED");
+
             execution.setVariable("ocrCompleted", false);
             execution.setVariable("ocrStatus", "ERROR");
             execution.setVariable("ocrError", e.getMessage());

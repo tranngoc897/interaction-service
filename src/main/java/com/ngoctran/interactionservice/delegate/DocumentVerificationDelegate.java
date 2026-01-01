@@ -1,5 +1,6 @@
 package com.ngoctran.interactionservice.delegate;
 
+import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.slf4j.Logger;
@@ -17,9 +18,15 @@ import java.util.Map;
 public class DocumentVerificationDelegate implements JavaDelegate {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentVerificationDelegate.class);
+    private final WorkflowEventPublisher eventPublisher;
+
+    public DocumentVerificationDelegate(WorkflowEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
 
     @Override
     public void execute(DelegateExecution execution) throws Exception {
+        long startTime = System.currentTimeMillis();
         log.info("Executing document verification for process: {}", execution.getProcessInstanceId());
 
         try {
@@ -95,8 +102,26 @@ public class DocumentVerificationDelegate implements JavaDelegate {
             log.info("Document verification completed: verified={}, score={}",
                     overallVerified, execution.getVariable("verificationScore"));
 
+            // Publish Performance Event
+            long duration = System.currentTimeMillis() - startTime;
+            eventPublisher.publishPerformanceEvent(caseId, "DOCUMENT_VERIFICATION", duration,
+                    overallVerified ? "SUCCESS" : "VERIFICATION_FAILED");
+
+            // Publish Document Processed Events
+            verificationResults.forEach((docType, resultObj) -> {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> result = (Map<String, Object>) resultObj;
+                String status = (String) result.get("status");
+                eventPublisher.publishDocumentProcessedEvent(caseId, docType, status, 1.0, "VERIFIED".equals(status),
+                        result);
+            });
+
         } catch (Exception e) {
             log.error("Document verification failed: {}", e.getMessage(), e);
+            long duration = System.currentTimeMillis() - startTime;
+            String caseId = (String) execution.getVariable("caseId");
+            eventPublisher.publishPerformanceEvent(caseId, "DOCUMENT_VERIFICATION", duration, "ERROR");
+
             execution.setVariable("documentsVerified", false);
             execution.setVariable("verificationStatus", "ERROR");
             execution.setVariable("verificationError", e.getMessage());

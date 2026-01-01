@@ -1,5 +1,6 @@
 package com.ngoctran.interactionservice.delegate;
 
+import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.slf4j.Logger;
@@ -17,9 +18,15 @@ import java.util.Map;
 public class CreditCheckDelegate implements JavaDelegate {
 
     private static final Logger log = LoggerFactory.getLogger(CreditCheckDelegate.class);
+    private final WorkflowEventPublisher eventPublisher;
+
+    public CreditCheckDelegate(WorkflowEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
 
     @Override
     public void execute(DelegateExecution execution) throws Exception {
+        long startTime = System.currentTimeMillis();
         log.info("Executing credit check for process: {}", execution.getProcessInstanceId());
 
         try {
@@ -71,8 +78,21 @@ public class CreditCheckDelegate implements JavaDelegate {
             log.info("Credit check completed: score={}, rating={}, passed={}",
                     creditScore, creditRating, creditCheckPassed);
 
+            // Publish Performance Event
+            long duration = System.currentTimeMillis() - startTime;
+            eventPublisher.publishPerformanceEvent(caseId, "CREDIT_CHECK", duration,
+                    creditCheckPassed ? "SUCCESS" : "FAILED");
+
+            // Publish Credit Check Event
+            eventPublisher.publishCreditCheckEvent(caseId, creditScore, creditRating, riskCategory, creditCheckPassed,
+                    creditReport);
+
         } catch (Exception e) {
             log.error("Credit check failed: {}", e.getMessage(), e);
+            long duration = System.currentTimeMillis() - startTime;
+            String caseId = (String) execution.getVariable("caseId");
+            eventPublisher.publishPerformanceEvent(caseId, "CREDIT_CHECK", duration, "ERROR");
+
             execution.setVariable("creditCheckCompleted", false);
             execution.setVariable("creditCheckStatus", "ERROR");
             execution.setVariable("creditCheckError", e.getMessage());
