@@ -1,3 +1,4 @@
+/*
 package com.ngoctran.interactionservice.session;
 
 import jakarta.persistence.*;
@@ -10,6 +11,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
+*/
 /**
  * Interaction Instance - represents a user's journey/session
  *
@@ -18,7 +20,8 @@ import java.util.UUID;
  * document)
  * - Multi-channel interactions (web, mobile, call center)
  * - Resume/retry scenarios
- */
+ *//*
+
 @Entity
 @Table(name = "flw_int")
 @Data
@@ -42,26 +45,32 @@ public class InteractionEntity {
     @Column(name = "interaction_definition_version")
     private Long interactionDefinitionVersion;
 
-    /**
+    */
+/**
      * Foreign key to flw_case.id
      * Many interactions can belong to one case (1:N relationship)
-     */
+     *//*
+
     @Column(name = "case_id")
     private UUID caseId;
 
-    /**
+    */
+/**
      * Current step in the journey (CURRENT POSITION)
-     */
+     *//*
+
     @Column(name = "step_name", length = 255)
     private String stepName;
 
     @Column(name = "step_status", length = 20)
     private String stepStatus;
 
-    /**
+    */
+/**
      * Overall interaction status
      * Values: ACTIVE, WAITING_SYSTEM, COMPLETED, FAILED, CANCELLED
-     */
+     *//*
+
     @Column(name = "status", length = 20)
     private String status;
 
@@ -81,9 +90,11 @@ public class InteractionEntity {
         this.updatedAt = Instant.now();
     }
 
-    /**
+    */
+/**
      * Temporary data for current step
-     */
+     *//*
+
     @Column(name = "temp_data", columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
     private String tempData;
@@ -100,3 +111,4 @@ public class InteractionEntity {
         this.status = status;
     }
 }
+*/
