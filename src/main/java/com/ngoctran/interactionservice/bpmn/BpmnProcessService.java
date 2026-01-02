@@ -1,6 +1,5 @@
 package com.ngoctran.interactionservice.bpmn;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,8 +19,6 @@ import java.util.Optional;
 /**
  * BPMN Process Service - Manages BPMN process deployment and execution via REST
  * API
- * Connects to external Camunda server via HTTP REST calls
- * Similar to onboarding's BPMN orchestration
  */
 @Service
 public class BpmnProcessService {
@@ -29,15 +26,13 @@ public class BpmnProcessService {
     private static final Logger log = LoggerFactory.getLogger(BpmnProcessService.class);
 
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
     private final WorkflowEventPublisher eventPublisher;
     private final String camundaBaseUrl;
 
-    public BpmnProcessService(RestTemplate camundaRestTemplate, ObjectMapper objectMapper,
+    public BpmnProcessService(RestTemplate camundaRestTemplate,
             WorkflowEventPublisher eventPublisher,
             @Value("${camunda.bpm.client.base-url:http://localhost:8080/engine-rest}") String camundaBaseUrl) {
         this.restTemplate = camundaRestTemplate;
-        this.objectMapper = objectMapper;
         this.eventPublisher = eventPublisher;
         this.camundaBaseUrl = camundaBaseUrl;
     }

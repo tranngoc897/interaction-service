@@ -34,7 +34,7 @@
 
     <!-- Data Validation -->
     <bpmn:serviceTask id="Task_DataValidation" name="Validate Applicant Data"
-                      camunda:class="com.ngoctran.interactionservice.delegate.DataValidationDelegate">
+                      camunda:type="external" camunda:topic="data-validation">
       <bpmn:incoming>Flow_2a</bpmn:incoming>
       <bpmn:outgoing>Flow_3</bpmn:outgoing>
     </bpmn:serviceTask>
@@ -47,7 +47,7 @@
 
     <!-- OCR Processing -->
     <bpmn:serviceTask id="Task_OcrProcessing" name="OCR Document Processing"
-                      camunda:class="com.ngoctran.interactionservice.delegate.OcrProcessingDelegate"
+                      camunda:type="external" camunda:topic="ocr-processing"
                       camunda:asyncBefore="true"
                       camunda:asyncAfter="true">
       <bpmn:extensionElements>
@@ -65,7 +65,7 @@
 
     <!-- Document Verification -->
     <bpmn:serviceTask id="Task_DocumentVerification" name="Verify Documents"
-                      camunda:class="com.ngoctran.interactionservice.delegate.DocumentVerificationDelegate"
+                      camunda:type="external" camunda:topic="document-verification"
                       camunda:asyncBefore="true"
                       camunda:asyncAfter="true">
       <bpmn:extensionElements>
@@ -83,7 +83,7 @@
 
     <!-- Credit Check -->
     <bpmn:serviceTask id="Task_CreditCheck" name="Credit Score Check"
-                      camunda:class="com.ngoctran.interactionservice.delegate.CreditCheckDelegate"
+                      camunda:type="external" camunda:topic="credit-check"
                       camunda:asyncBefore="true"
                       camunda:asyncAfter="true">
       <bpmn:extensionElements>
@@ -101,7 +101,7 @@
 
     <!-- Compliance Check -->
     <bpmn:serviceTask id="Task_ComplianceCheck" name="AML/KYC Compliance Check"
-                      camunda:class="com.ngoctran.interactionservice.delegate.ComplianceDelegate"
+                      camunda:type="external" camunda:topic="compliance-check"
                       camunda:asyncBefore="true"
                       camunda:asyncAfter="true">
       <bpmn:extensionElements>
@@ -119,7 +119,7 @@
 
     <!-- Error Handling Task -->
     <bpmn:serviceTask id="Task_HandleError" name="Handle Processing Error"
-                      camunda:class="com.ngoctran.interactionservice.delegate.ErrorHandlingDelegate">
+                      camunda:type="external" camunda:topic="error-handling">
       <bpmn:incoming>Flow_ValidationError</bpmn:incoming>
       <bpmn:incoming>Flow_OcrError</bpmn:incoming>
       <bpmn:incoming>Flow_VerificationError</bpmn:incoming>
@@ -156,7 +156,7 @@
 
     <!-- Account Creation -->
     <bpmn:serviceTask id="Task_CreateAccount" name="Create Customer Account"
-                      camunda:class="com.ngoctran.interactionservice.delegate.AccountCreationDelegate">
+                      camunda:type="external" camunda:topic="account-creation">
       <bpmn:incoming>Flow_Approved</bpmn:incoming>
       <bpmn:incoming>Flow_Approved_Review</bpmn:incoming>
       <bpmn:outgoing>Flow_5</bpmn:outgoing>
@@ -164,14 +164,14 @@
 
     <!-- Send SMS Notification -->
     <bpmn:serviceTask id="Task_SendSms" name="Send SMS Notification"
-                      camunda:class="com.ngoctran.interactionservice.delegate.SmsNotificationDelegate">
+                      camunda:type="external" camunda:topic="sms-notification">
       <bpmn:incoming>Flow_5</bpmn:incoming>
       <bpmn:outgoing>Flow_5a</bpmn:outgoing>
     </bpmn:serviceTask>
 
     <!-- Send Welcome Email -->
     <bpmn:serviceTask id="Task_SendWelcomeEmail" name="Send Welcome Email"
-                      camunda:class="com.ngoctran.interactionservice.delegate.NotificationDelegate">
+                      camunda:type="external" camunda:topic="email-notification">
       <bpmn:incoming>Flow_5a</bpmn:incoming>
       <bpmn:outgoing>Flow_6</bpmn:outgoing>
     </bpmn:serviceTask>
