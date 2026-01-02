@@ -104,7 +104,7 @@ camunda:
 
 ```bash
 # Deploy onboarding process
-curl -X POST "http://localhost:8080/api/bpmn/deploy?processKey=onboarding&processName=Onboarding" \
+curl -X POST "http://localhost:8081/api/bpmn/deploy?processKey=onboarding&processName=Onboarding" \
   -H "Content-Type: application/xml" \
   --data-binary @bpmn-processes/onboarding-process.bpmn
 ```
@@ -113,7 +113,7 @@ curl -X POST "http://localhost:8080/api/bpmn/deploy?processKey=onboarding&proces
 
 ```bash
 # Start onboarding process
-curl -X POST "http://localhost:8080/api/bpmn/start?processDefinitionKey=onboarding&businessKey=customer-123" \
+curl -X POST "http://localhost:8081/api/bpmn/start?processDefinitionKey=onboarding&businessKey=customer-123" \
   -H "Content-Type: application/json" \
   -d '{
     "customerId": "123",
@@ -126,7 +126,7 @@ curl -X POST "http://localhost:8080/api/bpmn/start?processDefinitionKey=onboardi
 
 ```bash
 # Signal document upload completion
-curl -X POST "http://localhost:8080/api/bpmn/signal/process-instance-456?signalName=documentsUploaded" \
+curl -X POST "http://localhost:8081/api/bpmn/signal/process-instance-456?signalName=documentsUploaded" \
   -H "Content-Type: application/json" \
   -d '{
     "documentCount": 3,
