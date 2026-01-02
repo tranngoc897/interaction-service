@@ -1,36 +1,5 @@
 # Camunda 7 Local Docker Setup
-
-Hướng dẫn cài đặt và sử dụng Camunda 7 với Docker cho Onboarding Integration.
-
-## 📋 Yêu cầu hệ thống
-
-- Docker & Docker Compose
-- Java 8+ (cho Spring Boot app)
-- PostgreSQL (tự động tạo qua Docker)
-
-## 🚀 Cài đặt và chạy Camunda 7
-
-### 1. Khởi động Camunda với Docker Compose
-
-```bash
-# Từ thư mục project
-cd /Users/ngoctran/Coding/workflow/interaction-service
-
-# Khởi động Camunda và PostgreSQL
-docker-compose -f camunda-docker-compose.yml up -d
-```
-
-### 2. Kiểm tra trạng thái
-
-```bash
-# Kiểm tra containers đang chạy
-docker-compose -f camunda-docker-compose.yml ps
-
-# Xem logs
-docker-compose -f camunda-docker-compose.yml logs -f camunda
-```
-
-### 3. Truy cập Camunda Web Apps
+Truy cập Camunda Web Apps
 
 - **Camunda Tasklist**: http://localhost:8080/camunda/app/tasklist/
 - **Camunda Cockpit**: http://localhost:8080/camunda/app/cockpit/
@@ -58,7 +27,6 @@ camunda-docker-compose.yml
 ## 📁 BPMN Processes
 
 BPMN processes được mount vào container tại `/camunda/conf/bpmn/`
-
 ### Sample Process: `onboarding-process.bpmn`
 
 ```xml
@@ -71,7 +39,6 @@ BPMN processes được mount vào container tại `/camunda/conf/bpmn/`
 ```
 
 ### Quy trình Onboarding:
-
 1. **Collect Personal Information** (User Task)
 2. **Upload Documents** (User Task)
 3. **AML/KYC Compliance Check** (Service Task)
@@ -82,9 +49,7 @@ BPMN processes được mount vào container tại `/camunda/conf/bpmn/`
 ## 🔧 Sử dụng với Spring Boot App
 
 ### 1. Cấu hình Database
-
 Trong `application.yaml`:
-
 ```yaml
 spring:
   datasource:
@@ -99,16 +64,13 @@ camunda:
       type: postgres
       schema-update: true
 ```
-
 ### 2. Deploy BPMN Process qua API
-
 ```bash
 # Deploy onboarding process
 curl -X POST "http://localhost:8081/api/bpmn/deploy?processKey=onboarding&processName=Onboarding" \
   -H "Content-Type: application/xml" \
   --data-binary @bpmn-processes/onboarding-process.bpmn
 ```
-
 ### 3. Start Process Instance
 
 ```bash
@@ -121,7 +83,6 @@ curl -X POST "http://localhost:8081/api/bpmn/start?processDefinitionKey=onboardi
     "productType": "SAVINGS_ACCOUNT"
   }'
 ```
-
 ### 4. Signal Process
 
 ```bash
@@ -134,37 +95,6 @@ curl -X POST "http://localhost:8081/api/bpmn/signal/process-instance-456?signalN
   }'
 ```
 
-## 🛠️ Development Workflow
-
-### 1. BPMN Process Design
-
-- Sử dụng **Camunda Modeler** để design BPMN processes
-- Lưu files vào `bpmn-processes/` directory
-- Docker sẽ tự động mount và deploy
-
-### 2. Java Delegates
-
-Tạo Java delegates cho Service Tasks:
-
-```java
-@Component
-public class ComplianceDelegate implements JavaDelegate {
-    @Override
-    public void execute(DelegateExecution execution) {
-        // AML/KYC compliance logic
-        String customerId = (String) execution.getVariable("customerId");
-        // ... compliance check logic
-        execution.setVariable("complianceStatus", "PASSED");
-    }
-}
-```
-
-### 3. Process Monitoring
-
-- **Cockpit**: Monitor process instances, performance metrics
-- **Tasklist**: Complete user tasks
-- **Admin**: User/role management
-
 ## 📊 Database Schema
 
 Camunda tự động tạo các bảng:
@@ -173,77 +103,6 @@ Camunda tự động tạo các bảng:
 - `ACT_RU_*` - Runtime tables
 - `ACT_RE_*` - Repository tables
 - `ACT_ID_*` - Identity tables
-
-## 🔄 Integration với Case Management
-
-### CaseService BPMN Methods:
-
-```java
-// Start BPMN process for case
-caseService.startBpmnProcess(caseId, "onboarding-process", variables);
-
-// Signal BPMN process
-caseService.signalBpmnProcess(caseId, "documentsUploaded", signalData);
-
-// Update process variables
-caseService.updateBpmnVariables(caseId, Map.of("riskLevel", "LOW"));
-
-// Check process status
-boolean active = caseService.isBpmnProcessActive(caseId);
-```
-
-## 🐛 Troubleshooting
-
-### Container không start được
-
-```bash
-# Check logs
-docker-compose -f camunda-docker-compose.yml logs camunda-db
-docker-compose -f camunda-docker-compose.yml logs camunda
-
-# Restart services
-docker-compose -f camunda-docker-compose.yml restart
-```
-
-### Database connection issues
-
-```bash
-# Check PostgreSQL
-docker exec -it camunda-postgres pg_isready -U camunda -d camunda
-
-# Reset database
-docker-compose -f camunda-docker-compose.yml down -v
-docker-compose -f camunda-docker-compose.yml up -d
-```
-
-### BPMN deployment fails
-
-```bash
-# Check BPMN XML syntax
-xmllint --noout bpmn-processes/onboarding-process.bpmn
-
-# Check Camunda logs
-docker-compose -f camunda-docker-compose.yml logs camunda
-```
-
-## 🛑 Dừng và dọn dẹp
-
-```bash
-# Stop services
-docker-compose -f camunda-docker-compose.yml down
-
-# Stop and remove volumes (xóa data)
-docker-compose -f camunda-docker-compose.yml down -v
-
-# Remove images
-docker-compose -f camunda-docker-compose.yml down --rmi all
-```
-
-## 📚 Tài liệu tham khảo
-
-- [Camunda BPM Documentation](https://docs.camunda.org/)
-- [Camunda Docker Images](https://hub.docker.com/r/camunda/camunda-bpm-platform/)
-- [BPMN 2.0 Specification](https://www.omg.org/spec/BPMN/2.0/)
 
 ## 🎯 Next Steps
 

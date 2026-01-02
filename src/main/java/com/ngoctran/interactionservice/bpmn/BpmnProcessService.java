@@ -5,8 +5,11 @@ import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -49,30 +52,35 @@ public class BpmnProcessService {
             String url = camundaBaseUrl + "/deployment/create";
 
             // Create multipart form data
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("deployment-name", processName);
+            body.add("deployment-source", "process-application");
+
+            // Convert BPMN XML string to a file resource
+            ByteArrayResource bpmnFile = new ByteArrayResource(bpmnXml.getBytes()) {
+                @Override
+                public String getFilename() {
+                    return processKey + ".bpmn";
+                }
+            };
+            body.add("data", bpmnFile);
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
-            // For simplicity, we'll use a basic approach
-            // In production, you'd use MultipartFile or similar
-            Map<String, Object> request = new HashMap<>();
-            request.put("deployment-name", processName);
-            request.put("deployment-source", "process-application");
-            // Note: File upload would need proper multipart handling
-
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(body, headers);
             ResponseEntity<Deployment> response = restTemplate.postForEntity(url, entity, Deployment.class);
-            Deployment body = response.getBody();
+            Deployment deployment = response.getBody();
 
-            if (body != null) {
-                log.info("Successfully deployed process: {}", body.id);
+            if (deployment != null) {
+                log.info("Successfully deployed process: {}", deployment.id);
 
                 // Publish deployment event
-                eventPublisher.publishWorkflowStateEvent(body.id,
+                eventPublisher.publishWorkflowStateEvent(deployment.id,
                         processKey, "NONE", "DEPLOYED",
                         Map.of("name", processName));
             }
-
-            return body;
+            return deployment;
         } catch (Exception e) {
             log.error("Failed to deploy BPMN process: {}", processKey, e);
             throw new RuntimeException("BPMN deployment failed: " + e.getMessage(), e);
@@ -94,7 +102,14 @@ public class BpmnProcessService {
                 request.put("businessKey", businessKey);
             }
             if (variables != null && !variables.isEmpty()) {
-                request.put("variables", variables);
+                Map<String, Object> camundaVariables = new HashMap<>();
+                variables.forEach((key, value) -> {
+                    Map<String, Object> varData = new HashMap<>();
+                    varData.put("value", value);
+                    varData.put("type", getVariableType(value));
+                    camundaVariables.put(key, varData);
+                });
+                request.put("variables", camundaVariables);
             }
 
             HttpHeaders headers = new HttpHeaders();
