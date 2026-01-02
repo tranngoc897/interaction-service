@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 
 /**
  * Joint Account Entity - Manages joint account relationships
- * Similar to ABB onboarding's joint account support
+ * Similar to onboarding's joint account support
  */
 @Entity
 @Table(name = "joint_accounts")

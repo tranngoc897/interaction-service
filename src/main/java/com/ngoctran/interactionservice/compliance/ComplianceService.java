@@ -15,7 +15,7 @@ import java.util.Optional;
 
 /**
  * Compliance Service - Enhanced AML/KYC compliance checking
- * Similar to ABB onboarding's compliance features
+ * Similar to onboarding's compliance features
  */
 @Service
 @RequiredArgsConstructor

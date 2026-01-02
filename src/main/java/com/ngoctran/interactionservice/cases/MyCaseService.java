@@ -223,7 +223,7 @@ public class MyCaseService {
     }
 
     // ===========================================
-    // ABB ONBOARDING PATTERN METHODS
+    // ONBOARDING PATTERN METHODS
     // ===========================================
 
     /**

@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 
 /**
  * Compliance Check Entity - Enhanced AML/KYC compliance tracking
- * Similar to ABB onboarding's compliance features
+ * Similar to onboarding's compliance features
  */
 @Entity
 @Table(name = "compliance_checks")

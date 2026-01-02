@@ -14,7 +14,7 @@ import java.util.UUID;
 
 /**
  * Joint Account Service - Manages joint account relationships and parallel processing
- * Similar to ABB onboarding's joint account support
+ * Similar to onboarding's joint account support
  */
 @Service
 @RequiredArgsConstructor

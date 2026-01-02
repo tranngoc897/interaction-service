@@ -10,7 +10,7 @@ import java.util.Map;
 
 /**
  * Event Publisher - Publishes workflow events using Spring Events and Kafka
- * Similar to ABB onboarding's event-driven architecture
+ * Similar to onboarding's event-driven architecture
  */
 @Component
 @RequiredArgsConstructor

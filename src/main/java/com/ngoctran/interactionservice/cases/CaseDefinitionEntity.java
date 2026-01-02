@@ -40,7 +40,7 @@ public class CaseDefinitionEntity {
 */
 
 
-    // ABB Onboarding Pattern Fields
+    // Onboarding Pattern Fields
     @Column(length = 255)
     private String name;
 

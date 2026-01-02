@@ -56,7 +56,7 @@ public class CaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     private String sla;
 
-    // ABB Onboarding Pattern Fields
+    // Onboarding Pattern Fields
     @Column(name = "resume_token", columnDefinition = "text")
     private String resumeToken;
 
@@ -211,7 +211,7 @@ public class CaseEntity {
         this.updatedAt = updatedAt;
     }
 
-    // ABB Onboarding Pattern Getters and Setters
+    // Onboarding Pattern Getters and Setters
     public String getResumeToken() {
         return resumeToken;
     }

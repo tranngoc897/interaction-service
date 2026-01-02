@@ -14,7 +14,7 @@ import java.util.Map;
 
 /**
  * DMN Decision Service - Manages DMN decision tables via REST API
- * Similar to ABB onboarding's decision table usage
+ * Similar to onboarding's decision table usage
  * Uses Camunda REST API instead of embedded engine
  */
 @Service

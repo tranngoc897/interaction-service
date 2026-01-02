@@ -1,6 +1,6 @@
 # Camunda 7 Local Docker Setup
 
-Hướng dẫn cài đặt và sử dụng Camunda 7 với Docker cho ABB Onboarding Integration.
+Hướng dẫn cài đặt và sử dụng Camunda 7 với Docker cho Onboarding Integration.
 
 ## 📋 Yêu cầu hệ thống
 
@@ -253,4 +253,4 @@ docker-compose -f camunda-docker-compose.yml down --rmi all
 4. **Monitor Processes**: Sử dụng Cockpit và Tasklist
 5. **Integrate with Cases**: Sử dụng CaseService BPMN methods
 
-**Camunda 7 đã sẵn sàng cho ABB Onboarding Integration! 🚀**
+**Camunda 7 đã sẵn sàng cho Onboarding Integration! 🚀**

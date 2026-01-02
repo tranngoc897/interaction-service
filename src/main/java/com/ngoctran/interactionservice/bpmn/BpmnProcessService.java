@@ -18,7 +18,7 @@ import java.util.Optional;
  * BPMN Process Service - Manages BPMN process deployment and execution via REST
  * API
  * Connects to external Camunda server via HTTP REST calls
- * Similar to ABB onboarding's BPMN orchestration
+ * Similar to onboarding's BPMN orchestration
  */
 @Service
 public class BpmnProcessService {

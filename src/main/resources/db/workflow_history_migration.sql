@@ -97,10 +97,10 @@ ORDER BY changed_at DESC;
 -- GRANT SELECT ON workflow_failure_analysis TO your_app_user;
 
 -- ===========================================
--- ABB-ONBOARDING PATTERN MIGRATIONS
+-- ONBOARDING PATTERN MIGRATIONS
 -- ===========================================
 
--- Enhance existing flw_case_def table with ABB patterns
+-- Enhance existing flw_case_def table with patterns
 ALTER TABLE flw_case_def ADD COLUMN IF NOT EXISTS name VARCHAR(255);
 ALTER TABLE flw_case_def ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE flw_case_def ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'ACTIVE';
@@ -108,10 +108,10 @@ ALTER TABLE flw_case_def ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT C
 ALTER TABLE flw_case_def ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE flw_case_def ADD COLUMN IF NOT EXISTS created_by VARCHAR(255);
 ALTER TABLE flw_case_def ADD COLUMN IF NOT EXISTS updated_by VARCHAR(255);
-ALTER TABLE flw_case_def ADD COLUMN IF NOT EXISTS interaction_flow_json TEXT; -- For ABB complex flows
+ALTER TABLE flw_case_def ADD COLUMN IF NOT EXISTS interaction_flow_json TEXT; -- For complex flows
 ALTER TABLE flw_case_def ADD COLUMN IF NOT EXISTS simple_steps_json TEXT; -- For existing simple UI flows
 
--- Enhance existing flw_case table with ABB patterns
+-- Enhance existing flw_case table with patterns
 ALTER TABLE flw_case ADD COLUMN IF NOT EXISTS resume_token TEXT; -- For workflow resume/pause
 ALTER TABLE flw_case ADD COLUMN IF NOT EXISTS workflow_state TEXT; -- JSON state for resumability
 ALTER TABLE flw_case ADD COLUMN IF NOT EXISTS epic_data TEXT; -- JSON epic/milestone tracking
