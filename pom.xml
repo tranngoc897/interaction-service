@@ -119,10 +119,10 @@
       <version>7.21.0</version>
     </dependency>
 
-    <!-- Camunda REST Client -->
+    <!-- Camunda Spring Boot Starter for External Task Client (K8s Ready) -->
     <dependency>
-      <groupId>org.camunda.bpm</groupId>
-      <artifactId>camunda-external-task-client</artifactId>
+      <groupId>org.camunda.bpm.springboot</groupId>
+      <artifactId>camunda-bpm-spring-boot-starter-external-task-client</artifactId>
       <version>7.21.0</version>
     </dependency>
 

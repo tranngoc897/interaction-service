@@ -39,12 +39,33 @@ spring:
     template:
       default-topic: workflow-events
 
-# Camunda REST Client Configuration
+# Camunda External Task Client Configuration (K8s Ready)
+camunda.bpm.client:
+  base-url: http://localhost:8080/engine-rest
+  async-response-timeout: 10000
+  subscriptions:
+    data-validation:
+      process-definition-key: onboarding
+    ocr-processing:
+      process-definition-key: onboarding
+    document-verification:
+      process-definition-key: onboarding
+    credit-check:
+      process-definition-key: onboarding
+    compliance-check:
+      process-definition-key: onboarding
+    error-handling:
+      process-definition-key: onboarding
+    account-creation:
+      process-definition-key: onboarding
+    sms-notification:
+      process-definition-key: onboarding
+    email-notification:
+      process-definition-key: onboarding
+
+# Camunda REST Client Configuration (Legacy/Service)
 camunda:
   bpm:
-    client:
-      base-url: http://localhost:8080/engine-rest
-      async-response-timeout: 10000
     history-level: full
     database:
       schema-update: true
