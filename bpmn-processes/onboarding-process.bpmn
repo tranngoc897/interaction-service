@@ -13,7 +13,7 @@
   <bpmn:error id="Error_CREDIT_CHECK" name="Credit Check Error" errorCode="CREDIT_CHECK_ERROR" />
   <bpmn:error id="Error_COMPLIANCE_CHECK" name="Compliance Check Error" errorCode="COMPLIANCE_CHECK_ERROR" />
   <bpmn:error id="Error_PROCESSING_FAILED" name="Processing Failed" errorCode="PROCESSING_FAILED" />
-  <bpmn:process id="onboarding-process" name="Customer Onboarding Process" isExecutable="true">
+  <bpmn:process id="onboarding-process" name="Customer Onboarding Process" isExecutable="true" camunda:historyTimeToLive="180">
 
     <!-- Start Event -->
     <bpmn:startEvent id="StartEvent_1" name="Onboarding Started">
