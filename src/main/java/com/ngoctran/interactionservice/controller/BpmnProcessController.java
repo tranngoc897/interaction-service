@@ -82,8 +82,10 @@ public class BpmnProcessController {
      * Get process instance by business key
      */
     @GetMapping("/instance/{businessKey}")
-    public ResponseEntity<com.ngoctran.interactionservice.controller.ProcessInstance> getProcessInstance(@PathVariable String businessKey) {
-        Optional<com.ngoctran.interactionservice.bpmn.ProcessInstance> instanceOpt = bpmnProcessService.getProcessInstance(businessKey);
+    public ResponseEntity<com.ngoctran.interactionservice.controller.ProcessInstance> getProcessInstance(
+            @PathVariable String businessKey) {
+        Optional<com.ngoctran.interactionservice.bpmn.ProcessInstance> instanceOpt = bpmnProcessService
+                .getProcessInstance(businessKey);
         if (instanceOpt.isPresent()) {
             com.ngoctran.interactionservice.bpmn.ProcessInstance instance = instanceOpt.get();
             // Convert to controller DTO
@@ -101,19 +103,21 @@ public class BpmnProcessController {
      * Get process instances by definition key
      */
     @GetMapping("/instances")
-    public ResponseEntity<List<com.ngoctran.interactionservice.controller.ProcessInstance>> getProcessInstances(@RequestParam String processDefinitionKey) {
-        List<com.ngoctran.interactionservice.bpmn.ProcessInstance> instances = bpmnProcessService.getProcessInstances(processDefinitionKey);
+    public ResponseEntity<List<com.ngoctran.interactionservice.controller.ProcessInstance>> getProcessInstances(
+            @RequestParam String processDefinitionKey) {
+        List<com.ngoctran.interactionservice.bpmn.ProcessInstance> instances = bpmnProcessService
+                .getProcessInstances(processDefinitionKey);
         // Convert to controller DTOs
         List<com.ngoctran.interactionservice.controller.ProcessInstance> result = instances.stream()
-            .map(instance -> {
-                com.ngoctran.interactionservice.controller.ProcessInstance dto = new com.ngoctran.interactionservice.controller.ProcessInstance();
-                dto.id = instance.id;
-                dto.businessKey = instance.businessKey;
-                dto.processDefinitionId = instance.processDefinitionId;
-                dto.ended = instance.ended;
-                return dto;
-            })
-            .collect(java.util.stream.Collectors.toList());
+                .map(instance -> {
+                    com.ngoctran.interactionservice.controller.ProcessInstance dto = new com.ngoctran.interactionservice.controller.ProcessInstance();
+                    dto.id = instance.id;
+                    dto.businessKey = instance.businessKey;
+                    dto.processDefinitionId = instance.processDefinitionId;
+                    dto.ended = instance.ended;
+                    return dto;
+                })
+                .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(result);
     }
 
@@ -205,8 +209,10 @@ public class BpmnProcessController {
      * Get process definition
      */
     @GetMapping("/definition/{processDefinitionKey}")
-    public ResponseEntity<com.ngoctran.interactionservice.controller.ProcessDefinition> getProcessDefinition(@PathVariable String processDefinitionKey) {
-        Optional<com.ngoctran.interactionservice.bpmn.ProcessDefinition> definitionOpt = bpmnProcessService.getProcessDefinition(processDefinitionKey);
+    public ResponseEntity<com.ngoctran.interactionservice.controller.ProcessDefinition> getProcessDefinition(
+            @PathVariable String processDefinitionKey) {
+        Optional<com.ngoctran.interactionservice.bpmn.ProcessDefinition> definitionOpt = bpmnProcessService
+                .getProcessDefinition(processDefinitionKey);
         if (definitionOpt.isPresent()) {
             com.ngoctran.interactionservice.bpmn.ProcessDefinition definition = definitionOpt.get();
             // Convert to controller DTO
@@ -256,7 +262,38 @@ public class BpmnProcessController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    /**
+     * Get active tasks for a process instance
+     */
+    @GetMapping("/tasks/{processInstanceId}")
+    public ResponseEntity<List<Map<String, Object>>> getTasks(@PathVariable String processInstanceId) {
+        try {
+            List<Map<String, Object>> tasks = bpmnProcessService.getTasks(processInstanceId);
+            return ResponseEntity.ok(tasks);
+        } catch (Exception e) {
+            log.error("Failed to get tasks", e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Complete a user task
+     */
+    @PostMapping("/task/{taskId}/complete")
+    public ResponseEntity<Void> completeTask(
+            @PathVariable String taskId,
+            @RequestBody(required = false) Map<String, Object> variables) {
+        try {
+            bpmnProcessService.completeTask(taskId, variables);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("Failed to complete task", e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
 }
+
 // Custom DTOs for REST API responses
 class Deployment {
     public String id;

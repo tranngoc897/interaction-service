@@ -289,6 +289,57 @@ public class BpmnProcessService {
     }
 
     /**
+     * Get active tasks for a process instance via REST API
+     */
+    public List<Map<String, Object>> getTasks(String processInstanceId) {
+        try {
+            String url = camundaBaseUrl + "/task?processInstanceId=" + processInstanceId;
+            ResponseEntity<Map[]> response = restTemplate.getForEntity(url, Map[].class);
+
+            Map[] tasks = response.getBody();
+            if (tasks != null) {
+                return (List<Map<String, Object>>) (List<?>) List.of(tasks);
+            }
+            return List.of();
+        } catch (Exception e) {
+            log.warn("Failed to get tasks for process instance: {}", processInstanceId, e);
+            return List.of();
+        }
+    }
+
+    /**
+     * Complete a user task via REST API
+     */
+    public void completeTask(String taskId, Map<String, Object> variables) {
+        log.info("Completing task: {}", taskId);
+
+        try {
+            String url = camundaBaseUrl + "/task/" + taskId + "/complete";
+
+            Map<String, Object> request = new HashMap<>();
+            if (variables != null && !variables.isEmpty()) {
+                Map<String, Object> camundaVariables = new HashMap<>();
+                variables.forEach((key, value) -> {
+                    Map<String, Object> varData = new HashMap<>();
+                    varData.put("value", value);
+                    varData.put("type", getVariableType(value));
+                    camundaVariables.put(key, varData);
+                });
+                request.put("variables", camundaVariables);
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            restTemplate.postForEntity(url, entity, String.class);
+        } catch (Exception e) {
+            log.error("Failed to complete task: {}", taskId, e);
+            throw new RuntimeException("Task completion failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Get process definition by key via REST API
      */
     public Optional<ProcessDefinition> getProcessDefinition(String processDefinitionKey) {
