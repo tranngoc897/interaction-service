@@ -39,7 +39,8 @@ public class BpmnProcessController {
         log.info("Deploying BPMN process: key={}, name={}", processKey, processName);
 
         try {
-            com.ngoctran.interactionservice.bpmn.Deployment deployment = bpmnProcessService.deployProcess(processKey, processName, bpmnXml);
+            com.ngoctran.interactionservice.bpmn.Deployment deployment = bpmnProcessService.deployProcess(processKey,
+                    processName, bpmnXml);
             // Convert to controller DTO
             com.ngoctran.interactionservice.controller.Deployment result = new com.ngoctran.interactionservice.controller.Deployment();
             result.id = deployment.id;
@@ -64,7 +65,8 @@ public class BpmnProcessController {
         log.info("Starting process instance: key={}, businessKey={}", processDefinitionKey, businessKey);
 
         try {
-            com.ngoctran.interactionservice.bpmn.ProcessInstance instance = bpmnProcessService.startProcess(processDefinitionKey, businessKey, variables);
+            com.ngoctran.interactionservice.bpmn.ProcessInstance instance = bpmnProcessService
+                    .startProcess(processDefinitionKey, businessKey, variables);
             // Convert to controller DTO
             com.ngoctran.interactionservice.controller.ProcessInstance result = new com.ngoctran.interactionservice.controller.ProcessInstance();
             result.id = instance.id;
@@ -83,8 +85,8 @@ public class BpmnProcessController {
      */
     @PostMapping("/task/{taskId}/complete")
     public ResponseEntity<Void> completeTask(
-        @PathVariable String taskId,
-        @RequestBody(required = false) Map<String, Object> variables) {
+            @PathVariable String taskId,
+            @RequestBody(required = false) Map<String, Object> variables) {
         try {
             bpmnProcessService.completeTask(taskId, variables);
             return ResponseEntity.ok().build();
@@ -99,9 +101,9 @@ public class BpmnProcessController {
      */
     @PostMapping("/signal/{processInstanceId}")
     public ResponseEntity<Void> signalProcess(
-        @PathVariable String processInstanceId,
-        @RequestParam String signalName,
-        @RequestBody(required = false) Map<String, Object> signalData) {
+            @PathVariable String processInstanceId,
+            @RequestParam String signalName,
+            @RequestBody(required = false) Map<String, Object> signalData) {
 
         try {
             bpmnProcessService.signalProcess(processInstanceId, signalName, signalData);
@@ -154,7 +156,6 @@ public class BpmnProcessController {
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(result);
     }
-
 
     /**
      * Update process variables
@@ -295,4 +296,3 @@ public class BpmnProcessController {
     }
 
 }
-

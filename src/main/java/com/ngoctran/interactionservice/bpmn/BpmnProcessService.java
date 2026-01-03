@@ -249,7 +249,14 @@ public class BpmnProcessService {
             request.put("messageName", messageName);
             request.put("businessKey", businessKey);
             if (messageData != null && !messageData.isEmpty()) {
-                request.put("processVariables", messageData);
+                Map<String, Object> camundaVariables = new HashMap<>();
+                messageData.forEach((key, value) -> {
+                    Map<String, Object> varData = new HashMap<>();
+                    varData.put("value", value);
+                    varData.put("type", getVariableType(value));
+                    camundaVariables.put(key, varData);
+                });
+                request.put("processVariables", camundaVariables);
             }
 
             HttpHeaders headers = new HttpHeaders();
