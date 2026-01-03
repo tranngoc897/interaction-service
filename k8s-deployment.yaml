@@ -1,0 +1,392 @@
+---
+# PostgreSQL Database
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: default
+data:
+  POSTGRES_DB: "flowable"
+  POSTGRES_USER: "flowable"
+  POSTGRES_PASSWORD: "flowable"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: default
+type: Opaque
+data:
+  # Base64 encoded passwords
+  password: Zmxvd2FibGU=  # flowable
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: flowable-postgres
+  namespace: default
+spec:
+  serviceName: flowable-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flowable-postgres
+  template:
+    metadata:
+      labels:
+        app: flowable-postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:13
+        ports:
+        - containerPort: 5432
+        envFrom:
+        - configMapRef:
+            name: postgres-config
+        - secretRef:
+            name: postgres-secret
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - flowable
+            - -d
+            - flowable
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - flowable
+            - -d
+            - flowable
+          initialDelaySeconds: 5
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flowable-postgres
+  namespace: default
+spec:
+  selector:
+    app: flowable-postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+  clusterIP: None  # Headless service for StatefulSet
+
+---
+# Kafka (using Strimzi or Bitnami)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+      - name: kafka
+        image: bitnami/kafka:3.5
+        ports:
+        - containerPort: 9092
+        env:
+        - name: KAFKA_CFG_NODE_ID
+          value: "0"
+        - name: KAFKA_CFG_PROCESS_ROLES
+          value: "controller,broker"
+        - name: KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
+          value: "0@kafka-0.kafka.default.svc.cluster.local:9093"
+        - name: KAFKA_CFG_LISTENERS
+          value: "PLAINTEXT://:9092,CONTROLLER://:9093"
+        - name: KAFKA_CFG_ADVERTISED_LISTENERS
+          value: "PLAINTEXT://kafka.default.svc.cluster.local:9092"
+        - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
+          value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+        - name: KAFKA_CFG_CONTROLLER_LISTENER_NAMES
+          value: "CONTROLLER"
+        - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
+          value: "PLAINTEXT"
+        - name: KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE
+          value: "true"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: default
+spec:
+  selector:
+    app: kafka
+  ports:
+  - port: 9092
+    targetPort: 9092
+
+---
+# Interaction Service with Embedded Flowable
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: interaction-service-config
+  namespace: default
+data:
+  application.yaml: |
+    spring:
+      application:
+        name: interaction-service
+      datasource:
+        url: jdbc:postgresql://flowable-postgres:5432/flowable
+        username: flowable
+        password: flowable
+        driver-class-name: org.postgresql.Driver
+      jpa:
+        hibernate:
+          ddl-auto: validate
+        show-sql: false
+      kafka:
+        bootstrap-servers: kafka:9092
+        producer:
+          key-serializer: org.apache.kafka.common.serialization.StringSerializer
+          value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+        consumer:
+          group-id: interaction-service-group
+          auto-offset-reset: earliest
+          key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+          value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+          properties:
+            spring.json.trusted.packages: "com.ngoctran.interactionservice.events"
+
+    flowable:
+      bpm:
+        history-level: full
+        database:
+          schema-update: true
+        job-execution:
+          enabled: true
+          deployment-aware: true
+
+    server:
+      port: 8080
+
+    logging:
+      level:
+        com.ngoctran.interactionservice: INFO
+        org.flowable: INFO
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: interaction-service
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: interaction-service
+  template:
+    metadata:
+      labels:
+        app: interaction-service
+    spec:
+      containers:
+      - name: interaction-service
+        image: ngoctran/interaction-service:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "k8s"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+        - name: bpmn-volume
+          mountPath: /app/bpmn
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: config-volume
+        configMap:
+          name: interaction-service-config
+      - name: bpmn-volume
+        configMap:
+          name: bpmn-processes
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: interaction-service
+  namespace: default
+spec:
+  selector:
+    app: interaction-service
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP
+
+---
+# BPMN Processes ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bpmn-processes
+  namespace: default
+binaryData:
+  onboarding-process.bpmn: <base64-encoded-bpmn-file>
+
+---
+# Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: interaction-service-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: interaction-service.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: interaction-service
+            port:
+              number: 80
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: interaction-service-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: interaction-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# Network Policies
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: interaction-service-netpol
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: interaction-service
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: kafka
+    - podSelector:
+        matchLabels:
+          app: flowable-postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 9092
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: kafka
+    - podSelector:
+        matchLabels:
+          app: flowable-postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+    - protocol: TCP
+      port: 9092
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53

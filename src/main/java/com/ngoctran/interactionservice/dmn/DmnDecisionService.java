@@ -15,7 +15,7 @@ import java.util.Map;
 /**
  * DMN Decision Service - Manages DMN decision tables via REST API
  * Similar to onboarding's decision table usage
- * Uses Camunda REST API instead of embedded engine
+ * Uses Flowable REST API instead of embedded engine
  */
 @Service
 public class DmnDecisionService {
@@ -23,12 +23,12 @@ public class DmnDecisionService {
     private static final Logger log = LoggerFactory.getLogger(DmnDecisionService.class);
 
     private final RestTemplate restTemplate;
-    private final String camundaBaseUrl;
+    private final String flowableBaseUrl;
 
-    public DmnDecisionService(RestTemplate camundaRestTemplate, ObjectMapper objectMapper,
-        @Value("${camunda.bpm.client.base-url:http://localhost:8080/engine-rest}") String camundaBaseUrl) {
-        this.restTemplate = camundaRestTemplate;
-        this.camundaBaseUrl = camundaBaseUrl;
+    public DmnDecisionService(RestTemplate flowableRestTemplate, ObjectMapper objectMapper,
+        @Value("${flowable.bpm.client.base-url:http://localhost:8080/flowable-rest}") String flowableBaseUrl) {
+        this.restTemplate = flowableRestTemplate;
+        this.flowableBaseUrl = flowableBaseUrl;
     }
 
     /**
@@ -38,7 +38,7 @@ public class DmnDecisionService {
         log.info("Deploying DMN decision table: key={}, name={}", decisionKey, decisionName);
 
         try {
-            String url = camundaBaseUrl + "/deployment/create";
+            String url = flowableBaseUrl + "/deployment/create";
 
             // Create multipart form data for DMN deployment
             HttpHeaders headers = new HttpHeaders();
@@ -67,7 +67,7 @@ public class DmnDecisionService {
         log.info("Evaluating decision: {} with variables: {}", decisionKey, inputVariables.keySet());
 
         try {
-            String url = camundaBaseUrl + "/decision-definition/key/" + decisionKey + "/evaluate";
+            String url = flowableBaseUrl + "/decision-definition/key/" + decisionKey + "/evaluate";
 
             Map<String, Object> request = new HashMap<>();
             request.put("variables", inputVariables);
@@ -110,7 +110,7 @@ public class DmnDecisionService {
      */
     public Map<String, Object> getDecisionDefinition(String decisionKey) {
         try {
-            String url = camundaBaseUrl + "/decision-definition?key=" + decisionKey + "&latestVersion=true";
+            String url = flowableBaseUrl + "/decision-definition?key=" + decisionKey + "&latestVersion=true";
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
 
             List<Map<String, Object>> definitions = response.getBody();
@@ -129,7 +129,7 @@ public class DmnDecisionService {
      */
     public List<Map<String, Object>> getAllDecisionDefinitions() {
         try {
-            String url = camundaBaseUrl + "/decision-definition";
+            String url = flowableBaseUrl + "/decision-definition";
             ResponseEntity<List> response = restTemplate.getForEntity(url, List.class);
             return response.getBody();
         } catch (Exception e) {

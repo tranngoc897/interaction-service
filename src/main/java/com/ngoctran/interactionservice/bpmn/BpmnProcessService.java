@@ -27,14 +27,14 @@ public class BpmnProcessService {
 
     private final RestTemplate restTemplate;
     private final WorkflowEventPublisher eventPublisher;
-    private final String camundaBaseUrl;
+    private final String flowableBaseUrl;
 
-    public BpmnProcessService(RestTemplate camundaRestTemplate,
+    public BpmnProcessService(RestTemplate flowableRestTemplate,
             WorkflowEventPublisher eventPublisher,
-            @Value("${camunda.bpm.client.base-url:http://localhost:8080/engine-rest}") String camundaBaseUrl) {
-        this.restTemplate = camundaRestTemplate;
+            @Value("${flowable.bpm.client.base-url:http://localhost:8080/flowable-rest}") String flowableBaseUrl) {
+        this.restTemplate = flowableRestTemplate;
         this.eventPublisher = eventPublisher;
-        this.camundaBaseUrl = camundaBaseUrl;
+        this.flowableBaseUrl = flowableBaseUrl;
     }
 
     /**
@@ -44,7 +44,7 @@ public class BpmnProcessService {
         log.info("Deploying BPMN process: key={}, name={}", processKey, processName);
 
         try {
-            String url = camundaBaseUrl + "/deployment/create";
+            String url = flowableBaseUrl + "/deployment/create";
 
             // Create multipart form data
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -90,7 +90,7 @@ public class BpmnProcessService {
         log.info("Starting process instance: key={}, businessKey={}", processDefinitionKey, businessKey);
 
         try {
-            String url = camundaBaseUrl + "/process-definition/key/" + processDefinitionKey + "/start";
+            String url = flowableBaseUrl + "/process-definition/key/" + processDefinitionKey + "/start";
 
             Map<String, Object> request = new HashMap<>();
             if (businessKey != null) {
@@ -126,7 +126,7 @@ public class BpmnProcessService {
      */
     public Optional<ProcessInstance> getProcessInstance(String businessKey) {
         try {
-            String url = camundaBaseUrl + "/process-instance?businessKey=" + businessKey;
+            String url = flowableBaseUrl + "/process-instance?businessKey=" + businessKey;
             ResponseEntity<ProcessInstance[]> response = restTemplate.getForEntity(url, ProcessInstance[].class);
 
             ProcessInstance[] instances = response.getBody();
@@ -145,7 +145,7 @@ public class BpmnProcessService {
      */
     public List<ProcessInstance> getProcessInstances(String processDefinitionKey) {
         try {
-            String url = camundaBaseUrl + "/process-instance?processDefinitionKey=" + processDefinitionKey;
+            String url = flowableBaseUrl + "/process-instance?processDefinitionKey=" + processDefinitionKey;
             ResponseEntity<ProcessInstance[]> response = restTemplate.getForEntity(url, ProcessInstance[].class);
 
             return List.of(response.getBody());
@@ -162,7 +162,7 @@ public class BpmnProcessService {
         log.info("Updating variables for process instance: {}", processInstanceId);
 
         try {
-            String url = camundaBaseUrl + "/process-instance/" + processInstanceId + "/variables";
+            String url = flowableBaseUrl + "/process-instance/" + processInstanceId + "/variables";
 
             Map<String, Object> request = new HashMap<>();
             variables.forEach((key, value) -> {
@@ -188,7 +188,7 @@ public class BpmnProcessService {
      */
     public Map<String, Object> getVariables(String processInstanceId) {
         try {
-            String url = camundaBaseUrl + "/process-instance/" + processInstanceId + "/variables";
+            String url = flowableBaseUrl + "/process-instance/" + processInstanceId + "/variables";
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
 
             Map<String, Object> result = new HashMap<>();
@@ -212,7 +212,7 @@ public class BpmnProcessService {
         log.info("Signaling process instance: {} with signal: {}", processInstanceId, signalName);
 
         try {
-            String url = camundaBaseUrl + "/signal";
+            String url = flowableBaseUrl + "/signal";
 
             Map<String, Object> request = new HashMap<>();
             request.put("name", signalName);
@@ -243,7 +243,7 @@ public class BpmnProcessService {
         log.info("Correlating message: {} to business key: {}", messageName, businessKey);
 
         try {
-            String url = camundaBaseUrl + "/message";
+            String url = flowableBaseUrl + "/message";
 
             Map<String, Object> request = new HashMap<>();
             request.put("messageName", messageName);
@@ -282,7 +282,7 @@ public class BpmnProcessService {
         log.info("Deleting process instance: {} with reason: {}", processInstanceId, reason);
 
         try {
-            String url = camundaBaseUrl + "/process-instance/" + processInstanceId;
+            String url = flowableBaseUrl + "/process-instance/" + processInstanceId;
             restTemplate.delete(url);
         } catch (Exception e) {
             log.error("Failed to delete process instance: {}", processInstanceId, e);
@@ -295,7 +295,7 @@ public class BpmnProcessService {
      */
     public List<Map<String, Object>> getTasks(String processInstanceId) {
         try {
-            String url = camundaBaseUrl + "/task?processInstanceId=" + processInstanceId;
+            String url = flowableBaseUrl + "/task?processInstanceId=" + processInstanceId;
             ResponseEntity<Map[]> response = restTemplate.getForEntity(url, Map[].class);
 
             Map[] tasks = response.getBody();
@@ -316,7 +316,7 @@ public class BpmnProcessService {
         log.info("Completing task: {}", taskId);
 
         try {
-            String url = camundaBaseUrl + "/task/" + taskId + "/complete";
+            String url = flowableBaseUrl + "/task/" + taskId + "/complete";
 
             Map<String, Object> request = new HashMap<>();
             if (variables != null && !variables.isEmpty()) {
@@ -346,7 +346,7 @@ public class BpmnProcessService {
      */
     public Optional<ProcessDefinition> getProcessDefinition(String processDefinitionKey) {
         try {
-            String url = camundaBaseUrl + "/process-definition?key=" + processDefinitionKey + "&latestVersion=true";
+            String url = flowableBaseUrl + "/process-definition?key=" + processDefinitionKey + "&latestVersion=true";
             ResponseEntity<ProcessDefinition[]> response = restTemplate.getForEntity(url, ProcessDefinition[].class);
 
             ProcessDefinition[] definitions = response.getBody();
@@ -365,7 +365,7 @@ public class BpmnProcessService {
      */
     public boolean isProcessActive(String businessKey) {
         try {
-            String url = camundaBaseUrl + "/process-instance?businessKey=" + businessKey + "&active=true";
+            String url = flowableBaseUrl + "/process-instance?businessKey=" + businessKey + "&active=true";
             ResponseEntity<ProcessInstance[]> response = restTemplate.getForEntity(url, ProcessInstance[].class);
 
             ProcessInstance[] instances = response.getBody();
@@ -383,7 +383,7 @@ public class BpmnProcessService {
         log.info("Suspending process instance: {}", processInstanceId);
 
         try {
-            String url = camundaBaseUrl + "/process-instance/" + processInstanceId + "/suspended";
+            String url = flowableBaseUrl + "/process-instance/" + processInstanceId + "/suspended";
 
             Map<String, Object> request = new HashMap<>();
             request.put("suspended", true);
@@ -410,7 +410,7 @@ public class BpmnProcessService {
         log.info("Activating process instance: {}", processInstanceId);
 
         try {
-            String url = camundaBaseUrl + "/process-instance/" + processInstanceId + "/suspended";
+            String url = flowableBaseUrl + "/process-instance/" + processInstanceId + "/suspended";
 
             Map<String, Object> request = new HashMap<>();
             request.put("suspended", false);
@@ -435,7 +435,7 @@ public class BpmnProcessService {
      */
     public List<Map<String, Object>> getProcessHistory(String businessKey) {
         try {
-            String url = camundaBaseUrl + "/history/process-instance?businessKey=" + businessKey;
+            String url = flowableBaseUrl + "/history/process-instance?businessKey=" + businessKey;
             ResponseEntity<Map[]> response = restTemplate.getForEntity(url, Map[].class);
 
             return List.of(response.getBody());
@@ -451,7 +451,7 @@ public class BpmnProcessService {
     public Map<String, Object> generateMigrationPlan(String sourceDefinitionId, String targetDefinitionId) {
         log.info("Generating migration plan: source={}, target={}", sourceDefinitionId, targetDefinitionId);
         try {
-            String url = camundaBaseUrl + "/migration/generate";
+            String url = flowableBaseUrl + "/migration/generate";
             Map<String, Object> request = new HashMap<>();
             request.put("sourceProcessDefinitionId", sourceDefinitionId);
             request.put("targetProcessDefinitionId", targetDefinitionId);
@@ -475,7 +475,7 @@ public class BpmnProcessService {
     public void executeMigrationPlan(Map<String, Object> migrationPlan, List<String> processInstanceIds) {
         log.info("Executing migration plan for {} instances", processInstanceIds.size());
         try {
-            String url = camundaBaseUrl + "/migration/execute";
+            String url = flowableBaseUrl + "/migration/execute";
             Map<String, Object> request = new HashMap<>();
             request.put("migrationPlan", migrationPlan);
             request.put("processInstanceIds", processInstanceIds);

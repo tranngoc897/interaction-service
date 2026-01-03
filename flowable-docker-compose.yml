@@ -1,45 +1,46 @@
 version: '3.8'
 
 services:
-  camunda-db:
+  flowable-db:
     image: postgres:13
-    container_name: camunda-postgres
+    container_name: flowable-postgres
     environment:
-      POSTGRES_DB: camunda
-      POSTGRES_USER: camunda
-      POSTGRES_PASSWORD: camunda
+      POSTGRES_DB: flowable
+      POSTGRES_USER: flowable
+      POSTGRES_PASSWORD: flowable
     ports:
       - "5432:5432"
     volumes:
-      - camunda_db_data:/var/lib/postgresql/data
+      - flowable_db_data:/var/lib/postgresql/data
     networks:
-      - camunda-network
+      - flowable-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U camunda -d camunda"]
+      test: ["CMD-SHELL", "pg_isready -U flowable -d flowable"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  camunda:
-    image: camunda/camunda-bpm-platform:7.21.0
-    container_name: camunda-platform
+  flowable:
+    image: flowable/flowable-ui:7.0.1
+    container_name: flowable-platform
     environment:
-      DB_DRIVER: org.postgresql.Driver
-      DB_URL: jdbc:postgresql://camunda-db:5432/camunda
-      DB_USERNAME: camunda
-      DB_PASSWORD: camunda
-      WAIT_FOR: camunda-db:5432
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_DATASOURCE_URL: jdbc:postgresql://flowable-db:5432/flowable
+      SPRING_DATASOURCE_USERNAME: flowable
+      SPRING_DATASOURCE_PASSWORD: flowable
+      FLOWABLE_COMMON_APP_IDM-ADMIN_USER: admin
+      FLOWABLE_COMMON_APP_IDM-ADMIN_PASSWORD: test
     ports:
       - "8080:8080"
     depends_on:
-      camunda-db:
+      flowable-db:
         condition: service_healthy
     networks:
-      - camunda-network
+      - flowable-network
     volumes:
-      - ./bpmn-processes:/camunda/conf/bpmn
+      - ./bpmn-processes:/opt/flowable/work/
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/camunda-welcome"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/flowable-task"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -52,7 +53,7 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     networks:
-      - camunda-network
+      - flowable-network
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
@@ -70,7 +71,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
-      - camunda-network
+      - flowable-network
 
   kafdrop:
     image: obsidiandynamics/kafdrop:latest
@@ -82,11 +83,11 @@ services:
     environment:
       KAFKA_BROKERCONNECT: kafka:9092
     networks:
-      - camunda-network
+      - flowable-network
 
 volumes:
-  camunda_db_data:
+  flowable_db_data:
 
 networks:
-  camunda-network:
+  flowable-network:
     driver: bridge

@@ -1,9 +1,9 @@
 package com.ngoctran.interactionservice.delegate;
 
 import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
-import org.camunda.bpm.engine.delegate.BpmnError;
-import org.camunda.bpm.engine.delegate.DelegateExecution;
-import org.camunda.bpm.engine.delegate.JavaDelegate;
+import org.flowable.engine.delegate.BpmnError;
+import org.flowable.engine.delegate.DelegateExecution;
+import org.flowable.engine.delegate.JavaDelegate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -27,7 +27,7 @@ public class ErrorHandlingDelegate implements JavaDelegate {
     }
 
     @Override
-    public void execute(DelegateExecution execution) throws Exception {
+    public void execute(DelegateExecution execution)  {
         log.error("Handling error for process: {}", execution.getProcessInstanceId());
 
         try {

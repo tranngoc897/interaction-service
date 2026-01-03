@@ -105,26 +105,21 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- Camunda BPMN Engine for Process Orchestration -->
+    <!-- Flowable BPMN Engine for Process Orchestration -->
     <dependency>
-      <groupId>org.camunda.bpm.springboot</groupId>
-      <artifactId>camunda-bpm-spring-boot-starter</artifactId>
-      <version>7.21.0</version>
+      <groupId>org.flowable</groupId>
+      <artifactId>flowable-spring-boot-starter</artifactId>
+      <version>7.0.1</version>
     </dependency>
 
-    <!-- Camunda DMN Engine for Decision Tables -->
+    <!-- Flowable DMN Engine for Decision Tables -->
     <dependency>
-      <groupId>org.camunda.bpm.dmn</groupId>
-      <artifactId>camunda-engine-dmn</artifactId>
-      <version>7.21.0</version>
+      <groupId>org.flowable</groupId>
+      <artifactId>flowable-dmn-engine</artifactId>
+      <version>7.0.1</version>
     </dependency>
 
-    <!-- Camunda Spring Boot Starter for External Task Client (K8s Ready) -->
-    <dependency>
-      <groupId>org.camunda.bpm.springboot</groupId>
-      <artifactId>camunda-bpm-spring-boot-starter-external-task-client</artifactId>
-      <version>7.21.0</version>
-    </dependency>
+
 
     <!-- Spring Events for Event Bus -->
     <dependency>

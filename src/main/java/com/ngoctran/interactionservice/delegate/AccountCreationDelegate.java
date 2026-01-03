@@ -3,8 +3,8 @@ package com.ngoctran.interactionservice.delegate;
 import com.ngoctran.interactionservice.cases.CaseEntity;
 import com.ngoctran.interactionservice.cases.CaseRepository;
 import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
-import org.camunda.bpm.engine.delegate.DelegateExecution;
-import org.camunda.bpm.engine.delegate.JavaDelegate;
+import org.flowable.engine.delegate.DelegateExecution;
+import org.flowable.engine.delegate.JavaDelegate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -32,7 +32,7 @@ public class AccountCreationDelegate implements JavaDelegate {
     }
 
     @Override
-    public void execute(DelegateExecution execution) throws Exception {
+    public void execute(DelegateExecution execution) {
         long startTime = System.currentTimeMillis();
         log.info("Executing account creation for process: {}", execution.getProcessInstanceId());
 

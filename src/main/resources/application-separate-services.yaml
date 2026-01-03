@@ -1,16 +1,16 @@
-# Spring Configuration
+# Spring Configuration for Separate Services Architecture
 spring:
   application:
     name: interaction-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/ob_camunda
-    username: postgres
-    password: admin
+    url: jdbc:postgresql://localhost:5432/interaction_service
+    username: app_user
+    password: app_password
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -22,7 +22,7 @@ spring:
       write-dates-as-timestamps: false
     time-zone: UTC
   kafka:
-    bootstrap-servers: localhost:29092
+    bootstrap-servers: localhost:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -39,15 +39,11 @@ spring:
     template:
       default-topic: workflow-events
 
-# Flowable Configuration
+# Flowable REST API Configuration (No embedded Flowable)
 flowable:
   bpm:
-    history-level: full
-    database:
-      schema-update: true
-    job-execution:
-      enabled: true
-      deployment-aware: true
+    client:
+      base-url: http://localhost:8080/flowable-rest  # Connect to standalone Flowable
 
 # Server Configuration
 server:
@@ -58,5 +54,4 @@ logging:
   level:
     root: INFO
     com.ngoctran.interactionservice: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.web.client: DEBUG  # Log REST API calls

@@ -3,7 +3,7 @@
                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
                   xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:flowable="http://flowable.org/bpmn"
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   id="Definitions_1"
                   targetNamespace="http://bpmn.io/schema/bpmn">
@@ -15,7 +15,7 @@
   <bpmn:error id="Error_PROCESSING_FAILED" name="Processing Failed" errorCode="PROCESSING_FAILED" />
   <bpmn:message id="Message_Cancel" name="CancelOnboardingMessage" />
   <bpmn:message id="Message_CancelAll" name="CancelAllMessage" />
-  <bpmn:process id="onboarding" name="Customer Onboarding Process" isExecutable="true" camunda:historyTimeToLive="180">
+  <bpmn:process id="onboarding" name="Customer Onboarding Process" isExecutable="true" flowable:historyTimeToLive="180">
 
     <!-- Start Event -->
     <bpmn:startEvent id="StartEvent_1" name="Onboarding Started">
@@ -35,8 +35,10 @@
     </bpmn:userTask>
 
     <!-- Data Validation -->
-    <bpmn:serviceTask id="Task_DataValidation" name="Validate Applicant Data"
-                      camunda:type="external" camunda:topic="data-validation">
+    <bpmn:serviceTask id="Task_DataValidation" name="Validate Applicant Data">
+      <bpmn:extensionElements>
+        <flowable:class>com.ngoctran.interactionservice.delegate.DataValidationDelegate</flowable:class>
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_2a</bpmn:incoming>
       <bpmn:outgoing>Flow_3</bpmn:outgoing>
     </bpmn:serviceTask>
@@ -48,12 +50,11 @@
     </bpmn:boundaryEvent>
 
     <!-- OCR Processing -->
-    <bpmn:serviceTask id="Task_OcrProcessing" name="OCR Document Processing"
-                      camunda:type="external" camunda:topic="ocr-processing"
-                      camunda:asyncBefore="true"
-                      camunda:asyncAfter="true">
+    <bpmn:serviceTask id="Task_OcrProcessing" name="OCR Document Processing">
       <bpmn:extensionElements>
-        <camunda:failedJobRetryTimeCycle>R3/PT5M</camunda:failedJobRetryTimeCycle>
+        <flowable:class>com.ngoctran.interactionservice.delegate.OcrProcessingDelegate</flowable:class>
+        <flowable:async>true</flowable:async>
+        <flowable:failedJobRetryTimeCycle>R3/PT5M</flowable:failedJobRetryTimeCycle>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_3</bpmn:incoming>
       <bpmn:outgoing>Flow_3a</bpmn:outgoing>
@@ -66,12 +67,11 @@
     </bpmn:boundaryEvent>
 
     <!-- Document Verification -->
-    <bpmn:serviceTask id="Task_DocumentVerification" name="Verify Documents"
-                      camunda:type="external" camunda:topic="document-verification"
-                      camunda:asyncBefore="true"
-                      camunda:asyncAfter="true">
+    <bpmn:serviceTask id="Task_DocumentVerification" name="Verify Documents">
       <bpmn:extensionElements>
-        <camunda:failedJobRetryTimeCycle>R3/PT5M</camunda:failedJobRetryTimeCycle>
+        <flowable:class>com.ngoctran.interactionservice.delegate.DocumentVerificationDelegate</flowable:class>
+        <flowable:async>true</flowable:async>
+        <flowable:failedJobRetryTimeCycle>R3/PT5M</flowable:failedJobRetryTimeCycle>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_3a</bpmn:incoming>
       <bpmn:outgoing>Flow_3b</bpmn:outgoing>
@@ -84,12 +84,11 @@
     </bpmn:boundaryEvent>
 
     <!-- Credit Check -->
-    <bpmn:serviceTask id="Task_CreditCheck" name="Credit Score Check"
-                      camunda:type="external" camunda:topic="credit-check"
-                      camunda:asyncBefore="true"
-                      camunda:asyncAfter="true">
+    <bpmn:serviceTask id="Task_CreditCheck" name="Credit Score Check">
       <bpmn:extensionElements>
-        <camunda:failedJobRetryTimeCycle>R3/PT10M</camunda:failedJobRetryTimeCycle>
+        <flowable:class>com.ngoctran.interactionservice.delegate.CreditCheckDelegate</flowable:class>
+        <flowable:async>true</flowable:async>
+        <flowable:failedJobRetryTimeCycle>R3/PT10M</flowable:failedJobRetryTimeCycle>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_3b</bpmn:incoming>
       <bpmn:outgoing>Flow_3c</bpmn:outgoing>
@@ -102,12 +101,11 @@
     </bpmn:boundaryEvent>
 
     <!-- Compliance Check -->
-    <bpmn:serviceTask id="Task_ComplianceCheck" name="AML/KYC Compliance Check"
-                      camunda:type="external" camunda:topic="compliance-check"
-                      camunda:asyncBefore="true"
-                      camunda:asyncAfter="true">
+    <bpmn:serviceTask id="Task_ComplianceCheck" name="AML/KYC Compliance Check">
       <bpmn:extensionElements>
-        <camunda:failedJobRetryTimeCycle>R3/PT5M</camunda:failedJobRetryTimeCycle>
+        <flowable:class>com.ngoctran.interactionservice.delegate.ComplianceCheckDelegate</flowable:class>
+        <flowable:async>true</flowable:async>
+        <flowable:failedJobRetryTimeCycle>R3/PT5M</flowable:failedJobRetryTimeCycle>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_3c</bpmn:incoming>
       <bpmn:outgoing>Flow_4</bpmn:outgoing>
@@ -120,8 +118,10 @@
     </bpmn:boundaryEvent>
 
     <!-- Error Handling Task -->
-    <bpmn:serviceTask id="Task_HandleError" name="Handle Processing Error"
-                      camunda:type="external" camunda:topic="error-handling">
+    <bpmn:serviceTask id="Task_HandleError" name="Handle Processing Error">
+      <bpmn:extensionElements>
+        <flowable:class>com.ngoctran.interactionservice.delegate.ErrorHandlingDelegate</flowable:class>
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_ValidationError</bpmn:incoming>
       <bpmn:incoming>Flow_OcrError</bpmn:incoming>
       <bpmn:incoming>Flow_VerificationError</bpmn:incoming>
@@ -142,8 +142,10 @@
         <bpmn:outgoing>Flow_CancelCleanup</bpmn:outgoing>
         <bpmn:messageEventDefinition messageRef="Message_CancelAll" />
       </bpmn:startEvent>
-      <bpmn:serviceTask id="Task_CleanupData" name="Clean Up Data"
-                        camunda:type="external" camunda:topic="cleanup-data">
+      <bpmn:serviceTask id="Task_CleanupData" name="Clean Up Data">
+        <bpmn:extensionElements>
+          <flowable:class>com.ngoctran.interactionservice.delegate.DataValidationDelegate</flowable:class>
+        </bpmn:extensionElements>
         <bpmn:incoming>Flow_CancelCleanup</bpmn:incoming>
         <bpmn:outgoing>Flow_CancelTerminate</bpmn:outgoing>
       </bpmn:serviceTask>
@@ -156,9 +158,11 @@
     </bpmn:subProcess>
 
     <!-- Manual Review Decision Task -->
-    <bpmn:businessRuleTask id="Task_ManualReviewDecision" name="Evaluate Manual Review Requirement"
-                           camunda:decisionRef="manual-review-required"
-                           camunda:resultVariable="manualReviewResult">
+    <bpmn:businessRuleTask id="Task_ManualReviewDecision" name="Evaluate Manual Review Requirement">
+      <bpmn:extensionElements>
+        <flowable:decisionRef>manual-review-required</flowable:decisionRef>
+        <flowable:resultVariable>manualReviewResult</flowable:resultVariable>
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_4</bpmn:incoming>
       <bpmn:outgoing>Flow_PostDecision</bpmn:outgoing>
     </bpmn:businessRuleTask>
@@ -199,23 +203,29 @@
     </bpmn:exclusiveGateway>
 
     <!-- Account Creation -->
-    <bpmn:serviceTask id="Task_CreateAccount" name="Create Customer Account"
-                      camunda:type="external" camunda:topic="account-creation">
+    <bpmn:serviceTask id="Task_CreateAccount" name="Create Customer Account">
+      <bpmn:extensionElements>
+        <flowable:class>com.ngoctran.interactionservice.delegate.AccountCreationDelegate</flowable:class>
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_Approved</bpmn:incoming>
       <bpmn:incoming>Flow_Approved_Review</bpmn:incoming>
       <bpmn:outgoing>Flow_5</bpmn:outgoing>
     </bpmn:serviceTask>
 
     <!-- Send SMS Notification -->
-    <bpmn:serviceTask id="Task_SendSms" name="Send SMS Notification"
-                      camunda:type="external" camunda:topic="sms-notification">
+    <bpmn:serviceTask id="Task_SendSms" name="Send SMS Notification">
+      <bpmn:extensionElements>
+        <flowable:class>com.ngoctran.interactionservice.delegate.SmsNotificationDelegate</flowable:class>
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_5</bpmn:incoming>
       <bpmn:outgoing>Flow_5a</bpmn:outgoing>
     </bpmn:serviceTask>
 
     <!-- Send Welcome Email -->
-    <bpmn:serviceTask id="Task_SendWelcomeEmail" name="Send Welcome Email"
-                      camunda:type="external" camunda:topic="email-notification">
+    <bpmn:serviceTask id="Task_SendWelcomeEmail" name="Send Welcome Email">
+      <bpmn:extensionElements>
+        <flowable:class>com.ngoctran.interactionservice.delegate.NotificationDelegate</flowable:class>
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_5a</bpmn:incoming>
       <bpmn:outgoing>Flow_6</bpmn:outgoing>
     </bpmn:serviceTask>

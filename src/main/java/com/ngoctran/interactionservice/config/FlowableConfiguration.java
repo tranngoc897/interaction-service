@@ -11,20 +11,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Camunda REST Client Configuration
- * Connects to external Camunda server via REST API
+ * Flowable REST Client Configuration
+ * Connects to external Flowable server via REST API
  */
 @Configuration
-public class CamundaConfiguration {
+public class FlowableConfiguration {
 
-    @Value("${camunda.bpm.client.base-url:http://localhost:8080/engine-rest}")
-    private String camundaBaseUrl;
+    @Value("${flowable.bpm.client.base-url:http://localhost:8080/flowable-rest}")
+    private String flowableBaseUrl;
 
     /**
-     * RestTemplate for Camunda REST API calls
+     * RestTemplate for Flowable REST API calls
      */
     @Bean
-    public RestTemplate camundaRestTemplate() {
+    public RestTemplate flowableRestTemplate() {
         RestTemplate restTemplate = new RestTemplate();
         // Add FormHttpMessageConverter to support multipart/form-data
         List<HttpMessageConverter<?>> converters = new ArrayList<>(restTemplate.getMessageConverters());
@@ -34,10 +34,10 @@ public class CamundaConfiguration {
     }
 
     /**
-     * Camunda REST API base URL
+     * Flowable REST API base URL
      */
     @Bean
-    public String camundaBaseUrl() {
-        return camundaBaseUrl;
+    public String flowableBaseUrl() {
+        return flowableBaseUrl;
     }
 }
