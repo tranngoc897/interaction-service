@@ -87,7 +87,7 @@ curl -X POST "http://localhost:8081/api/bpmn/start?processDefinitionKey=onboardi
 
 ```bash
 # Signal document upload completion
-curl -X POST "http://localhost:8081/api/bpmn/signal/fc49d585-e7b1-11f0-853d-62ccfad1ec78?signalName=documentsUploaded" \
+curl -X POST "http://localhost:8081/api/bpmn/signal/9dcc031d-e861-11f0-bd72-7aad302a1eea?signalName=documentsUploaded" \
   -H "Content-Type: application/json" \
   -d '{
     "documentCount": 3,

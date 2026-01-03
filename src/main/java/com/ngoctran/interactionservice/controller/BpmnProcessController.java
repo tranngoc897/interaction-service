@@ -95,6 +95,24 @@ public class BpmnProcessController {
     }
 
     /**
+     * Signal a process instance
+     */
+    @PostMapping("/signal/{processInstanceId}")
+    public ResponseEntity<Void> signalProcess(
+        @PathVariable String processInstanceId,
+        @RequestParam String signalName,
+        @RequestBody(required = false) Map<String, Object> signalData) {
+
+        try {
+            bpmnProcessService.signalProcess(processInstanceId, signalName, signalData);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("Failed to signal process", e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
      * Get process instance by business key
      */
     @GetMapping("/instance/{businessKey}")
@@ -137,6 +155,7 @@ public class BpmnProcessController {
         return ResponseEntity.ok(result);
     }
 
+
     /**
      * Update process variables
      */
@@ -164,24 +183,6 @@ public class BpmnProcessController {
             return ResponseEntity.ok(variables);
         } catch (Exception e) {
             log.error("Failed to get process variables", e);
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    /**
-     * Signal a process instance
-     */
-    @PostMapping("/signal/{processInstanceId}")
-    public ResponseEntity<Void> signalProcess(
-            @PathVariable String processInstanceId,
-            @RequestParam String signalName,
-            @RequestBody(required = false) Map<String, Object> signalData) {
-
-        try {
-            bpmnProcessService.signalProcess(processInstanceId, signalName, signalData);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.error("Failed to signal process", e);
             return ResponseEntity.badRequest().build();
         }
     }
