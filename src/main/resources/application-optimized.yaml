@@ -1,0 +1,130 @@
+# Optimized Spring Configuration for Production
+spring:
+  application:
+    name: interaction-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/ob_flowable
+    username: postgres
+    password: admin
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 20000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
+
+  kafka:
+    bootstrap-servers: localhost:29092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: 1  # Wait for leader acknowledgment
+      retries: 3
+      batch-size: 16384
+      linger-ms: 5
+      buffer-memory: 33554432
+      compression-type: snappy
+      properties:
+        spring.json.add.type.headers: false  # Optimize payload size
+        max.in.flight.requests.per.connection: 5
+    consumer:
+      group-id: interaction-service-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false  # Manual commit for reliability
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: "com.ngoctran.interactionservice.events"
+        max.poll.records: 100  # Batch processing
+        fetch.min.bytes: 1024
+        fetch.max.wait.ms: 500
+        session.timeout.ms: 30000
+        heartbeat.interval.ms: 3000
+        max.poll.interval.ms: 300000
+    listener:
+      ack-mode: batch  # Batch acknowledgment
+      concurrency: 3   # Parallel processing
+    template:
+      default-topic: workflow-events
+
+# Optimized Flowable Configuration
+flowable:
+  bpm:
+    history-level: audit  # Reduced from 'full' for performance
+    database:
+      schema-update: false  # Use Flyway for production
+    job-execution:
+      enabled: true
+      deployment-aware: true
+    async-executor:
+      core-pool-size: 4
+      max-pool-size: 8
+      queue-size: 100
+      keep-alive-time: 300
+
+# Server Optimization
+server:
+  port: 8081
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 10
+    connection-timeout: 20000
+    keep-alive-timeout: 20000
+
+# Optimized Logging
+logging:
+  level:
+    root: INFO
+    com.ngoctran.interactionservice: INFO
+    org.springframework.kafka: WARN
+    org.apache.kafka: WARN
+    org.hibernate: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/interaction-service.log
+    max-size: 10MB
+    max-history: 30
+
+# Management & Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+# Custom Optimized Properties
+app:
+  kafka:
+    enabled: true
+    batch-size: 50  # Process events in batches
+    retry-attempts: 3
+    retry-delay: 1000
+  workflow:
+    async-processing: true
+    event-buffering: true
+    buffer-size: 100

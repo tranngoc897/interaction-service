@@ -97,14 +97,14 @@ public class BpmnProcessService {
                 request.put("businessKey", businessKey);
             }
             if (variables != null && !variables.isEmpty()) {
-                Map<String, Object> camundaVariables = new HashMap<>();
+                Map<String, Object> processVariables = new HashMap<>();
                 variables.forEach((key, value) -> {
                     Map<String, Object> varData = new HashMap<>();
                     varData.put("value", value);
                     varData.put("type", getVariableType(value));
-                    camundaVariables.put(key, varData);
+                    processVariables.put(key, varData);
                 });
-                request.put("variables", camundaVariables);
+                request.put("variables", processVariables);
             }
 
             HttpHeaders headers = new HttpHeaders();
@@ -249,14 +249,14 @@ public class BpmnProcessService {
             request.put("messageName", messageName);
             request.put("businessKey", businessKey);
             if (messageData != null && !messageData.isEmpty()) {
-                Map<String, Object> camundaVariables = new HashMap<>();
+                Map<String, Object> processVariables = new HashMap<>();
                 messageData.forEach((key, value) -> {
                     Map<String, Object> varData = new HashMap<>();
                     varData.put("value", value);
                     varData.put("type", getVariableType(value));
-                    camundaVariables.put(key, varData);
+                    processVariables.put(key, varData);
                 });
-                request.put("processVariables", camundaVariables);
+                request.put("processVariables", processVariables);
             }
 
             HttpHeaders headers = new HttpHeaders();
@@ -320,14 +320,14 @@ public class BpmnProcessService {
 
             Map<String, Object> request = new HashMap<>();
             if (variables != null && !variables.isEmpty()) {
-                Map<String, Object> camundaVariables = new HashMap<>();
+                Map<String, Object> processVariables = new HashMap<>();
                 variables.forEach((key, value) -> {
                     Map<String, Object> varData = new HashMap<>();
                     varData.put("value", value);
                     varData.put("type", getVariableType(value));
-                    camundaVariables.put(key, varData);
+                    processVariables.put(key, varData);
                 });
-                request.put("variables", camundaVariables);
+                request.put("variables", processVariables);
             }
 
             HttpHeaders headers = new HttpHeaders();
