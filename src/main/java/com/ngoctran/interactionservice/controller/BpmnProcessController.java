@@ -79,6 +79,22 @@ public class BpmnProcessController {
     }
 
     /**
+     * Complete a user task
+     */
+    @PostMapping("/task/{taskId}/complete")
+    public ResponseEntity<Void> completeTask(
+        @PathVariable String taskId,
+        @RequestBody(required = false) Map<String, Object> variables) {
+        try {
+            bpmnProcessService.completeTask(taskId, variables);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("Failed to complete task", e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
      * Get process instance by business key
      */
     @GetMapping("/instance/{businessKey}")
@@ -277,40 +293,5 @@ public class BpmnProcessController {
         }
     }
 
-    /**
-     * Complete a user task
-     */
-    @PostMapping("/task/{taskId}/complete")
-    public ResponseEntity<Void> completeTask(
-            @PathVariable String taskId,
-            @RequestBody(required = false) Map<String, Object> variables) {
-        try {
-            bpmnProcessService.completeTask(taskId, variables);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.error("Failed to complete task", e);
-            return ResponseEntity.badRequest().build();
-        }
-    }
 }
 
-// Custom DTOs for REST API responses
-class Deployment {
-    public String id;
-    public String name;
-    public String deploymentTime;
-}
-
-class ProcessInstance {
-    public String id;
-    public String businessKey;
-    public String processDefinitionId;
-    public boolean ended;
-}
-
-class ProcessDefinition {
-    public String id;
-    public String key;
-    public String name;
-    public int version;
-}
