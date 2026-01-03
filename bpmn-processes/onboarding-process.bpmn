@@ -34,10 +34,11 @@
       <bpmn:outgoing>Flow_2a</bpmn:outgoing>
     </bpmn:userTask>
 
-    <!-- Data Validation -->
+    <!-- Data Validation (Event-Driven) -->
     <bpmn:serviceTask id="Task_DataValidation" name="Validate Applicant Data">
       <bpmn:extensionElements>
-        <flowable:class>com.ngoctran.interactionservice.delegate.DataValidationDelegate</flowable:class>
+        <flowable:class>com.ngoctran.interactionservice.delegate.EventDrivenDataValidationDelegate</flowable:class>
+        <flowable:async>true</flowable:async>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_2a</bpmn:incoming>
       <bpmn:outgoing>Flow_3</bpmn:outgoing>
