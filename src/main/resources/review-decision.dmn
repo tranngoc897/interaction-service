@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="review-decision" name="Review Decision" namespace="http://camunda.org/schema/1.0/dmn">
+  <decision id="review-outcome" name="Review Outcome">
+    <decisionTable id="review-decision-table" hitPolicy="UNIQUE">
+      <input id="review-decision-input" label="Review Decision">
+        <inputExpression id="review-decision-input-expr" typeRef="string">
+          <text>reviewDecision</text>
+        </inputExpression>
+      </input>
+      <input id="risk-level-input" label="Risk Level">
+        <inputExpression id="risk-level-input-expr" typeRef="string">
+          <text>riskLevel</text>
+        </inputExpression>
+      </input>
+      <output id="approved-output" label="Approved" typeRef="boolean" />
+      <output id="next-step-output" label="Next Step" typeRef="string" />
+      <output id="rejection-reason-output" label="Rejection Reason" typeRef="string" />
+      <rule id="rule-approved">
+        <inputEntry id="approved-input">
+          <text>"APPROVED"</text>
+        </inputEntry>
+        <inputEntry id="any-risk">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="approved-true">
+          <text>true</text>
+        </outputEntry>
+        <outputEntry id="approved-next-step">
+          <text>"ACCOUNT_CREATION"</text>
+        </outputEntry>
+        <outputEntry id="approved-reason">
+          <text></text>
+        </outputEntry>
+      </rule>
+      <rule id="rule-rejected-high-risk">
+        <inputEntry id="rejected-input">
+          <text>"REJECTED"</text>
+        </inputEntry>
+        <inputEntry id="high-risk">
+          <text>"HIGH","CRITICAL"</text>
+        </inputEntry>
+        <outputEntry id="rejected-false">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="rejected-next-step">
+          <text>"REJECTED"</text>
+        </outputEntry>
+        <outputEntry id="high-risk-reason">
+          <text>"HIGH_RISK_PROFILE"</text>
+        </outputEntry>
+      </rule>
+      <rule id="rule-rejected-other">
+        <inputEntry id="rejected-input">
+          <text>"REJECTED"</text>
+        </inputEntry>
+        <inputEntry id="other-risk">
+          <text>"LOW","MEDIUM"</text>
+        </inputEntry>
+        <outputEntry id="rejected-false">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="rejected-next-step">
+          <text>"REJECTED"</text>
+        </outputEntry>
+        <outputEntry id="other-reason">
+          <text>"MANUAL_REVIEW_REJECTED"</text>
+        </outputEntry>
+      </rule>
+      <rule id="rule-escalated">
+        <inputEntry id="escalated-input">
+          <text>"ESCALATED"</text>
+        </inputEntry>
+        <inputEntry id="any-risk">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="escalated-false">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="escalated-next-step">
+          <text>"ESCALATED"</text>
+        </outputEntry>
+        <outputEntry id="escalated-reason">
+          <text>"REQUIRES_SUPERVISOR_REVIEW"</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram>
+      <dmndi:DMNShape dmnElementRef="review-outcome">
+        <dc:Bounds height="80" width="180" x="150" y="150" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

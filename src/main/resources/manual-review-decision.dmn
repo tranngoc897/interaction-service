@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="manual-review-decision" name="Manual Review Decision" namespace="http://camunda.org/schema/1.0/dmn">
+  <decision id="manual-review-required" name="Manual Review Required">
+    <decisionTable id="manual-review-decision-table" hitPolicy="UNIQUE">
+      <input id="compliance-status-input" label="Compliance Status">
+        <inputExpression id="compliance-status-input-expr" typeRef="string">
+          <text>complianceStatus</text>
+        </inputExpression>
+      </input>
+      <output id="review-required-output" label="Review Required" typeRef="boolean" />
+      <output id="next-step-output" label="Next Step" typeRef="string" />
+      <rule id="rule-passed">
+        <inputEntry id="passed-input">
+          <text>"PASSED"</text>
+        </inputEntry>
+        <outputEntry id="passed-review-required">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="passed-next-step">
+          <text>"ACCOUNT_CREATION"</text>
+        </outputEntry>
+      </rule>
+      <rule id="rule-review-needed">
+        <inputEntry id="review-needed-input">
+          <text>"REVIEW_NEEDED"</text>
+        </inputEntry>
+        <outputEntry id="review-needed-review-required">
+          <text>true</text>
+        </outputEntry>
+        <outputEntry id="review-needed-next-step">
+          <text>"MANUAL_REVIEW"</text>
+        </outputEntry>
+      </rule>
+      <rule id="rule-failed">
+        <inputEntry id="failed-input">
+          <text>"FAILED"</text>
+        </inputEntry>
+        <outputEntry id="failed-review-required">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="failed-next-step">
+          <text>"REJECTED"</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram>
+      <dmndi:DMNShape dmnElementRef="manual-review-required">
+        <dc:Bounds height="80" width="180" x="150" y="150" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>
