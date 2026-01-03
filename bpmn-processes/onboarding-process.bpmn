@@ -14,6 +14,7 @@
   <bpmn:error id="Error_COMPLIANCE_CHECK" name="Compliance Check Error" errorCode="COMPLIANCE_CHECK_ERROR" />
   <bpmn:error id="Error_PROCESSING_FAILED" name="Processing Failed" errorCode="PROCESSING_FAILED" />
   <bpmn:message id="Message_Cancel" name="CancelOnboardingMessage" />
+  <bpmn:message id="Message_CancelAll" name="CancelAllMessage" />
   <bpmn:process id="onboarding" name="Customer Onboarding Process" isExecutable="true" camunda:historyTimeToLive="180">
 
     <!-- Start Event -->
@@ -134,6 +135,25 @@
       <bpmn:incoming>Flow_ErrorHandled</bpmn:incoming>
       <bpmn:errorEventDefinition errorRef="Error_PROCESSING_FAILED"/>
     </bpmn:endEvent>
+
+    <!-- Event Sub-process: Global Cancel Handler -->
+    <bpmn:subProcess id="SubProcess_GlobalCancel" name="Global Cancel Handler" triggeredByEvent="true">
+      <bpmn:startEvent id="StartEvent_CancelAll" name="Cancel All Received">
+        <bpmn:outgoing>Flow_CancelCleanup</bpmn:outgoing>
+        <bpmn:messageEventDefinition messageRef="Message_CancelAll" />
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="Task_CleanupData" name="Clean Up Data"
+                        camunda:type="external" camunda:topic="cleanup-data">
+        <bpmn:incoming>Flow_CancelCleanup</bpmn:incoming>
+        <bpmn:outgoing>Flow_CancelTerminate</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="EndEvent_Cancel" name="Process Terminated">
+        <bpmn:incoming>Flow_CancelTerminate</bpmn:incoming>
+        <bpmn:terminateEventDefinition />
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_CancelCleanup" sourceRef="StartEvent_CancelAll" targetRef="Task_CleanupData" />
+      <bpmn:sequenceFlow id="Flow_CancelTerminate" sourceRef="Task_CleanupData" targetRef="EndEvent_Cancel" />
+    </bpmn:subProcess>
 
     <!-- Manual Review Gateway -->
     <bpmn:exclusiveGateway id="Gateway_ManualReview" name="Manual Review Required?">
@@ -315,6 +335,18 @@
       <bpmndi:BPMNShape id="Error_ComplianceFailed_di" bpmnElement="Error_ComplianceFailed">
         <dc:Bounds x="1262" y="199" width="36" height="36" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SubProcess_GlobalCancel_di" bpmnElement="SubProcess_GlobalCancel" isExpanded="true">
+        <dc:Bounds x="1200" y="600" width="350" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_CancelAll_di" bpmnElement="StartEvent_CancelAll">
+        <dc:Bounds x="1232" y="662" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CleanupData_di" bpmnElement="Task_CleanupData">
+        <dc:Bounds x="1320" y="640" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Cancel_di" bpmnElement="EndEvent_Cancel">
+        <dc:Bounds x="1472" y="662" width="36" height="36" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
         <di:waypoint x="215" y="177" />
         <di:waypoint x="270" y="177" />
@@ -409,6 +441,14 @@
       <bpmndi:BPMNEdge id="Flow_ErrorHandled_di" bpmnElement="Flow_ErrorHandled">
         <di:waypoint x="1010" y="480" />
         <di:waypoint x="1072" y="480" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CancelCleanup_di" bpmnElement="Flow_CancelCleanup">
+        <di:waypoint x="1268" y="680" />
+        <di:waypoint x="1320" y="680" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CancelTerminate_di" bpmnElement="Flow_CancelTerminate">
+        <di:waypoint x="1420" y="680" />
+        <di:waypoint x="1472" y="680" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

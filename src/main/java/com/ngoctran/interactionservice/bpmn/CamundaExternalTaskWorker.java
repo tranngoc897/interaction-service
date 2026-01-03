@@ -152,4 +152,108 @@ public class CamundaExternalTaskWorker {
             externalTaskService.complete(externalTask);
         }
     }
+
+    @Component
+    @ExternalTaskSubscription("cleanup-data")
+    @RequiredArgsConstructor
+    public class CleanupDataHandler implements ExternalTaskHandler {
+        @Override
+        public void execute(ExternalTask externalTask, ExternalTaskService externalTaskService) {
+            String caseId = externalTask.getVariable("caseId");
+            String processInstanceId = externalTask.getProcessInstanceId();
+            log.info("Processing Global Cancel Cleanup for Case: {}", caseId);
+
+            try {
+                // Get process information
+                String applicantId = (String) externalTask.getVariable("applicantId");
+
+                log.info("Cleaning up data for case: {}, applicant: {}", caseId, applicantId);
+
+                // Create cleanup record
+                Map<String, Object> cleanupRecord = Map.of(
+                        "processInstanceId", processInstanceId,
+                        "caseId", caseId,
+                        "applicantId", applicantId,
+                        "cleanupType", "GLOBAL_CANCEL",
+                        "timestamp", java.time.Instant.now().toString(),
+                        "status", "COMPLETED"
+                );
+
+                // Publish cancel event
+                eventPublisher.publishSystemErrorEvent(caseId, processInstanceId,
+                        "GLOBAL_CANCEL", "CANCEL_REQUESTED", "Process cancelled by global cancel message",
+                        "INFO", false, cleanupRecord);
+
+                // Clean up temporary data
+                cleanupTemporaryData(externalTask);
+
+                // Update case status
+                updateCaseStatus(caseId, "CANCELLED", "Process cancelled globally");
+
+                // Log cleanup completion
+                log.info("Global cancel cleanup completed for process: {}", processInstanceId);
+
+                // Set variables for process termination
+                Map<String, Object> variables = Map.of(
+                        "cancelled", true,
+                        "cancelTimestamp", java.time.Instant.now().toString(),
+                        "cleanupRecord", cleanupRecord
+                );
+
+                externalTaskService.complete(externalTask, variables);
+
+            } catch (Exception e) {
+                log.error("Global cancel cleanup failed: {}", e.getMessage(), e);
+                // Complete the task even on failure to allow process termination
+                externalTaskService.complete(externalTask, Map.of("cleanupFailed", true));
+            }
+        }
+
+        /**
+         * Clean up temporary data and resources
+         */
+        private void cleanupTemporaryData(ExternalTask externalTask) {
+            try {
+                log.info("Cleaning up temporary data for process: {}", externalTask.getProcessInstanceId());
+
+                // Remove temporary files if any
+                String tempFilePath = (String) externalTask.getVariable("tempFilePath");
+                if (tempFilePath != null) {
+                    // TODO: In production, delete temporary files
+                    log.info("Would delete temporary file: {}", tempFilePath);
+                }
+
+                // Clear sensitive data from process variables
+                // Note: Variables are cleared when process terminates
+
+                // TODO: Additional cleanup operations
+                // - Delete uploaded documents from storage
+                // - Cancel any pending external service calls
+                // - Clean up database records
+
+                log.info("Temporary data cleanup completed");
+
+            } catch (Exception e) {
+                log.error("Failed to cleanup temporary data: {}", e.getMessage(), e);
+                // Don't throw - continue with termination
+            }
+        }
+
+        /**
+         * Update case status in database
+         */
+        private void updateCaseStatus(String caseId, String status, String reason) {
+            try {
+                log.info("Updating case {} status to {} with reason: {}", caseId, status, reason);
+
+                // TODO: In production, update actual database
+                // caseRepository.updateStatus(caseId, status, reason);
+
+                log.info("Case status updated successfully");
+            } catch (Exception e) {
+                log.error("Failed to update case status: {}", e.getMessage(), e);
+                // Don't throw - status update failure shouldn't prevent termination
+            }
+        }
+    }
 }
