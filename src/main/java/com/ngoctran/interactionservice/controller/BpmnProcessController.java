@@ -1,6 +1,7 @@
 package com.ngoctran.interactionservice.controller;
 
 import com.ngoctran.interactionservice.bpmn.BpmnProcessService;
+import com.ngoctran.interactionservice.bpmn.EventDrivenExternalWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -22,9 +23,12 @@ public class BpmnProcessController {
     private static final Logger log = LoggerFactory.getLogger(BpmnProcessController.class);
 
     private final BpmnProcessService bpmnProcessService;
+    private final EventDrivenExternalWorker eventDrivenWorker;
 
-    public BpmnProcessController(BpmnProcessService bpmnProcessService) {
+    public BpmnProcessController(BpmnProcessService bpmnProcessService,
+            EventDrivenExternalWorker eventDrivenWorker) {
         this.bpmnProcessService = bpmnProcessService;
+        this.eventDrivenWorker = eventDrivenWorker;
     }
 
     /**
@@ -291,6 +295,20 @@ public class BpmnProcessController {
             return ResponseEntity.ok(tasks);
         } catch (Exception e) {
             log.error("Failed to get tasks", e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Get event-driven worker metrics
+     */
+    @GetMapping("/metrics/worker")
+    public ResponseEntity<Map<String, Object>> getWorkerMetrics() {
+        try {
+            Map<String, Object> metrics = eventDrivenWorker.getMetrics();
+            return ResponseEntity.ok(metrics);
+        } catch (Exception e) {
+            log.error("Failed to get worker metrics", e);
             return ResponseEntity.badRequest().build();
         }
     }

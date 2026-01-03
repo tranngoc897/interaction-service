@@ -50,12 +50,11 @@
       <bpmn:errorEventDefinition errorRef="Error_DATA_VALIDATION"/>
     </bpmn:boundaryEvent>
 
-    <!-- OCR Processing -->
+    <!-- OCR Processing (Event-Driven) -->
     <bpmn:serviceTask id="Task_OcrProcessing" name="OCR Document Processing">
       <bpmn:extensionElements>
-        <flowable:class>com.ngoctran.interactionservice.delegate.OcrProcessingDelegate</flowable:class>
+        <flowable:class>com.ngoctran.interactionservice.delegate.EventDrivenOcrProcessingDelegate</flowable:class>
         <flowable:async>true</flowable:async>
-        <flowable:failedJobRetryTimeCycle>R3/PT5M</flowable:failedJobRetryTimeCycle>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_3</bpmn:incoming>
       <bpmn:outgoing>Flow_3a</bpmn:outgoing>
@@ -67,12 +66,11 @@
       <bpmn:errorEventDefinition errorRef="Error_OCR_PROCESSING"/>
     </bpmn:boundaryEvent>
 
-    <!-- Document Verification -->
+    <!-- Document Verification (Event-Driven) -->
     <bpmn:serviceTask id="Task_DocumentVerification" name="Verify Documents">
       <bpmn:extensionElements>
-        <flowable:class>com.ngoctran.interactionservice.delegate.DocumentVerificationDelegate</flowable:class>
+        <flowable:class>com.ngoctran.interactionservice.delegate.EventDrivenDocumentVerificationDelegate</flowable:class>
         <flowable:async>true</flowable:async>
-        <flowable:failedJobRetryTimeCycle>R3/PT5M</flowable:failedJobRetryTimeCycle>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_3a</bpmn:incoming>
       <bpmn:outgoing>Flow_3b</bpmn:outgoing>
@@ -84,12 +82,11 @@
       <bpmn:errorEventDefinition errorRef="Error_DOCUMENT_VERIFICATION"/>
     </bpmn:boundaryEvent>
 
-    <!-- Credit Check -->
+    <!-- Credit Check (Event-Driven) -->
     <bpmn:serviceTask id="Task_CreditCheck" name="Credit Score Check">
       <bpmn:extensionElements>
-        <flowable:class>com.ngoctran.interactionservice.delegate.CreditCheckDelegate</flowable:class>
+        <flowable:class>com.ngoctran.interactionservice.delegate.EventDrivenCreditCheckDelegate</flowable:class>
         <flowable:async>true</flowable:async>
-        <flowable:failedJobRetryTimeCycle>R3/PT10M</flowable:failedJobRetryTimeCycle>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_3b</bpmn:incoming>
       <bpmn:outgoing>Flow_3c</bpmn:outgoing>
@@ -101,12 +98,11 @@
       <bpmn:errorEventDefinition errorRef="Error_CREDIT_CHECK"/>
     </bpmn:boundaryEvent>
 
-    <!-- Compliance Check -->
+    <!-- Compliance Check (Event-Driven) -->
     <bpmn:serviceTask id="Task_ComplianceCheck" name="AML/KYC Compliance Check">
       <bpmn:extensionElements>
-        <flowable:class>com.ngoctran.interactionservice.delegate.ComplianceCheckDelegate</flowable:class>
+        <flowable:class>com.ngoctran.interactionservice.delegate.EventDrivenComplianceCheckDelegate</flowable:class>
         <flowable:async>true</flowable:async>
-        <flowable:failedJobRetryTimeCycle>R3/PT5M</flowable:failedJobRetryTimeCycle>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_3c</bpmn:incoming>
       <bpmn:outgoing>Flow_4</bpmn:outgoing>
@@ -203,10 +199,10 @@
       <bpmn:outgoing>Flow_Rejected</bpmn:outgoing>
     </bpmn:exclusiveGateway>
 
-    <!-- Account Creation -->
+    <!-- Account Creation (Event-Driven) -->
     <bpmn:serviceTask id="Task_CreateAccount" name="Create Customer Account">
       <bpmn:extensionElements>
-        <flowable:class>com.ngoctran.interactionservice.delegate.AccountCreationDelegate</flowable:class>
+        <flowable:class>com.ngoctran.interactionservice.delegate.EventDrivenAccountCreationDelegate</flowable:class>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_Approved</bpmn:incoming>
       <bpmn:incoming>Flow_Approved_Review</bpmn:incoming>
@@ -222,10 +218,10 @@
       <bpmn:outgoing>Flow_5a</bpmn:outgoing>
     </bpmn:serviceTask>
 
-    <!-- Send Welcome Email -->
+    <!-- Send Welcome Email (Event-Driven) -->
     <bpmn:serviceTask id="Task_SendWelcomeEmail" name="Send Welcome Email">
       <bpmn:extensionElements>
-        <flowable:class>com.ngoctran.interactionservice.delegate.NotificationDelegate</flowable:class>
+        <flowable:class>com.ngoctran.interactionservice.delegate.EventDrivenEmailNotificationDelegate</flowable:class>
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_5a</bpmn:incoming>
       <bpmn:outgoing>Flow_6</bpmn:outgoing>
