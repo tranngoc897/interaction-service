@@ -9,6 +9,8 @@ import com.ngoctran.interactionservice.bpmn.BpmnProcessService;
 import com.ngoctran.interactionservice.compliance.ComplianceService;
 import com.ngoctran.interactionservice.dmn.DmnDecisionService;
 import com.ngoctran.interactionservice.events.WorkflowEventPublisher;
+import com.ngoctran.interactionservice.mapping.ProcessMappingService;
+import com.ngoctran.interactionservice.mapping.enums.EngineType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class MyCaseService {
     private final CaseRepository caseRepo;
     private final ObjectMapper objectMapper;
     private final ProcessMappingRepository processMappingRepo;
+    private final ProcessMappingService processMappingService;
     private final BpmnProcessService bpmnProcessService;
     private final ComplianceService complianceService;
     private final DmnDecisionService dmnDecisionService;
@@ -35,13 +38,14 @@ public class MyCaseService {
 
     public MyCaseService(CaseRepository caseRepo, ObjectMapper objectMapper,
             ProcessMappingRepository processMappingRepo,
+            ProcessMappingService processMappingService,
             BpmnProcessService bpmnProcessService, ComplianceService complianceService,
             DmnDecisionService dmnDecisionService, WorkflowEventPublisher eventPublisher,
             CaseDefinitionRepository caseDefinitionRepo) {
         this.caseRepo = caseRepo;
         this.objectMapper = objectMapper;
         this.processMappingRepo = processMappingRepo;
-
+        this.processMappingService = processMappingService;
         this.bpmnProcessService = bpmnProcessService;
         this.complianceService = complianceService;
         this.dmnDecisionService = dmnDecisionService;
@@ -546,11 +550,21 @@ public class MyCaseService {
             // Start BPMN process
             var processInstance = bpmnProcessService.startProcess(processDefinitionKey, caseId.toString(), variables);
 
+            // Create Process Mapping for tracking
+            processMappingService.createProcessMapping(
+                    EngineType.CAMUNDA,
+                    processInstance.id,
+                    processDefinitionKey,
+                    caseId.toString(),
+                    caseEntity.getCustomerId(),
+                    caseId.toString(),
+                    variables);
+
             // Update case with BPMN process ID
             caseEntity.setBpmnProcessId(processInstance.id);
             caseRepo.save(caseEntity);
 
-            log.info("Started BPMN process {} for case {}", processInstance.id, caseId);
+            log.info("Started and mapped BPMN process {} for case {}", processInstance.id, caseId);
 
             // Publish workflow state event
             eventPublisher.publishWorkflowStateEvent(processInstance.id,
@@ -558,6 +572,7 @@ public class MyCaseService {
                     "NONE",
                     "STARTED",
                     variables);
+
         } catch (Exception e) {
             log.error("Failed to start BPMN process for case {}: {}", caseId, e.getMessage());
             throw new RuntimeException("BPMN process start failed: " + e.getMessage(), e);

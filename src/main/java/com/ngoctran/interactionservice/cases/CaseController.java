@@ -42,6 +42,15 @@ public class CaseController {
         return ResponseEntity.ok(myCaseService.submitStep(caseId, submission));
     }
 
+    @PostMapping("/{caseId}/start-process")
+    public ResponseEntity<Void> startProcess(
+            @PathVariable UUID caseId,
+            @RequestParam String processDefinitionKey,
+            @RequestBody(required = false) Map<String, Object> variables) {
+        myCaseService.startBpmnProcess(caseId, processDefinitionKey, variables);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/{caseId}/history")
     public ResponseEntity<?> getHistory(@PathVariable UUID caseId) {
         CaseEntity caseEntity = myCaseService.getCase(caseId);
