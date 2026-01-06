@@ -29,7 +29,7 @@ public class AdminController {
     /**
      * Get dashboard summary
      */
-    @GetMapping("/dashboard")
+/*    @GetMapping("/dashboard")
     public ResponseEntity<Map<String, Object>> getDashboard() {
         try {
             // Get counts by status
@@ -67,7 +67,7 @@ public class AdminController {
                     "message", ex.getMessage()
             ));
         }
-    }
+    }*/
 
     /**
      * List onboarding instances with filtering
