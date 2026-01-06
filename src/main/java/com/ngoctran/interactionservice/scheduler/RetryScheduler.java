@@ -4,6 +4,7 @@ import com.ngoctran.interactionservice.domain.StepExecution;
 import com.ngoctran.interactionservice.engine.ActionCommand;
 import com.ngoctran.interactionservice.engine.OnboardingEngine;
 import com.ngoctran.interactionservice.repo.StepExecutionRepository;
+import com.ngoctran.interactionservice.service.DistributedLockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,6 +13,10 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.List;
 
+/**
+ * Retry Scheduler - Automatically retries failed step executions
+ * Uses distributed locking to coordinate across multiple instances
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -19,47 +24,58 @@ public class RetryScheduler {
 
     private final StepExecutionRepository stepExecutionRepository;
     private final OnboardingEngine onboardingEngine;
+    private final DistributedLockService distributedLockService;
 
-    /**
-     * Scheduled job to retry failed steps
-     * Runs every 30 seconds
-     */
-    @Scheduled(fixedDelayString = "${scheduler.retry.interval:30000}")
+    @Scheduled(fixedDelayString = "${workflow.scheduler.retry.interval:30000}")
     public void retryFailedSteps() {
-        log.debug("Checking for failed steps to retry");
+        log.debug("Starting retry scheduler job");
 
-        Instant now = Instant.now();
-        List<StepExecution> retryableSteps = stepExecutionRepository.findRetryable(now);
-
-        if (retryableSteps.isEmpty()) {
-            log.debug("No steps to retry at this time");
-            return;
-        }
-
-        log.info("Found {} steps to retry", retryableSteps.size());
-
-        for (StepExecution step : retryableSteps) {
+        // Use distributed lock to ensure only one instance processes retries
+        distributedLockService.executeWithLock("retry-scheduler", () -> {
             try {
-                log.info("Retrying step {} for instance {}",
-                        step.getState(), step.getInstanceId());
+                List<StepExecution> retryableSteps = stepExecutionRepository.findRetryable(Instant.now());
 
-                // Create retry action command
-                ActionCommand retryCommand = ActionCommand.system(
-                        step.getInstanceId(),
-                        "RETRY"
-                );
+                if (retryableSteps.isEmpty()) {
+                    log.debug("No retryable steps found");
+                    return null;
+                }
 
-                // Process through engine
-                onboardingEngine.handle(retryCommand);
+                log.info("Found {} retryable steps", retryableSteps.size());
 
-                log.info("Successfully triggered retry for step {} instance {}",
-                        step.getState(), step.getInstanceId());
+                int successCount = 0;
+                int errorCount = 0;
+
+                for (StepExecution step : retryableSteps) {
+                    try {
+                        log.info("Retrying step for instance: {}, state: {}",
+                                step.getInstanceId(), step.getState());
+
+                        // Create retry action command
+                        ActionCommand retryCommand = ActionCommand.system(
+                                step.getInstanceId(),
+                                "RETRY"
+                        );
+
+                        // Process through engine
+                        onboardingEngine.handle(retryCommand);
+
+                        successCount++;
+                        log.debug("Successfully triggered retry for instance: {}", step.getInstanceId());
+
+                    } catch (Exception ex) {
+                        errorCount++;
+                        log.error("Error retrying step for instance: {}, state: {}",
+                                step.getInstanceId(), step.getState(), ex);
+                    }
+                }
+
+                log.info("Retry scheduler completed: {} successful, {} errors", successCount, errorCount);
+                return null;
 
             } catch (Exception ex) {
-                log.error("Error retrying step {} for instance {}: {}",
-                        step.getState(), step.getInstanceId(), ex.getMessage(), ex);
-                // Continue with other retries
+                log.error("Error in retry scheduler", ex);
+                return null;
             }
-        }
+        });
     }
 }

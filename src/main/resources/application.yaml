@@ -66,6 +66,26 @@ redis:
   port: 6379
   timeout: 2000ms
 
+# Redisson Configuration (for distributed locking)
+redisson:
+  enabled: false  # Set to true to enable distributed locking
+  config: |
+    singleServerConfig:
+      address: redis://localhost:6379
+      timeout: 2000
+      retryAttempts: 3
+      retryInterval: 1500
+      database: 0
+      connectionMinimumIdleSize: 2
+      connectionPoolSize: 10
+
+# Workflow Lock Configuration
+workflow:
+  lock:
+    enabled: false  # Set to true to enable distributed locking
+    timeout: 30     # Lock timeout in seconds
+    wait-time: 0    # Wait time for lock acquisition
+
 # Server Configuration
 server:
   port: 8081

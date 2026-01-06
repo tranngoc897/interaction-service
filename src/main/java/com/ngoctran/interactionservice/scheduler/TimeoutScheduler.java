@@ -4,6 +4,7 @@ import com.ngoctran.interactionservice.domain.OnboardingInstance;
 import com.ngoctran.interactionservice.engine.ActionCommand;
 import com.ngoctran.interactionservice.engine.OnboardingEngine;
 import com.ngoctran.interactionservice.repo.OnboardingInstanceRepository;
+import com.ngoctran.interactionservice.service.DistributedLockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +22,7 @@ public class TimeoutScheduler {
 
     private final OnboardingInstanceRepository instanceRepository;
     private final OnboardingEngine onboardingEngine;
+    private final DistributedLockService distributedLockService;
 
     @Value("${workflow.timeout.ekyc:300}")
     private long ekycTimeoutSeconds;
@@ -30,34 +32,52 @@ public class TimeoutScheduler {
 
     /**
      * Scheduled job to handle timeouts for async steps
+     * Uses distributed locking to coordinate across multiple instances
      * Runs every 60 seconds
      */
     @Scheduled(fixedDelayString = "${scheduler.timeout.interval:60000}")
     public void handleTimeouts() {
-        log.debug("Checking for timed out workflow instances");
+        log.debug("Starting timeout scheduler job");
 
-        Instant now = Instant.now();
+        // Use distributed lock to ensure only one instance processes timeouts
+        distributedLockService.executeWithLock("timeout-scheduler", () -> {
+            try {
+                log.debug("Checking for timed out workflow instances");
 
-        // Handle eKYC timeouts
-        handleStepTimeout("EKYC_PENDING", ekycTimeoutSeconds, now);
+                Instant now = Instant.now();
 
-        // Handle AML timeouts
-        handleStepTimeout("AML_PENDING", amlTimeoutSeconds, now);
+                // Handle eKYC timeouts
+                int ekycTimeouts = handleStepTimeout("EKYC_PENDING", ekycTimeoutSeconds, now);
 
-        log.debug("Timeout check completed");
+                // Handle AML timeouts
+                int amlTimeouts = handleStepTimeout("AML_PENDING", amlTimeoutSeconds, now);
+
+                log.info("Timeout scheduler completed: {} eKYC timeouts, {} AML timeouts",
+                        ekycTimeouts, amlTimeouts);
+
+                return null;
+
+            } catch (Exception ex) {
+                log.error("Error in timeout scheduler", ex);
+                return null;
+            }
+        });
     }
 
-    private void handleStepTimeout(String state, long timeoutSeconds, Instant now) {
+    private int handleStepTimeout(String state, long timeoutSeconds, Instant now) {
         Instant timeoutThreshold = now.minus(timeoutSeconds, ChronoUnit.SECONDS);
 
         List<OnboardingInstance> timedOutInstances =
                 instanceRepository.findTimedOutInstances(state, timeoutThreshold);
 
         if (timedOutInstances.isEmpty()) {
-            return;
+            return 0;
         }
 
         log.info("Found {} instances timed out in state {}", timedOutInstances.size(), state);
+
+        int successCount = 0;
+        int errorCount = 0;
 
         for (OnboardingInstance instance : timedOutInstances) {
             try {
@@ -73,13 +93,20 @@ public class TimeoutScheduler {
                 // Process through engine
                 onboardingEngine.handle(timeoutCommand);
 
+                successCount++;
                 log.info("Successfully processed timeout for instance {}", instance.getId());
 
             } catch (Exception ex) {
+                errorCount++;
                 log.error("Error processing timeout for instance {}: {}",
                         instance.getId(), ex.getMessage(), ex);
                 // Continue with other timeouts
             }
         }
+
+        log.info("Timeout processing for {} completed: {} successful, {} errors",
+                state, successCount, errorCount);
+
+        return successCount;
     }
 }
