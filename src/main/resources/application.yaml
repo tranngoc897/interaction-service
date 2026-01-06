@@ -48,6 +48,10 @@ workflow:
     max-attempts: 3
     backoff-multiplier: 2
     initial-delay: 1
+  lock:
+    enabled: false  # Set to true to enable distributed locking
+    timeout: 30     # Lock timeout in seconds
+    wait-time: 0    # Wait time for lock acquisition
 
 # Scheduler Configuration
 scheduler:
@@ -79,12 +83,18 @@ redisson:
       connectionMinimumIdleSize: 2
       connectionPoolSize: 10
 
-# Workflow Lock Configuration
-workflow:
-  lock:
-    enabled: false  # Set to true to enable distributed locking
-    timeout: 30     # Lock timeout in seconds
-    wait-time: 0    # Wait time for lock acquisition
+# External Service Configuration
+external:
+  http:
+    connect-timeout: 5000  # 5 seconds
+    read-timeout: 30000    # 30 seconds
+
+# OTP Service Configuration
+otp:
+  provider:
+    url: http://localhost:8081/mock/otp
+  expiry:
+    minutes: 5
 
 # Server Configuration
 server:

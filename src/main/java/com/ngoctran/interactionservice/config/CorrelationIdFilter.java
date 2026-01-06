@@ -12,54 +12,82 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.UUID;
 
+/**
+ * Correlation ID Filter - Adds correlation ID to all requests for tracing
+ * Ensures every request has a unique correlation ID for distributed tracing
+ */
 @Slf4j
 @Component
 public class CorrelationIdFilter extends OncePerRequestFilter {
 
     private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
-    private static final String CORRELATION_ID_MDC_KEY = "correlationId";
+    private static final String CORRELATION_ID_KEY = "correlationId";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
-
-        String correlationId = getOrGenerateCorrelationId(request);
-
-        // Add to MDC for logging
-        MDC.put(CORRELATION_ID_MDC_KEY, correlationId);
-
-        // Add to response header
-        response.setHeader(CORRELATION_ID_HEADER, correlationId);
+                                  HttpServletResponse response,
+                                  FilterChain filterChain) throws ServletException, IOException {
 
         try {
-            // Log request start
-            log.info("Request started - Method: {} Path: {} CorrelationId: {}",
-                    request.getMethod(), request.getRequestURI(), correlationId);
+            // Extract or generate correlation ID
+            String correlationId = extractOrGenerateCorrelationId(request);
 
-            // Continue with request processing
+            // Add to MDC for logging
+            MDC.put(CORRELATION_ID_KEY, correlationId);
+
+            // Add to response headers
+            response.setHeader(CORRELATION_ID_HEADER, correlationId);
+
+            // Continue with request
             filterChain.doFilter(request, response);
-
-            // Log request completion
-            log.info("Request completed - Status: {} CorrelationId: {}",
-                    response.getStatus(), correlationId);
 
         } finally {
             // Clean up MDC
-            MDC.remove(CORRELATION_ID_MDC_KEY);
+            MDC.remove(CORRELATION_ID_KEY);
         }
     }
 
-    private String getOrGenerateCorrelationId(HttpServletRequest request) {
+    /**
+     * Extract correlation ID from request headers or generate new one
+     */
+    private String extractOrGenerateCorrelationId(HttpServletRequest request) {
+        // Try to get from header
         String correlationId = request.getHeader(CORRELATION_ID_HEADER);
 
-        if (correlationId == null || correlationId.trim().isEmpty()) {
-            correlationId = UUID.randomUUID().toString();
-            log.debug("Generated new correlation ID: {}", correlationId);
-        } else {
-            log.debug("Using existing correlation ID: {}", correlationId);
+        if (correlationId != null && !correlationId.trim().isEmpty()) {
+            // Validate format (should be UUID)
+            try {
+                UUID.fromString(correlationId);
+                return correlationId;
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid correlation ID format: {}, generating new one", correlationId);
+            }
         }
 
-        return correlationId;
+        // Generate new correlation ID
+        String newCorrelationId = UUID.randomUUID().toString();
+        log.debug("Generated new correlation ID: {}", newCorrelationId);
+        return newCorrelationId;
+    }
+
+    /**
+     * Get current correlation ID from MDC
+     */
+    public static String getCurrentCorrelationId() {
+        return MDC.get(CORRELATION_ID_KEY);
+    }
+
+    /**
+     * Set correlation ID in MDC (for async operations)
+     */
+    public static void setCorrelationId(String correlationId) {
+        MDC.put(CORRELATION_ID_KEY, correlationId);
+    }
+
+    /**
+     * Clear correlation ID from MDC
+     */
+    public static void clearCorrelationId() {
+        MDC.remove(CORRELATION_ID_KEY);
     }
 }
