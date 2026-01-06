@@ -1,9 +1,10 @@
 package com.ngoctran.interactionservice.controller;
 
 import com.ngoctran.interactionservice.domain.OnboardingInstance;
+import com.ngoctran.interactionservice.dto.ActionRequest;
+import com.ngoctran.interactionservice.dto.StartOnboardingRequest;
 import com.ngoctran.interactionservice.engine.ActionCommand;
-import com.ngoctran.interactionservice.engine.OnboardingEngine;
-import com.ngoctran.interactionservice.repo.OnboardingInstanceRepository;
+import com.ngoctran.interactionservice.service.OnboardingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -18,8 +19,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class OnboardingController {
 
-    private final OnboardingEngine onboardingEngine;
-    private final OnboardingInstanceRepository instanceRepository;
+    private final OnboardingService onboardingService;
 
     /**
      * Start a new onboarding process
@@ -29,22 +29,22 @@ public class OnboardingController {
         try {
             log.info("Starting onboarding for user: {}", userId);
 
-            // Create new instance
-            OnboardingInstance instance = OnboardingInstance.builder()
-                    .id(UUID.randomUUID())
-                    .userId(userId)
-                    .flowVersion("v1")
-                    .currentState("PHONE_ENTERED")
-                    .status("ACTIVE")
-                    .build();
+            // Check if user already has active onboarding
+            if (onboardingService.hasActiveOnboarding(userId)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Active onboarding already exists",
+                        "message", "User already has an active onboarding process"
+                ));
+            }
 
-            OnboardingInstance saved = instanceRepository.save(instance);
+            // Start new onboarding through service
+            OnboardingInstance instance = onboardingService.start(userId);
 
-            log.info("Created onboarding instance {} for user {}", saved.getId(), userId);
+            log.info("Created onboarding instance {} for user {}", instance.getId(), userId);
 
             return ResponseEntity.ok(Map.of(
-                    "instanceId", saved.getId(),
-                    "currentState", saved.getCurrentState(),
+                    "instanceId", instance.getId(),
+                    "currentState", instance.getCurrentState(),
                     "message", "Onboarding started successfully"
             ));
 
@@ -63,19 +63,22 @@ public class OnboardingController {
     @GetMapping("/{instanceId}/status")
     public ResponseEntity<Map<String, Object>> getStatus(@PathVariable UUID instanceId) {
         try {
-            OnboardingInstance instance = instanceRepository.findById(instanceId).orElse(null);
-            if (instance == null) {
-                return ResponseEntity.notFound().build();
-            }
+            // Use service to get status with business logic
+            OnboardingService.OnboardingStatus status = onboardingService.getStatus(instanceId);
 
             return ResponseEntity.ok(Map.of(
-                    "instanceId", instance.getId(),
-                    "currentState", instance.getCurrentState(),
-                    "status", instance.getStatus(),
-                    "flowVersion", instance.getFlowVersion(),
-                    "stateStartedAt", instance.getStateStartedAt()
+                    "instanceId", status.getInstanceId(),
+                    "userId", status.getUserId(),
+                    "currentState", status.getCurrentState(),
+                    "status", status.getStatus(),
+                    "progress", status.getProgress(),
+                    "allowedActions", status.getAllowedActions(),
+                    "stateStartedAt", status.getStateStartedAt()
             ));
 
+        } catch (IllegalArgumentException ex) {
+            log.warn("Instance not found: {}", instanceId);
+            return ResponseEntity.notFound().build();
         } catch (Exception ex) {
             log.error("Error getting status for instance {}: {}", instanceId, ex.getMessage(), ex);
             return ResponseEntity.internalServerError().body(Map.of(
@@ -105,22 +108,23 @@ public class OnboardingController {
 
             log.info("Performing action {} on instance {}", action, instanceId);
 
-            // Create action command
-            ActionCommand command = ActionCommand.user(instanceId, action, requestId);
+            // Use service to perform action with business logic
+            onboardingService.performAction(instanceId, action, requestId);
 
-            // Process through engine
-            onboardingEngine.handle(command);
-
-            // Get updated status
-            OnboardingInstance updated = instanceRepository.findById(instanceId).orElse(null);
+            // Get updated status after action
+            OnboardingService.OnboardingStatus updatedStatus = onboardingService.getStatus(instanceId);
 
             return ResponseEntity.ok(Map.of(
                     "instanceId", instanceId,
                     "action", action,
-                    "currentState", updated != null ? updated.getCurrentState() : "UNKNOWN",
+                    "currentState", updatedStatus.getCurrentState(),
+                    "progress", updatedStatus.getProgress(),
                     "message", "Action processed successfully"
             ));
 
+        } catch (IllegalArgumentException ex) {
+            log.warn("Instance not found: {}", instanceId);
+            return ResponseEntity.notFound().build();
         } catch (IllegalStateException ex) {
             log.warn("Invalid action for instance {}: {}", instanceId, ex.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
@@ -142,21 +146,21 @@ public class OnboardingController {
     @GetMapping("/{instanceId}/actions")
     public ResponseEntity<Map<String, Object>> getAvailableActions(@PathVariable UUID instanceId) {
         try {
-            OnboardingInstance instance = instanceRepository.findById(instanceId).orElse(null);
-            if (instance == null) {
-                return ResponseEntity.notFound().build();
-            }
+            // Use service to get status with allowed actions
+            OnboardingService.OnboardingStatus status = onboardingService.getStatus(instanceId);
 
-            // In a real implementation, this would query the transition table
-            // For now, return mock actions based on state
-            Map<String, Object> actions = getMockActionsForState(instance.getCurrentState());
+            // Convert allowed actions to UI format
+            Map<String, Object> actions = convertActionsToUIFormat(status.getAllowedActions());
 
             return ResponseEntity.ok(Map.of(
                     "instanceId", instanceId,
-                    "currentState", instance.getCurrentState(),
+                    "currentState", status.getCurrentState(),
                     "actions", actions
             ));
 
+        } catch (IllegalArgumentException ex) {
+            log.warn("Instance not found: {}", instanceId);
+            return ResponseEntity.notFound().build();
         } catch (Exception ex) {
             log.error("Error getting actions for instance {}: {}", instanceId, ex.getMessage(), ex);
             return ResponseEntity.internalServerError().body(Map.of(
@@ -166,27 +170,69 @@ public class OnboardingController {
         }
     }
 
-    private Map<String, Object> getMockActionsForState(String state) {
-        // Mock implementation - in real system, query transition table
-        switch (state) {
-            case "PHONE_ENTERED":
-                return Map.of("NEXT", Map.of("label", "Continue", "type", "PRIMARY"));
-            case "OTP_VERIFIED":
-                return Map.of("NEXT", Map.of("label", "Continue", "type", "PRIMARY"));
-            case "DOC_UPLOADED":
-                return Map.of("NEXT", Map.of("label", "Submit Documents", "type", "PRIMARY"));
-            case "EKYC_PENDING":
-                return Map.of(); // No user actions, waiting for async
-            case "EKYC_APPROVED":
-                return Map.of("NEXT", Map.of("label", "Continue", "type", "PRIMARY"));
-            case "AML_PENDING":
-                return Map.of(); // No user actions, waiting for async
-            case "AML_CLEARED":
-                return Map.of("NEXT", Map.of("label", "Continue", "type", "PRIMARY"));
-            case "ACCOUNT_CREATED":
-                return Map.of("NEXT", Map.of("label", "Complete", "type", "PRIMARY"));
-            default:
-                return Map.of();
+    /**
+     * Cancel onboarding workflow
+     */
+    @PostMapping("/{instanceId}/cancel")
+    public ResponseEntity<Map<String, Object>> cancelOnboarding(
+            @PathVariable UUID instanceId,
+            @RequestParam(defaultValue = "User requested cancellation") String reason) {
+
+        try {
+            log.info("Cancelling onboarding instance: {} with reason: {}", instanceId, reason);
+
+            // Use service to cancel with business logic
+            onboardingService.cancel(instanceId, reason);
+
+            return ResponseEntity.ok(Map.of(
+                    "instanceId", instanceId,
+                    "status", "CANCELLED",
+                    "message", "Onboarding cancelled successfully"
+            ));
+
+        } catch (IllegalArgumentException ex) {
+            log.warn("Instance not found: {}", instanceId);
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException ex) {
+            log.warn("Cannot cancel instance {}: {}", instanceId, ex.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Cannot cancel",
+                    "message", ex.getMessage()
+            ));
+        } catch (Exception ex) {
+            log.error("Error cancelling instance {}: {}", instanceId, ex.getMessage(), ex);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "error", "Failed to cancel",
+                    "message", ex.getMessage()
+            ));
         }
+    }
+
+    /**
+     * Convert allowed actions from service to UI format
+     */
+    private Map<String, Object> convertActionsToUIFormat(java.util.List<String> allowedActions) {
+        Map<String, Object> uiActions = new java.util.HashMap<>();
+
+        for (String action : allowedActions) {
+            switch (action) {
+                case "NEXT":
+                    uiActions.put("NEXT", Map.of(
+                            "label", "Continue",
+                            "type", "PRIMARY",
+                            "requiresConfirmation", false
+                    ));
+                    break;
+                // Add more action mappings as needed
+                default:
+                    uiActions.put(action, Map.of(
+                            "label", action,
+                            "type", "SECONDARY",
+                            "requiresConfirmation", false
+                    ));
+            }
+        }
+
+        return uiActions;
     }
 }
