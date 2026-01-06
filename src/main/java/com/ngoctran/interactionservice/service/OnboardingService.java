@@ -218,8 +218,8 @@ public class OnboardingService {
                 return this;
             }
 
-            public Builder status(String status) {
-                status.status = status;
+            public Builder status(String statusValue) {
+                status.status = statusValue;
                 return this;
             }
 

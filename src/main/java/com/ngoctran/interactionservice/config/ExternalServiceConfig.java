@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.reactive.function.client.WebClient;
 
 /**
  * Configuration for external service integrations
@@ -33,8 +32,6 @@ public class ExternalServiceConfig {
 
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
         factory.setConnectTimeout(connectTimeout);
-        factory.setReadTimeout(readTimeout);
-
         RestTemplate restTemplate = new RestTemplate(factory);
 
         // Add interceptors for logging, correlation ID, etc.
@@ -56,22 +53,5 @@ public class ExternalServiceConfig {
      * WebClient for reactive HTTP calls
      * Used for high-throughput external services
      */
-    @Bean
-    public WebClient externalWebClient() {
-        log.info("Configuring external WebClient");
 
-        return WebClient.builder()
-                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(2 * 1024 * 1024)) // 2MB
-                .filter((request, next) -> {
-                    // Add correlation ID to outgoing requests
-                    String correlationId = CorrelationIdFilter.getCurrentCorrelationId();
-                    if (correlationId != null) {
-                        return next.exchange(request.mutate()
-                                .header("X-Correlation-ID", correlationId)
-                                .build());
-                    }
-                    return next.exchange(request);
-                })
-                .build();
-    }
 }
