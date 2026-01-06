@@ -3,7 +3,7 @@ spring:
   application:
     name: interaction-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/ob_camunda
+    url: jdbc:postgresql://localhost:5433/onboarding_workflow
     username: postgres
     password: admin
     driver-class-name: org.postgresql.Driver
@@ -27,51 +27,44 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
-        spring.json.add.type.headers: true
+        spring.json.add.type.headers: false
     consumer:
-      group-id: interaction-service-group
+      group-id: onboarding-service-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
         spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
-        spring.json.trusted.packages: "com.ngoctran.interactionservice.events"
+        spring.json.trusted.packages: "*"
     template:
-      default-topic: workflow-events
+      default-topic: onboarding-events
 
-# Camunda External Task Client Configuration (K8s Ready)
-camunda.bpm.client:
-  base-url: http://localhost:8080/engine-rest
-  async-response-timeout: 10000
-  subscriptions:
-    data-validation:
-      process-definition-key: onboarding
-    ocr-processing:
-      process-definition-key: onboarding
-    document-verification:
-      process-definition-key: onboarding
-    credit-check:
-      process-definition-key: onboarding
-    compliance-check:
-      process-definition-key: onboarding
-    error-handling:
-      process-definition-key: onboarding
-    account-creation:
-      process-definition-key: onboarding
-    sms-notification:
-      process-definition-key: onboarding
-    email-notification:
-      process-definition-key: onboarding
+# Custom Workflow Engine Configuration
+workflow:
+  timeout:
+    ekyc: 300  # 5 minutes
+    aml: 120   # 2 minutes
+  retry:
+    max-attempts: 3
+    backoff-multiplier: 2
+    initial-delay: 1
 
-# Camunda REST Client Configuration (Legacy/Service)
-camunda:
-  bpm:
-    history-level: full
-    database:
-      schema-update: true
-    job-execution:
-      enabled: true
-      deployment-aware: true
+# Scheduler Configuration
+scheduler:
+  enabled: true
+  retry:
+    interval: 30000  # 30 seconds
+  timeout:
+    interval: 60000  # 60 seconds
+  resume:
+    interval: 60000  # 60 seconds
+
+# Redis Configuration (for distributed locking - optional)
+redis:
+  enabled: false  # Set to true if running multiple pods
+  host: localhost
+  port: 6379
+  timeout: 2000ms
 
 # Server Configuration
 server:

@@ -1,16 +1,18 @@
 package com.ngoctran.interactionservice.exception;
 
 import lombok.Builder;
-import lombok.Data;
+import lombok.Value;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.util.Map;
 
-@Data
+@Value
 @Builder
 public class ErrorResponse {
-    private LocalDateTime timestamp;
-    private int status;
-    private String error;
-    private String message;
-    private String path;
+    String correlationId;
+    String code;
+    String message;
+    String type;
+    Map<String, Object> details;
+    Instant timestamp;
 }

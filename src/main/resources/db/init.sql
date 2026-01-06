@@ -1,140 +1,221 @@
 -- =============================================================================
--- 1. CASE MANAGEMENT (Cấu trúc Hồ sơ)
+-- CUSTOM WORKFLOW ENGINE SCHEMA (No Camunda)
+-- Based on state machine + transition table + event-driven architecture
 -- =============================================================================
 
--- Định nghĩa các loại Case (Blueprint)
-CREATE TABLE IF NOT EXISTS flw_case_def (
-    case_definition_key VARCHAR(255) PRIMARY KEY,
-    case_definition_version BIGINT NOT NULL,
-    default_value JSONB,
-    case_schema JSONB
-);
-
--- Bảng Case thực tế (Instances)
-CREATE TABLE IF NOT EXISTS flw_case (
+-- =============================================================================
+-- 1. ONBOARDING INSTANCE (Main workflow instance)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS onboarding_instance (
     id UUID PRIMARY KEY,
-    version INTEGER DEFAULT 0,
-    case_definition_key VARCHAR(255),
-    case_definition_version VARCHAR(50),
-    customer_id VARCHAR(64),
-    current_step VARCHAR(128),
-    status VARCHAR(32),
-    workflow_instance_id VARCHAR(128),
-    case_data JSONB,           -- Chứa dữ liệu nghiệp vụ tổng hợp
-    audit_trail JSONB,         -- Chứa lịch sử các bước đã qua
-    sla JSONB,                 -- Metadata về thời gian xử lý
+    user_id VARCHAR(64) NOT NULL,
+    flow_version VARCHAR(10) NOT NULL DEFAULT 'v1',
+    current_state VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, COMPLETED, CANCELLED, FAILED
+    version BIGINT NOT NULL DEFAULT 0, -- Optimistic locking
+    state_started_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_flow_case_status ON flw_case(status);
-CREATE INDEX idx_flow_case_customer ON flw_case(customer_id);
-CREATE INDEX idx_flow_case_workflow ON flw_case(workflow_instance_id);
-
+CREATE INDEX idx_onboarding_instance_user ON onboarding_instance(user_id);
+CREATE INDEX idx_onboarding_instance_state ON onboarding_instance(current_state);
+CREATE INDEX idx_onboarding_instance_status ON onboarding_instance(status);
 
 -- =============================================================================
--- 2. INTERACTION MANAGEMENT (Giao dịch người dùng)
+-- 2. TRANSITION TABLE (Workflow definition - config-driven)
 -- =============================================================================
-
--- Định nghĩa các bước trong một Interaction (Luồng đi)
-CREATE TABLE IF NOT EXISTS flw_int_def (
-    interaction_definition_key VARCHAR(255),
-    interaction_definition_version BIGINT,
-    version INTEGER DEFAULT 0,
-    schema_id VARCHAR(255),
-    steps JSONB,               -- Cấu trúc các bước: form, next step, actions...
-    PRIMARY KEY (interaction_definition_key, interaction_definition_version)
+CREATE TABLE IF NOT EXISTS onboarding_transition (
+    flow_version VARCHAR(10),
+    from_state VARCHAR(50),
+    action VARCHAR(50),
+    to_state VARCHAR(50),
+    is_async BOOLEAN DEFAULT FALSE,
+    source_service VARCHAR(50), -- EKYC, AML, UI, SYSTEM
+    allowed_actors TEXT[], -- USER, ADMIN, RISK, SYSTEM
+    max_retry INTEGER DEFAULT 3,
+    conditions_json JSONB, -- Rule conditions like ["otp_status == SUCCESS"]
+    PRIMARY KEY (flow_version, from_state, action)
 );
 
--- Phiên giao dịch thực tế
-CREATE TABLE IF NOT EXISTS flw_int (
-    id VARCHAR(36) PRIMARY KEY,
-    version BIGINT DEFAULT 0,
-    user_id VARCHAR(36),
-    interaction_definition_key VARCHAR(255),
-    interaction_definition_version BIGINT,
-    case_id VARCHAR(36),       -- Link tới flw_case.id (kiểu string để linh động)
-    case_version BIGINT,
-    step_name VARCHAR(255),    -- Bước hiện tại khách hàng đang ở
-    step_status VARCHAR(20),   -- PENDING, COMPLETED...
-    status VARCHAR(20),        -- ACTIVE, COMPLETED, CANCELLED...
-    resumable BOOLEAN DEFAULT TRUE,
-    temp_data JSONB,           -- Dữ liệu tạm thời của bước hiện tại
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+CREATE INDEX idx_transition_lookup ON onboarding_transition(flow_version, from_state, action);
+
+-- =============================================================================
+-- 3. ONBOARDING HISTORY (Audit trail)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS onboarding_history (
+    id BIGSERIAL PRIMARY KEY,
+    instance_id UUID NOT NULL REFERENCES onboarding_instance(id),
+    from_state VARCHAR(50),
+    to_state VARCHAR(50),
+    action VARCHAR(50) NOT NULL,
+    result VARCHAR(20) NOT NULL, -- SUCCESS, FAILED
+    error_code VARCHAR(50),
+    error_message TEXT,
+    actor VARCHAR(20), -- USER, ADMIN, SYSTEM, KAFKA
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_flw_int_case_id ON flw_int(case_id);
-CREATE INDEX idx_flw_int_user_id ON flw_int(user_id);
-
+CREATE INDEX idx_history_instance ON onboarding_history(instance_id);
+CREATE INDEX idx_history_created ON onboarding_history(created_at);
 
 -- =============================================================================
--- 3. TASK MANAGEMENT (Công việc thủ công/Review)
+-- 4. STEP EXECUTION (Retry & execution tracking)
 -- =============================================================================
-
-CREATE TABLE IF NOT EXISTS flw_task (
-    id UUID PRIMARY KEY,
-    version INTEGER DEFAULT 0,
-    case_id UUID NOT NULL REFERENCES flw_case(id), -- Ràng buộc cứng với Case
-    interaction_id VARCHAR(36),
-    task_type VARCHAR(50) NOT NULL,
-    status VARCHAR(20) NOT NULL,
-    assignee_id VARCHAR(36),
-    payload JSONB,             -- Dữ liệu hiển thị cho người duyệt
-    result JSONB,              -- Kết quả phê duyệt (Approve/Reject)
-    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMP WITHOUT TIME ZONE
+CREATE TABLE IF NOT EXISTS step_execution (
+    instance_id UUID,
+    state VARCHAR(50),
+    status VARCHAR(20) NOT NULL, -- NEW, RUNNING, SUCCESS, FAILED
+    retry_count INTEGER DEFAULT 0,
+    max_retry INTEGER DEFAULT 3,
+    last_error_code VARCHAR(50),
+    last_error_message TEXT,
+    next_retry_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (instance_id, state)
 );
 
-CREATE INDEX idx_flw_task_case_id ON flw_task(case_id);
-CREATE INDEX idx_flw_task_status ON flw_task(status);
-CREATE INDEX idx_flw_task_assignee ON flw_task(assignee_id);
-
+CREATE INDEX idx_step_execution_retry ON step_execution(status, next_retry_at);
+CREATE INDEX idx_step_execution_instance ON step_execution(instance_id);
 
 -- =============================================================================
--- 4. PROCESS MAPPING (Theo dõi Workflow Temporal)
+-- 5. PROCESSED EVENTS (Idempotency for Kafka/UI actions)
 -- =============================================================================
-
-CREATE TABLE IF NOT EXISTS process_mapping (
-    id VARCHAR(255) PRIMARY KEY,
-    engine_type VARCHAR(50),      -- TEMPORAL
-    process_instance_id VARCHAR(255),
-    process_definition_key VARCHAR(255),
-    case_id VARCHAR(255),
-    user_id VARCHAR(255),
-    status VARCHAR(50),           -- RUNNING, COMPLETED, FAILED
-    started_at TIMESTAMP WITHOUT TIME ZONE,
-    completed_at TIMESTAMP WITHOUT TIME ZONE,
-    error_details TEXT
+CREATE TABLE IF NOT EXISTS processed_event (
+    event_id VARCHAR(255) PRIMARY KEY,
+    instance_id UUID,
+    event_type VARCHAR(50),
+    processed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_proc_map_case ON process_mapping(case_id);
-CREATE INDEX idx_proc_map_instance ON process_mapping(process_instance_id);
+CREATE INDEX idx_processed_event_instance ON processed_event(instance_id);
 
 -- =============================================================================
--- 6. WORKFLOW SCHEDULE MANAGEMENT (Theo dõi Temporal Schedules)
+-- 6. HUMAN TASK (Manual review tasks)
 -- =============================================================================
+CREATE TABLE IF NOT EXISTS human_task (
+    task_id UUID PRIMARY KEY,
+    instance_id UUID NOT NULL REFERENCES onboarding_instance(id),
+    state VARCHAR(50) NOT NULL,
+    task_type VARCHAR(50) NOT NULL, -- AML_REVIEW, EKYC_REVIEW, MANUAL_APPROVAL
+    assigned_role VARCHAR(50), -- RISK_OFFICER, COMPLIANCE_OFFICER
+    assigned_user VARCHAR(64),
+    status VARCHAR(20) NOT NULL, -- OPEN, CLAIMED, COMPLETED
+    priority VARCHAR(10) DEFAULT 'NORMAL', -- LOW, NORMAL, HIGH, CRITICAL
+    payload JSONB, -- Task data for display
+    result JSONB, -- Approval result
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    claimed_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    due_at TIMESTAMPTZ -- SLA deadline
+);
 
-CREATE TABLE IF NOT EXISTS workflow_schedule (
-    schedule_id VARCHAR(255) PRIMARY KEY,
-    cron_expression VARCHAR(255) NOT NULL,
-    workflow_type VARCHAR(255) NOT NULL,
-    task_queue VARCHAR(255),
-    created_by VARCHAR(255),
-    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITHOUT TIME ZONE,
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+CREATE INDEX idx_human_task_instance ON human_task(instance_id);
+CREATE INDEX idx_human_task_status ON human_task(status);
+CREATE INDEX idx_human_task_assigned ON human_task(assigned_role, assigned_user);
+CREATE INDEX idx_human_task_due ON human_task(due_at);
+
+-- =============================================================================
+-- 7. INCIDENT (Error management & escalation)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS incident (
+    incident_id UUID PRIMARY KEY,
+    instance_id UUID NOT NULL REFERENCES onboarding_instance(id),
+    state VARCHAR(50),
+    error_code VARCHAR(50) NOT NULL,
+    severity VARCHAR(10) NOT NULL, -- LOW, MEDIUM, HIGH, CRITICAL
+    status VARCHAR(20) NOT NULL, -- OPEN, ACKNOWLEDGED, RESOLVED
+    owner VARCHAR(64), -- Assigned person
     description TEXT,
-    workflow_arguments TEXT
+    resolution TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    acknowledged_at TIMESTAMPTZ,
+    resolved_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_schedule_id ON workflow_schedule(schedule_id);
-CREATE INDEX idx_schedule_status ON workflow_schedule(status);
-CREATE INDEX idx_schedule_created_by ON workflow_schedule(created_by);
+CREATE INDEX idx_incident_instance ON incident(instance_id);
+CREATE INDEX idx_incident_status ON incident(status);
+CREATE INDEX idx_incident_severity ON incident(severity);
 
 -- =============================================================================
--- 5. TRIGGER CẬP NHẬT THỜI GIAN (PostgreSQL)
+-- 8. DLQ EVENTS (Dead Letter Queue for failed Kafka events)
 -- =============================================================================
+CREATE TABLE IF NOT EXISTS dlq_event (
+    id BIGSERIAL PRIMARY KEY,
+    topic VARCHAR(100) NOT NULL,
+    partition_key VARCHAR(255),
+    event_payload JSONB NOT NULL,
+    error_message TEXT,
+    failed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    retry_count INTEGER DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'NEW' -- NEW, RETRIED, IGNORED
+);
 
+CREATE INDEX idx_dlq_topic ON dlq_event(topic);
+CREATE INDEX idx_dlq_status ON dlq_event(status);
+
+-- =============================================================================
+-- 9. WORKFLOW METRICS (For monitoring)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS workflow_metrics (
+    id BIGSERIAL PRIMARY KEY,
+    metric_name VARCHAR(100) NOT NULL,
+    state VARCHAR(50),
+    value BIGINT,
+    tags JSONB,
+    recorded_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_metrics_name ON workflow_metrics(metric_name);
+CREATE INDEX idx_metrics_recorded ON workflow_metrics(recorded_at);
+
+-- =============================================================================
+-- 10. STATE CONTEXT (Workflow data for rule evaluation)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS state_context (
+    instance_id UUID PRIMARY KEY,
+    context_data JSONB, -- Workflow data like {"otp_status": "SUCCESS", "ekyc_score": 0.85}
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT DEFAULT 0
+);
+
+-- =============================================================================
+-- 11. STATE SNAPSHOTS (For debugging failed workflows)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS state_snapshot (
+    id BIGSERIAL PRIMARY KEY,
+    instance_id UUID NOT NULL,
+    state VARCHAR(50) NOT NULL,
+    snapshot_data JSONB, -- Complete state snapshot
+    context_data JSONB, -- Context at time of snapshot
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_state_snapshot_instance ON state_snapshot(instance_id);
+
+-- =============================================================================
+-- 12. OUTBOX EVENTS (Guaranteed event delivery)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS outbox_event (
+    id BIGSERIAL PRIMARY KEY,
+    event_id VARCHAR(255) UNIQUE NOT NULL,
+    topic VARCHAR(100) NOT NULL,
+    partition_key VARCHAR(255),
+    event_payload JSONB NOT NULL,
+    event_type VARCHAR(50),
+    status VARCHAR(20) DEFAULT 'PENDING', -- PENDING, PUBLISHED, FAILED
+    retry_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    published_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_outbox_status ON outbox_event(status);
+CREATE INDEX idx_outbox_created ON outbox_event(created_at);
+
+-- =============================================================================
+-- TRIGGERS FOR UPDATED_AT
+-- =============================================================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -143,7 +224,12 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER trg_update_flow_case_updated_at
-    BEFORE UPDATE ON flw_case
+CREATE TRIGGER trg_update_onboarding_instance
+    BEFORE UPDATE ON onboarding_instance
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trg_update_step_execution
+    BEFORE UPDATE ON step_execution
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
