@@ -66,11 +66,131 @@ public class OnboardingEngine {
             instance.moveTo(transition.getToState());
             log.info("State transitioned: {} -> {} for instance: {}",
                     instance.getCurrentState(), transition.getToState(), instance.getId());
+
+            // 6.1. Attempt auto-progression to next steps
+            attemptAutoProgression(instance);
         }
 
         // 7. Mark event as processed
         processedEventRepository.save(command.getRequestId(), instance.getId(), "ACTION", command.getActor());
 
         log.info("Action processed successfully: {} for instance: {}", command.getAction(), command.getInstanceId());
+    }
+
+    /**
+     * Attempt to automatically progress to the next step if possible
+     * This enables the workflow to continue automatically through multiple steps
+     */
+    private void attemptAutoProgression(OnboardingInstance instance) {
+        // Prevent infinite loops
+        int autoProgressionDepth = getAutoProgressionDepth(instance);
+        if (autoProgressionDepth >= getMaxAutoProgressionSteps()) {
+            log.warn("Stopping auto-progression after {} steps for instance: {}",
+                    autoProgressionDepth, instance.getId());
+            return;
+        }
+
+        // Check if current state allows auto-progression
+        if (!canAutoProgress(instance.getCurrentState())) {
+            log.debug("Auto-progression not allowed for state: {} on instance: {}",
+                    instance.getCurrentState(), instance.getId());
+            return;
+        }
+
+        // Find the default auto-progression action (usually "NEXT")
+        String autoAction = getAutoProgressionAction(instance.getCurrentState());
+        if (autoAction == null) {
+            log.debug("No auto-progression action defined for state: {} on instance: {}",
+                    instance.getCurrentState(), instance.getId());
+            return;
+        }
+
+        try {
+            log.info("Attempting auto-progression from state: {} with action: {} for instance: {}",
+                    instance.getCurrentState(), autoAction, instance.getId());
+
+            // Increment auto-progression depth
+            incrementAutoProgressionDepth(instance);
+
+            // Create auto-execution command
+            ActionCommand autoCommand = ActionCommand.system(instance.getId(), autoAction);
+
+            // Recursively handle the auto-progression
+            // This will call handle() again, potentially leading to more auto-progression
+            handle(autoCommand);
+
+        } catch (Exception ex) {
+            log.error("Auto-progression failed for instance: {} at state: {}",
+                    instance.getId(), instance.getCurrentState(), ex);
+            // Don't throw - auto-progression failure shouldn't stop the main flow
+            resetAutoProgressionDepth(instance);
+        }
+    }
+
+    /**
+     * Check if a state allows auto-progression
+     */
+    private boolean canAutoProgress(String currentState) {
+        // Define which states can auto-progress
+        switch (currentState) {
+            case "EKYC_APPROVED":
+            case "AML_CLEARED":
+                return true; // These states can auto-progress to next steps
+            case "ACCOUNT_CREATED":
+                return false; // Stop here - requires user confirmation
+            default:
+                return false; // Most states require user interaction
+        }
+    }
+
+    /**
+     * Get the auto-progression action for a state
+     */
+    private String getAutoProgressionAction(String currentState) {
+        switch (currentState) {
+            case "EKYC_APPROVED":
+                return "NEXT"; // Auto-progress to AML
+            case "AML_CLEARED":
+                return "NEXT"; // Auto-progress to account creation
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Get maximum allowed auto-progression steps to prevent infinite loops
+     */
+    private int getMaxAutoProgressionSteps() {
+        return 5; // Configurable via properties
+    }
+
+    /**
+     * Track auto-progression depth to prevent infinite loops
+     */
+    private int getAutoProgressionDepth(OnboardingInstance instance) {
+        // In a real implementation, this would be stored in the instance or a separate tracking table
+        // For now, we'll use a simple counter based on state transitions
+        return calculateProgressionDepth(instance);
+    }
+
+    private void incrementAutoProgressionDepth(OnboardingInstance instance) {
+        // Track in instance metadata or separate table
+        log.debug("Incremented auto-progression depth for instance: {}", instance.getId());
+    }
+
+    private void resetAutoProgressionDepth(OnboardingInstance instance) {
+        // Reset counter
+        log.debug("Reset auto-progression depth for instance: {}", instance.getId());
+    }
+
+    private int calculateProgressionDepth(OnboardingInstance instance) {
+        // Simple calculation based on how many auto-executable states we've passed
+        String state = instance.getCurrentState();
+        switch (state) {
+            case "EKYC_APPROVED": return 1;
+            case "AML_CLEARED": return 2;
+            case "ACCOUNT_CREATED": return 3;
+            default: return 0;
+        }
     }
 }

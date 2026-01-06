@@ -22,15 +22,34 @@ public class OnboardingController {
     private final OnboardingService onboardingService;
 
     /**
-     * Start a new onboarding process
+     * Start a new onboarding process for new/anonymous users
+     * No userId required - generates anonymous session
      */
     @PostMapping("/start")
-    public ResponseEntity<Map<String, Object>> startOnboarding(@RequestParam String userId) {
-        try {
-            log.info("Starting onboarding for user: {}", userId);
+    public ResponseEntity<Map<String, Object>> startOnboarding(
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String sessionId) {
 
-            // Check if user already has active onboarding
-            if (onboardingService.hasActiveOnboarding(userId)) {
+        try {
+            log.info("Starting onboarding - userId: {}, sessionId: {}", userId, sessionId);
+
+            String effectiveUserId = userId;
+
+            // For new users without userId, use sessionId or generate anonymous ID
+            if (effectiveUserId == null || effectiveUserId.trim().isEmpty()) {
+                if (sessionId != null && !sessionId.trim().isEmpty()) {
+                    // Use sessionId as temporary user identifier
+                    effectiveUserId = "anonymous:" + sessionId;
+                    log.info("Using anonymous user ID: {}", effectiveUserId);
+                } else {
+                    // Generate completely anonymous ID
+                    effectiveUserId = "anonymous:" + UUID.randomUUID().toString();
+                    log.info("Generated anonymous user ID: {}", effectiveUserId);
+                }
+            }
+
+            // Check if user already has active onboarding (only for non-anonymous users)
+            if (!effectiveUserId.startsWith("anonymous:") && onboardingService.hasActiveOnboarding(effectiveUserId)) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "error", "Active onboarding already exists",
                         "message", "User already has an active onboarding process"
@@ -38,18 +57,20 @@ public class OnboardingController {
             }
 
             // Start new onboarding through service
-            OnboardingInstance instance = onboardingService.start(userId);
+            OnboardingInstance instance = onboardingService.start(effectiveUserId);
 
-            log.info("Created onboarding instance {} for user {}", instance.getId(), userId);
+            log.info("Created onboarding instance {} for user {}", instance.getId(), effectiveUserId);
 
             return ResponseEntity.ok(Map.of(
                     "instanceId", instance.getId(),
+                    "userId", effectiveUserId,
                     "currentState", instance.getCurrentState(),
+                    "isAnonymous", effectiveUserId.startsWith("anonymous:"),
                     "message", "Onboarding started successfully"
             ));
 
         } catch (Exception ex) {
-            log.error("Error starting onboarding for user {}: {}", userId, ex.getMessage(), ex);
+            log.error("Error starting onboarding: {}", ex.getMessage(), ex);
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Failed to start onboarding",
                     "message", ex.getMessage()

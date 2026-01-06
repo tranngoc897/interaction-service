@@ -22,6 +22,33 @@ public class AccountCreationHandler implements StepHandler {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
+    /**
+     * Result of account creation operation
+     */
+    public static class AccountCreationResult {
+        private final boolean success;
+        private final String accountNumber;
+        private final String errorMessage;
+
+        private AccountCreationResult(boolean success, String accountNumber, String errorMessage) {
+            this.success = success;
+            this.accountNumber = accountNumber;
+            this.errorMessage = errorMessage;
+        }
+
+        public static AccountCreationResult success(String accountNumber) {
+            return new AccountCreationResult(true, accountNumber, null);
+        }
+
+        public static AccountCreationResult failure(String errorMessage) {
+            return new AccountCreationResult(false, null, errorMessage);
+        }
+
+        public boolean success() { return success; }
+        public String accountNumber() { return accountNumber; }
+        public String errorMessage() { return errorMessage; }
+    }
+
     @Override
     public StepResult execute(UUID instanceId) {
         log.info("Executing account creation for instance: {}", instanceId);
@@ -37,22 +64,22 @@ public class AccountCreationHandler implements StepHandler {
             // For this implementation, we'll simulate calling an external service
             // In production, this might be synchronous or asynchronous depending on the banking system
 
-            boolean accountCreated = createAccount(instanceId);
+            AccountCreationResult result = createAccount(instanceId);
 
-            if (accountCreated) {
-                log.info("Account creation successful for instance: {}", instanceId);
+            if (result.success()) {
+                log.info("Account creation successful for instance: {} - Account: {}", instanceId, result.accountNumber());
 
                 // Publish account creation event for downstream systems
-                publishAccountCreatedEvent(instanceId);
+                publishAccountCreatedEvent(instanceId, result);
 
                 return StepResult.success();
             } else {
-                log.error("Account creation failed for instance: {}", instanceId);
+                log.error("Account creation failed for instance: {} - Reason: {}", instanceId, result.errorMessage());
                 return StepResult.failure(
                         new com.ngoctran.interactionservice.step.StepError(
                                 "ACCOUNT_CREATION_FAILED",
                                 com.ngoctran.interactionservice.step.ErrorType.SYSTEM,
-                                "Failed to create account in core banking system"
+                                result.errorMessage()
                         )
                 );
             }
@@ -69,7 +96,7 @@ public class AccountCreationHandler implements StepHandler {
         }
     }
 
-    private boolean createAccount(UUID instanceId) {
+    private AccountCreationResult createAccount(UUID instanceId) {
         // Simulate account creation logic
         // In production, this would:
         // - Call core banking API
@@ -82,7 +109,7 @@ public class AccountCreationHandler implements StepHandler {
         return simulateAccountCreation(instanceId);
     }
 
-    private boolean simulateAccountCreation(UUID instanceId) {
+    private AccountCreationResult simulateAccountCreation(UUID instanceId) {
         // Simulate calling external banking system
         // In real implementation, this would make HTTP call to core banking API
 
@@ -91,15 +118,23 @@ public class AccountCreationHandler implements StepHandler {
             Thread.sleep(100);
 
             // Simulate 95% success rate
-            return Math.random() > 0.05;
+            boolean success = Math.random() > 0.05;
+
+            if (success) {
+                // Generate mock account number
+                String accountNumber = "ACC" + instanceId.toString().substring(0, 8).toUpperCase();
+                return AccountCreationResult.success(accountNumber);
+            } else {
+                return AccountCreationResult.failure("Core banking system temporarily unavailable");
+            }
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return false;
+            return AccountCreationResult.failure("Request timeout");
         }
     }
 
-    private void publishAccountCreatedEvent(UUID instanceId) {
+    private void publishAccountCreatedEvent(UUID instanceId, AccountCreationResult result) {
         try {
             // Publish account creation event for downstream processing
             Map<String, Object> event = Map.of(

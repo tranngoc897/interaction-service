@@ -35,15 +35,27 @@ public class OnboardingService {
 
     /**
      * Start a new onboarding workflow with specific version
+     * Handles both authenticated users and anonymous users
      */
     @Transactional
     public OnboardingInstance start(String userId, String flowVersion) {
         log.info("Starting onboarding for user: {}, flowVersion: {}", userId, flowVersion);
 
-        // Check if user already has active onboarding
-        List<OnboardingInstance> activeInstances = instanceRepository.findByUserIdAndStatus(userId, "ACTIVE");
-        if (!activeInstances.isEmpty()) {
-            throw new IllegalStateException("User already has active onboarding: " + userId);
+        // For anonymous users, allow multiple active sessions but limit them
+        if (!userId.startsWith("anonymous:")) {
+            // Check if authenticated user already has active onboarding
+            List<OnboardingInstance> activeInstances = instanceRepository.findByUserIdAndStatus(userId, "ACTIVE");
+            if (!activeInstances.isEmpty()) {
+                throw new IllegalStateException("User already has active onboarding: " + userId);
+            }
+        } else {
+            // For anonymous users, limit concurrent sessions to prevent abuse
+            List<OnboardingInstance> activeAnonymous = instanceRepository.findByUserIdAndStatus(userId, "ACTIVE");
+            if (activeAnonymous.size() >= 3) { // Allow max 3 concurrent anonymous sessions
+                log.warn("Too many active anonymous sessions for user: {}, cleaning up old ones", userId);
+                // Clean up old anonymous sessions (older than 24 hours)
+                cleanupOldAnonymousSessions(userId);
+            }
         }
 
         // Create new instance
@@ -63,6 +75,35 @@ public class OnboardingService {
         log.info("Created onboarding instance: {} for user: {}", saved.getId(), userId);
 
         return saved;
+    }
+
+    /**
+     * Clean up old anonymous sessions to prevent accumulation
+     */
+    private void cleanupOldAnonymousSessions(String anonymousUserId) {
+        try {
+            // Find sessions older than 24 hours
+            Instant cutoffTime = Instant.now().minusSeconds(24 * 60 * 60); // 24 hours ago
+
+            List<OnboardingInstance> oldSessions = instanceRepository
+                    .findByUserId(anonymousUserId)
+                    .stream()
+                    .filter(instance -> instance.getCreatedAt().isBefore(cutoffTime))
+                    .filter(instance -> "ACTIVE".equals(instance.getStatus()) || "CANCELLED".equals(instance.getStatus()))
+                    .toList();
+
+            if (!oldSessions.isEmpty()) {
+                log.info("Cleaning up {} old anonymous sessions for user: {}", oldSessions.size(), anonymousUserId);
+                for (OnboardingInstance oldSession : oldSessions) {
+                    oldSession.setStatus("EXPIRED");
+                    oldSession.setUpdatedAt(Instant.now());
+                    instanceRepository.save(oldSession);
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Error cleaning up old anonymous sessions for user: {}", anonymousUserId, ex);
+            // Don't fail the main operation for cleanup issues
+        }
     }
 
     /**
