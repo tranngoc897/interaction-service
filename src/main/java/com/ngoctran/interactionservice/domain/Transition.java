@@ -33,7 +33,7 @@ public class Transition {
     private String toState;
 
     @Column(name = "is_async")
-    private Boolean isAsync;
+    private Boolean async;
 
     @Column(name = "source_service")
     private String sourceService;
@@ -46,6 +46,10 @@ public class Transition {
 
     @Column(columnDefinition = "jsonb")
     private String conditionsJson; // JSON array of conditions like ["otp_status == SUCCESS"]
+
+    public boolean isAsync() {
+        return Boolean.TRUE.equals(this.async);
+    }
 
     public boolean isSameState() {
         return this.fromState.equals(this.toState);
