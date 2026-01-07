@@ -11,10 +11,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 
 /**
  * OTP Service - Handles OTP sending and verification
- * In production, this would integrate with SMS providers like Twilio, AWS SNS, etc.
+ * In production, this would integrate with SMS providers like Twilio, AWS SNS,
+ * etc.
  */
 @Slf4j
 @Service
@@ -35,6 +39,9 @@ public class OtpService {
     /**
      * Send OTP to phone number
      */
+    @CircuitBreaker(name = "otp-service")
+    @RateLimiter(name = "otp-service")
+    @Bulkhead(name = "external-api-bulkhead")
     public boolean sendOtp(String phoneNumber) {
         try {
             log.info("Sending OTP to phone: {}", phoneNumber);
@@ -50,14 +57,12 @@ public class OtpService {
             Map<String, Object> request = Map.of(
                     "phoneNumber", phoneNumber,
                     "message", "Your OTP code is: " + otpCode,
-                    "expiryMinutes", otpExpiryMinutes
-            );
+                    "expiryMinutes", otpExpiryMinutes);
 
             ResponseEntity<String> response = restTemplate.postForEntity(
                     otpProviderUrl + "/send",
                     request,
-                    String.class
-            );
+                    String.class);
 
             boolean success = response.getStatusCode().is2xxSuccessful();
             log.info("OTP sent to {}: {}", phoneNumber, success ? "SUCCESS" : "FAILED");
@@ -123,6 +128,8 @@ public class OtpService {
     /**
      * Resend OTP (with rate limiting)
      */
+    @CircuitBreaker(name = "otp-service")
+    @RateLimiter(name = "otp-service")
     public boolean resendOtp(String phoneNumber) {
         // Add rate limiting logic here
         return sendOtp(phoneNumber);

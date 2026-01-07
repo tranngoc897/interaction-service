@@ -9,11 +9,13 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.UUID;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
 /**
  * Account Creation Handler
  * Handles the final account creation step in the onboarding process
- * This typically involves calling core banking systems to create the actual account
+ * This typically involves calling core banking systems to create the actual
+ * account
  */
 @Slf4j
 @Component("ACCOUNT_CREATED")
@@ -44,12 +46,21 @@ public class AccountCreationHandler implements StepHandler {
             return new AccountCreationResult(false, null, errorMessage);
         }
 
-        public boolean success() { return success; }
-        public String accountNumber() { return accountNumber; }
-        public String errorMessage() { return errorMessage; }
+        public boolean success() {
+            return success;
+        }
+
+        public String accountNumber() {
+            return accountNumber;
+        }
+
+        public String errorMessage() {
+            return errorMessage;
+        }
     }
 
     @Override
+    @CircuitBreaker(name = "account-service")
     public StepResult execute(UUID instanceId) {
         log.info("Executing account creation for instance: {}", instanceId);
 
@@ -62,12 +73,14 @@ public class AccountCreationHandler implements StepHandler {
             // 5. Send welcome notifications
 
             // For this implementation, we'll simulate calling an external service
-            // In production, this might be synchronous or asynchronous depending on the banking system
+            // In production, this might be synchronous or asynchronous depending on the
+            // banking system
 
             AccountCreationResult result = createAccount(instanceId);
 
             if (result.success()) {
-                log.info("Account creation successful for instance: {} - Account: {}", instanceId, result.accountNumber());
+                log.info("Account creation successful for instance: {} - Account: {}", instanceId,
+                        result.accountNumber());
 
                 // Publish account creation event for downstream systems
                 publishAccountCreatedEvent(instanceId, result);
@@ -79,9 +92,7 @@ public class AccountCreationHandler implements StepHandler {
                         new com.ngoctran.interactionservice.step.StepError(
                                 "ACCOUNT_CREATION_FAILED",
                                 com.ngoctran.interactionservice.step.ErrorType.SYSTEM,
-                                result.errorMessage()
-                        )
-                );
+                                result.errorMessage()));
             }
 
         } catch (Exception ex) {
@@ -90,9 +101,7 @@ public class AccountCreationHandler implements StepHandler {
                     new com.ngoctran.interactionservice.step.StepError(
                             "ACCOUNT_CREATION_ERROR",
                             com.ngoctran.interactionservice.step.ErrorType.SYSTEM,
-                            "Account creation service error: " + ex.getMessage()
-                    )
-            );
+                            "Account creation service error: " + ex.getMessage()));
         }
     }
 
@@ -141,20 +150,18 @@ public class AccountCreationHandler implements StepHandler {
                     "eventId", UUID.randomUUID().toString(),
                     "eventType", "ACCOUNT_CREATED",
                     "correlation", Map.of(
-                            "instanceId", instanceId.toString()
-                    ),
+                            "instanceId", instanceId.toString()),
                     "payload", Map.of(
                             "instanceId", instanceId.toString(),
                             "accountCreated", true,
-                            "timestamp", System.currentTimeMillis()
-                    )
-            );
+                            "timestamp", System.currentTimeMillis()));
 
             kafkaTemplate.send("account-events", instanceId.toString(), event);
             log.info("Published account creation event for instance: {}", instanceId);
 
         } catch (Exception ex) {
-            log.warn("Failed to publish account creation event for instance: {}, but account was created successfully", instanceId, ex);
+            log.warn("Failed to publish account creation event for instance: {}, but account was created successfully",
+                    instanceId, ex);
             // Don't fail the step for event publishing issues
         }
     }

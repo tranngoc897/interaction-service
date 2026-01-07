@@ -130,7 +130,7 @@
 			<artifactId>spring-kafka</artifactId>
 		</dependency>
 
-    <!-- https://mvnrepository.com/artifact/io.github.resilience4j/resilience4j-spring-boot3 -->
+    <!-- Resilience4j for Circuit Breaker, Rate Limiter, Bulkhead -->
     <dependency>
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-spring-boot3</artifactId>
