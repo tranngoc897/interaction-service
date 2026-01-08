@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -131,9 +130,9 @@ public class OtpService {
      */
     @CircuitBreaker(name = "otp-service")
     @RateLimiter(name = "otp-service")
-    public boolean resendOtp(String phoneNumber) {
+    public boolean resendOtp(UUID instanceId, String phoneNumber) {
         // Add rate limiting logic here
-        return sendOtp(phoneNumber);
+        return sendOtp(instanceId, phoneNumber);
     }
 
     private String generateOtp() {
