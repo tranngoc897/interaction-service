@@ -37,6 +37,9 @@ public class WorkflowEvent {
     @Column(name = "sequence_number", nullable = false)
     private Integer sequenceNumber;
 
+    @Column(name = "code_version")
+    private Integer codeVersion;
+
     @Column(name = "created_at")
     private Instant createdAt;
 

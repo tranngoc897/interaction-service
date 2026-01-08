@@ -240,10 +240,11 @@ CREATE TRIGGER trg_update_step_execution
 CREATE TABLE IF NOT EXISTS workflow_event (
     id BIGSERIAL PRIMARY KEY,
     instance_id UUID NOT NULL,
-    event_type VARCHAR(50) NOT NULL, -- ACTION_EXECUTION, STATE_TRANSITION, RECOVERY, INCIDENT
+    event_type VARCHAR(50) NOT NULL, -- ACTION_EXECUTION, STATE_TRANSITION, RECOVERY, INCIDENT, VERSION_MARKER
     event_name VARCHAR(100) NOT NULL,
     payload JSONB,
     sequence_number INT NOT NULL,
+    code_version INT DEFAULT 1, -- Track which version of code was used
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(50)
 );
