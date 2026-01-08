@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS onboarding_transition (
     source_service VARCHAR(50), -- EKYC, AML, UI, SYSTEM
     allowed_actors TEXT[], -- USER, ADMIN, RISK, SYSTEM
     max_retry INTEGER DEFAULT 3,
+    compensation_action VARCHAR(100), -- SAGA: Action to undo this transition
     conditions_json JSONB, -- Rule conditions like ["otp_status == SUCCESS"]
     PRIMARY KEY (flow_version, from_state, action)
 );

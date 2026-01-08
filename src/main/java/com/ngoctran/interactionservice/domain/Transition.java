@@ -44,6 +44,9 @@ public class Transition {
     @Column(name = "max_retry")
     private Integer maxRetry;
 
+    @Column(name = "compensation_action")
+    private String compensationAction; // SAGA: Action to undo this transition
+
     @Column(columnDefinition = "jsonb")
     private String conditionsJson; // JSON array of conditions like ["otp_status == SUCCESS"]
 
