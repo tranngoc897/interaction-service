@@ -15,10 +15,10 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
 
     List<OutboxEvent> findByStatus(String status);
 
-    List<OutboxEvent> findByStatusOrderByCreatedAtAsc(String status);
+    List<OutboxEvent> findByStatusOrderByCreatedAtAsc(String status, org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT e FROM OutboxEvent e WHERE e.status = 'PENDING' ORDER BY e.createdAt ASC")
-    List<OutboxEvent> findPendingEvents();
+    List<OutboxEvent> findPendingEvents(org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT e FROM OutboxEvent e WHERE e.status = 'PENDING' AND e.createdAt < :cutoff ORDER BY e.createdAt ASC")
     List<OutboxEvent> findOldPendingEvents(@Param("cutoff") Instant cutoff);

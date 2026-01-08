@@ -49,15 +49,16 @@ public class WorkflowScheduler {
         String[] pendingStates = { "EKYC_PENDING", "AML_PENDING" };
 
         for (String state : pendingStates) {
-            instanceRepository.findTimedOutInstances(state, timeoutThreshold).forEach(instance -> {
-                log.warn("Found timed-out instance: {} in state: {}", instance.getId(), state);
-                try {
-                    ActionCommand command = ActionCommand.system(instance.getId(), "TIMEOUT", 0);
-                    onboardingEngine.handle(command);
-                } catch (Exception e) {
-                    log.error("Failed to process timeout for instance: {}", instance.getId(), e);
-                }
-            });
+            instanceRepository.findTimedOutInstances(state, timeoutThreshold,
+                    org.springframework.data.domain.PageRequest.of(0, 100)).forEach(instance -> {
+                        log.warn("Found timed-out instance: {} in state: {}", instance.getId(), state);
+                        try {
+                            ActionCommand command = ActionCommand.system(instance.getId(), "TIMEOUT", 0);
+                            onboardingEngine.handle(command);
+                        } catch (Exception e) {
+                            log.error("Failed to process timeout for instance: {}", instance.getId(), e);
+                        }
+                    });
         }
     }
 
@@ -76,16 +77,18 @@ public class WorkflowScheduler {
     private void doProcessRetries() {
         log.debug("Scanning for scheduled retries...");
 
-        stepExecutionRepository.findScheduledRetries(Instant.now()).forEach(execution -> {
-            log.info("Triggering automatic retry for instance: {} state: {}",
-                    execution.getInstanceId(), execution.getState());
-            try {
-                // Trigger 'RETRY' action which is defined in our transition table
-                ActionCommand command = ActionCommand.system(execution.getInstanceId(), "RETRY", 0);
-                onboardingEngine.handle(command);
-            } catch (Exception e) {
-                log.error("Failed to trigger retry for instance: {}", execution.getInstanceId(), e);
-            }
-        });
+        stepExecutionRepository
+                .findScheduledRetries(Instant.now(), org.springframework.data.domain.PageRequest.of(0, 100))
+                .forEach(execution -> {
+                    log.info("Triggering automatic retry for instance: {} state: {}",
+                            execution.getInstanceId(), execution.getState());
+                    try {
+                        // Trigger 'RETRY' action which is defined in our transition table
+                        ActionCommand command = ActionCommand.system(execution.getInstanceId(), "RETRY", 0);
+                        onboardingEngine.handle(command);
+                    } catch (Exception e) {
+                        log.error("Failed to trigger retry for instance: {}", execution.getInstanceId(), e);
+                    }
+                });
     }
 }

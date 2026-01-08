@@ -31,7 +31,8 @@ public interface OnboardingInstanceRepository extends JpaRepository<OnboardingIn
 
     @Query("SELECT i FROM OnboardingInstance i WHERE i.currentState = :state AND i.status = 'ACTIVE' AND i.stateStartedAt < :timeoutTime")
     List<OnboardingInstance> findTimedOutInstances(@Param("state") String state,
-            @Param("timeoutTime") Instant timeoutTime);
+            @Param("timeoutTime") Instant timeoutTime,
+            org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT i FROM OnboardingInstance i WHERE i.status = 'ACTIVE' AND i.stateStartedAt < :breachTime")
     List<OnboardingInstance> findSlaBreaches(@Param("breachTime") Instant breachTime);

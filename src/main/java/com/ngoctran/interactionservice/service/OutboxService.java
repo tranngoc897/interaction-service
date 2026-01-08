@@ -6,14 +6,10 @@ import com.ngoctran.interactionservice.repo.OutboxEventRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
 
 /**
  * Outbox Service for guaranteed event delivery
@@ -25,14 +21,14 @@ import java.util.UUID;
 public class OutboxService {
 
     private final OutboxEventRepository outboxEventRepository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
     /**
      * Store event in outbox for guaranteed delivery
      */
     @Transactional
-    public void storeEvent(String eventId, String topic, String key, Object payload, String eventType) throws JsonProcessingException {
+    public void storeEvent(String eventId, String topic, String key, Object payload, String eventType)
+            throws JsonProcessingException {
         try {
             // Serialize payload to JSON
             String payloadJson = objectMapper.writeValueAsString(payload);
@@ -59,57 +55,11 @@ public class OutboxService {
 
     /**
      * Publish pending events to Kafka
-     * Runs every 10 seconds
+     * DEPRECATED: Now handled by OutboxProcessor with distributed locking
      */
-    @Scheduled(fixedDelayString = "${outbox.publish.interval:10000}")
+    @Deprecated
     public void publishPendingEvents() {
-        try {
-            List<OutboxEvent> pendingEvents = outboxEventRepository.findPendingEvents();
-
-            if (pendingEvents.isEmpty()) {
-                return;
-            }
-
-            // Limit batch size for performance (process first 50)
-            int batchSize = Math.min(pendingEvents.size(), 50);
-            List<OutboxEvent> eventsToProcess = pendingEvents.subList(0, batchSize);
-
-            log.debug("Found {} pending events, processing batch of {}", pendingEvents.size(), batchSize);
-
-            int successCount = 0;
-            int errorCount = 0;
-
-            for (OutboxEvent event : eventsToProcess) {
-                try {
-                    // Deserialize payload from JSON
-                    Object payload = deserializePayload(event.getEventPayload());
-
-                    // Publish to Kafka
-                    kafkaTemplate.send(event.getTopic(), event.getPartitionKey(), payload)
-                            .whenComplete((result, ex) -> {
-                                if (ex != null) {
-                                    log.error("Failed to publish event {} to Kafka: {}", event.getEventId(), ex.getMessage());
-                                    handlePublishFailure(event);
-                                } else {
-                                    log.debug("Successfully published event {} to topic {}", event.getEventId(), event.getTopic());
-                                    markEventPublished(event);
-                                }
-                            });
-
-                    successCount++;
-
-                } catch (Exception ex) {
-                    errorCount++;
-                    log.error("Error publishing event {}: {}", event.getEventId(), ex.getMessage(), ex);
-                    handlePublishFailure(event);
-                }
-            }
-
-            log.info("Outbox publish completed: {} successful, {} errors", successCount, errorCount);
-
-        } catch (Exception ex) {
-            log.error("Error in outbox publish scheduler", ex);
-        }
+        // Handled by OutboxProcessor
     }
 
     /**
@@ -140,7 +90,8 @@ public class OutboxService {
             } else {
                 event.setStatus("PENDING");
                 // Event will be retried on next scheduler run
-                log.warn("Event {} scheduled for retry {} (next scheduler run)", event.getEventId(), event.getRetryCount());
+                log.warn("Event {} scheduled for retry {} (next scheduler run)", event.getEventId(),
+                        event.getRetryCount());
             }
 
             outboxEventRepository.save(event);

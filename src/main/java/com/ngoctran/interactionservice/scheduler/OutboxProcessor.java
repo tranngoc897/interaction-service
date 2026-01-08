@@ -37,7 +37,8 @@ public class OutboxProcessor {
 
     @Transactional
     public void doProcessOutbox() {
-        List<OutboxEvent> events = outboxRepository.findByStatusOrderByCreatedAtAsc("PENDING");
+        List<OutboxEvent> events = outboxRepository.findByStatusOrderByCreatedAtAsc("PENDING",
+                org.springframework.data.domain.PageRequest.of(0, 100));
 
         if (events.isEmpty()) {
             return;
@@ -66,6 +67,27 @@ public class OutboxProcessor {
                 }
                 outboxRepository.save(event);
             }
+        }
+    }
+
+    /**
+     * Cleanup published events older than 24 hours to keep the table size small.
+     */
+    @Scheduled(fixedDelayString = "${scheduler.outbox-cleanup-interval:3600000}") // Every hour
+    public void cleanupOldEvents() {
+        if (lockService.isPresent()) {
+            lockService.get().runWithLock("lock:outbox:cleanup", 0, 300, this::doCleanup);
+        } else {
+            doCleanup();
+        }
+    }
+
+    @Transactional
+    public void doCleanup() {
+        Instant cutoff = Instant.now().minus(24, java.time.temporal.ChronoUnit.HOURS);
+        int deleted = outboxRepository.deletePublishedEventsOlderThan(cutoff);
+        if (deleted > 0) {
+            log.info("Cleaned up {} published outbox events older than 24h", deleted);
         }
     }
 }
