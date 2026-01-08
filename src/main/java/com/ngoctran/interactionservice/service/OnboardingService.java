@@ -24,6 +24,7 @@ public class OnboardingService {
 
     private final OnboardingInstanceRepository instanceRepository;
     private final OnboardingEngine onboardingEngine;
+    private final BackpressureService backpressureService;
 
     /**
      * Start a new onboarding workflow
@@ -41,40 +42,48 @@ public class OnboardingService {
     public OnboardingInstance start(String userId, String flowVersion) {
         log.info("Starting onboarding for user: {}, flowVersion: {}", userId, flowVersion);
 
-        // For anonymous users, allow multiple active sessions but limit them
-        if (!userId.startsWith("anonymous:")) {
-            // Check if authenticated user already has active onboarding
-            List<OnboardingInstance> activeInstances = instanceRepository.findByUserIdAndStatus(userId, "ACTIVE");
-            if (!activeInstances.isEmpty()) {
-                throw new IllegalStateException("User already has active onboarding: " + userId);
+        // Acquire backpressure permit to prevent system overload
+        try (BackpressureService.WorkflowPermit permit = backpressureService.acquireWorkflowPermit()) {
+
+            // For anonymous users, allow multiple active sessions but limit them
+            if (!userId.startsWith("anonymous:")) {
+                // Check if authenticated user already has active onboarding
+                List<OnboardingInstance> activeInstances = instanceRepository.findByUserIdAndStatus(userId, "ACTIVE");
+                if (!activeInstances.isEmpty()) {
+                    throw new IllegalStateException("User already has active onboarding: " + userId);
+                }
+            } else {
+                // For anonymous users, limit concurrent sessions to prevent abuse
+                List<OnboardingInstance> activeAnonymous = instanceRepository.findByUserIdAndStatus(userId, "ACTIVE");
+                if (activeAnonymous.size() >= 3) { // Allow max 3 concurrent anonymous sessions
+                    log.warn("Too many active anonymous sessions for user: {}, cleaning up old ones", userId);
+                    // Clean up old anonymous sessions (older than 24 hours)
+                    cleanupOldAnonymousSessions(userId);
+                }
             }
-        } else {
-            // For anonymous users, limit concurrent sessions to prevent abuse
-            List<OnboardingInstance> activeAnonymous = instanceRepository.findByUserIdAndStatus(userId, "ACTIVE");
-            if (activeAnonymous.size() >= 3) { // Allow max 3 concurrent anonymous sessions
-                log.warn("Too many active anonymous sessions for user: {}, cleaning up old ones", userId);
-                // Clean up old anonymous sessions (older than 24 hours)
-                cleanupOldAnonymousSessions(userId);
-            }
+
+            // Create new instance
+            OnboardingInstance instance = OnboardingInstance.builder()
+                    .id(UUID.randomUUID())
+                    .userId(userId)
+                    .flowVersion(flowVersion)
+                    .currentState("PHONE_ENTERED")
+                    .status("ACTIVE")
+                    .stateStartedAt(Instant.now())
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .version(0L)
+                    .build();
+
+            OnboardingInstance saved = instanceRepository.save(instance);
+            log.info("Created onboarding instance: {} for user: {}", saved.getId(), userId);
+
+            return saved;
+
+        } catch (BackpressureService.BackpressureException e) {
+            log.warn("Workflow creation rejected due to backpressure: {}", e.getMessage());
+            throw new IllegalStateException("System is currently overloaded. Please try again in a few moments.", e);
         }
-
-        // Create new instance
-        OnboardingInstance instance = OnboardingInstance.builder()
-                .id(UUID.randomUUID())
-                .userId(userId)
-                .flowVersion(flowVersion)
-                .currentState("PHONE_ENTERED")
-                .status("ACTIVE")
-                .stateStartedAt(Instant.now())
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
-                .version(0L)
-                .build();
-
-        OnboardingInstance saved = instanceRepository.save(instance);
-        log.info("Created onboarding instance: {} for user: {}", saved.getId(), userId);
-
-        return saved;
     }
 
     /**
@@ -89,7 +98,8 @@ public class OnboardingService {
                     .findByUserId(anonymousUserId)
                     .stream()
                     .filter(instance -> instance.getCreatedAt().isBefore(cutoffTime))
-                    .filter(instance -> "ACTIVE".equals(instance.getStatus()) || "CANCELLED".equals(instance.getStatus()))
+                    .filter(instance -> "ACTIVE".equals(instance.getStatus())
+                            || "CANCELLED".equals(instance.getStatus()))
                     .toList();
 
             if (!oldSessions.isEmpty()) {
@@ -116,7 +126,8 @@ public class OnboardingService {
         // Calculate progress based on current state
         int progress = calculateProgress(instance.getCurrentState());
 
-        // Get available actions (simplified - in real implementation would check transitions)
+        // Get available actions (simplified - in real implementation would check
+        // transitions)
         List<String> allowedActions = getAllowedActions(instance.getCurrentState());
 
         return OnboardingStatus.builder()
@@ -189,17 +200,28 @@ public class OnboardingService {
 
     private int calculateProgress(String currentState) {
         switch (currentState) {
-            case "PHONE_ENTERED": return 10;
-            case "OTP_VERIFIED": return 25;
-            case "PROFILE_COMPLETED": return 40;
-            case "DOC_UPLOADED": return 55;
-            case "EKYC_PENDING": return 70;
-            case "EKYC_APPROVED": return 80;
-            case "AML_PENDING": return 90;
-            case "AML_CLEARED": return 95;
-            case "ACCOUNT_CREATED": return 98;
-            case "COMPLETED": return 100;
-            default: return 0;
+            case "PHONE_ENTERED":
+                return 10;
+            case "OTP_VERIFIED":
+                return 25;
+            case "PROFILE_COMPLETED":
+                return 40;
+            case "DOC_UPLOADED":
+                return 55;
+            case "EKYC_PENDING":
+                return 70;
+            case "EKYC_APPROVED":
+                return 80;
+            case "AML_PENDING":
+                return 90;
+            case "AML_CLEARED":
+                return 95;
+            case "ACCOUNT_CREATED":
+                return 98;
+            case "COMPLETED":
+                return 100;
+            default:
+                return 0;
         }
     }
 
@@ -235,7 +257,8 @@ public class OnboardingService {
         private Instant stateStartedAt;
 
         // Constructor, getters, setters
-        public OnboardingStatus() {}
+        public OnboardingStatus() {
+        }
 
         public static Builder builder() {
             return new Builder();
@@ -285,12 +308,32 @@ public class OnboardingService {
         }
 
         // Getters
-        public UUID getInstanceId() { return instanceId; }
-        public String getUserId() { return userId; }
-        public String getCurrentState() { return currentState; }
-        public String getStatus() { return status; }
-        public int getProgress() { return progress; }
-        public List<String> getAllowedActions() { return allowedActions; }
-        public Instant getStateStartedAt() { return stateStartedAt; }
+        public UUID getInstanceId() {
+            return instanceId;
+        }
+
+        public String getUserId() {
+            return userId;
+        }
+
+        public String getCurrentState() {
+            return currentState;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public int getProgress() {
+            return progress;
+        }
+
+        public List<String> getAllowedActions() {
+            return allowedActions;
+        }
+
+        public Instant getStateStartedAt() {
+            return stateStartedAt;
+        }
     }
 }
