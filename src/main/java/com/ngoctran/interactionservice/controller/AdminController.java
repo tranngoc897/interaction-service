@@ -6,7 +6,6 @@ import com.ngoctran.interactionservice.engine.OnboardingEngine;
 import com.ngoctran.interactionservice.repo.OnboardingInstanceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +28,7 @@ public class AdminController {
     /**
      * Get dashboard summary
      */
-/*    @GetMapping("/dashboard")
+    @GetMapping("/dashboard")
     public ResponseEntity<Map<String, Object>> getDashboard() {
         try {
             // Get counts by status
@@ -37,37 +36,33 @@ public class AdminController {
                     "ACTIVE", instanceRepository.countByStatus("ACTIVE"),
                     "COMPLETED", instanceRepository.countByStatus("COMPLETED"),
                     "CANCELLED", instanceRepository.countByStatus("CANCELLED"),
-                    "FAILED", instanceRepository.countByStatus("FAILED")
-            );
+                    "FAILED", instanceRepository.countByStatus("FAILED"));
 
             // Get counts by current state
             List<Object[]> stateCounts = instanceRepository.findAll().stream()
                     .collect(Collectors.groupingBy(OnboardingInstance::getCurrentState))
                     .entrySet().stream()
-                    .map(entry -> new Object[]{entry.getKey(), (long) entry.getValue().size()})
+                    .map(entry -> new Object[] { entry.getKey(), (long) entry.getValue().size() })
                     .collect(Collectors.toList());
 
             Map<String, Long> stateCountMap = stateCounts.stream()
                     .collect(Collectors.toMap(
                             arr -> (String) arr[0],
-                            arr -> (Long) arr[1]
-                    ));
+                            arr -> (Long) arr[1]));
 
             return ResponseEntity.ok(Map.of(
                     "totalInstances", instanceRepository.count(),
                     "statusCounts", statusCounts,
                     "stateCounts", stateCountMap,
-                    "activeRate", calculateActiveRate(statusCounts)
-            ));
+                    "activeRate", calculateActiveRate(statusCounts)));
 
         } catch (Exception ex) {
             log.error("Error getting dashboard data: {}", ex.getMessage(), ex);
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Failed to get dashboard data",
-                    "message", ex.getMessage()
-            ));
+                    "message", ex.getMessage()));
         }
-    }*/
+    }
 
     /**
      * List onboarding instances with filtering
@@ -83,7 +78,8 @@ public class AdminController {
         try {
             Pageable pageable = PageRequest.of(page, size);
 
-            // This is simplified - in real implementation, you'd have a custom repository method
+            // This is simplified - in real implementation, you'd have a custom repository
+            // method
             // with proper filtering and pagination
             List<OnboardingInstance> instances = instanceRepository.findAll();
 
@@ -119,15 +115,13 @@ public class AdminController {
                     "totalElements", totalElements,
                     "totalPages", (totalElements + size - 1) / size,
                     "currentPage", page,
-                    "size", size
-            ));
+                    "size", size));
 
         } catch (Exception ex) {
             log.error("Error listing instances: {}", ex.getMessage(), ex);
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Failed to list instances",
-                    "message", ex.getMessage()
-            ));
+                    "message", ex.getMessage()));
         }
     }
 
@@ -144,15 +138,13 @@ public class AdminController {
 
             return ResponseEntity.ok(Map.of(
                     "instance", toInstanceDetail(instance),
-                    "actions", getAvailableAdminActions(instance)
-            ));
+                    "actions", getAvailableAdminActions(instance)));
 
         } catch (Exception ex) {
             log.error("Error getting instance details for {}: {}", instanceId, ex.getMessage(), ex);
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Failed to get instance details",
-                    "message", ex.getMessage()
-            ));
+                    "message", ex.getMessage()));
         }
     }
 
@@ -167,12 +159,11 @@ public class AdminController {
         try {
             String action = (String) request.get("action");
             String operator = (String) request.getOrDefault("operator", "admin");
-            String comment = (String) request.get("comment");
+            // String comment = (String) request.get("comment");
 
             if (action == null) {
                 return ResponseEntity.badRequest().body(Map.of(
-                        "error", "Action is required"
-                ));
+                        "error", "Action is required"));
             }
 
             log.info("Admin {} performing action {} on instance {}", operator, action, instanceId);
@@ -191,21 +182,18 @@ public class AdminController {
                     "action", action,
                     "operator", operator,
                     "currentState", updated != null ? updated.getCurrentState() : "UNKNOWN",
-                    "message", "Admin action processed successfully"
-            ));
+                    "message", "Admin action processed successfully"));
 
         } catch (IllegalStateException ex) {
             log.warn("Invalid admin action for instance {}: {}", instanceId, ex.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Invalid action",
-                    "message", ex.getMessage()
-            ));
+                    "message", ex.getMessage()));
         } catch (Exception ex) {
             log.error("Error performing admin action on instance {}: {}", instanceId, ex.getMessage(), ex);
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Failed to perform admin action",
-                    "message", ex.getMessage()
-            ));
+                    "message", ex.getMessage()));
         }
     }
 
@@ -217,8 +205,7 @@ public class AdminController {
                 "status", instance.getStatus(),
                 "flowVersion", instance.getFlowVersion(),
                 "stateStartedAt", instance.getStateStartedAt(),
-                "createdAt", instance.getCreatedAt()
-        );
+                "createdAt", instance.getCreatedAt());
     }
 
     private Map<String, Object> toInstanceDetail(OnboardingInstance instance) {
@@ -231,22 +218,22 @@ public class AdminController {
                 "version", instance.getVersion(),
                 "stateStartedAt", instance.getStateStartedAt(),
                 "createdAt", instance.getCreatedAt(),
-                "updatedAt", instance.getUpdatedAt()
-        );
+                "updatedAt", instance.getUpdatedAt());
     }
 
     private List<Map<String, Object>> getAvailableAdminActions(OnboardingInstance instance) {
-        // Simplified - in real implementation, query transition table for admin-allowed actions
+        // Simplified - in real implementation, query transition table for admin-allowed
+        // actions
         return List.of(
                 Map.of("action", "RETRY", "label", "Retry Current Step", "type", "SECONDARY"),
                 Map.of("action", "TIMEOUT", "label", "Force Timeout", "type", "WARNING"),
-                Map.of("action", "CANCEL", "label", "Cancel Onboarding", "type", "DANGER")
-        );
+                Map.of("action", "CANCEL", "label", "Cancel Onboarding", "type", "DANGER"));
     }
 
     private double calculateActiveRate(Map<String, Long> statusCounts) {
         long total = statusCounts.values().stream().mapToLong(Long::longValue).sum();
-        if (total == 0) return 0.0;
+        if (total == 0)
+            return 0.0;
         return (double) statusCounts.getOrDefault("ACTIVE", 0L) / total * 100.0;
     }
 }

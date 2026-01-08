@@ -25,10 +25,13 @@ public interface OnboardingInstanceRepository extends JpaRepository<OnboardingIn
 
     List<OnboardingInstance> findByStatus(String status);
 
+    long countByStatus(String status);
+
     List<OnboardingInstance> findByUserIdAndStatus(String userId, String status);
 
     @Query("SELECT i FROM OnboardingInstance i WHERE i.currentState = :state AND i.status = 'ACTIVE' AND i.stateStartedAt < :timeoutTime")
-    List<OnboardingInstance> findTimedOutInstances(@Param("state") String state, @Param("timeoutTime") Instant timeoutTime);
+    List<OnboardingInstance> findTimedOutInstances(@Param("state") String state,
+            @Param("timeoutTime") Instant timeoutTime);
 
     @Query("SELECT i FROM OnboardingInstance i WHERE i.status = 'ACTIVE' AND i.stateStartedAt < :breachTime")
     List<OnboardingInstance> findSlaBreaches(@Param("breachTime") Instant breachTime);
