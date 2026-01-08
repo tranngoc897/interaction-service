@@ -33,7 +33,7 @@ public class RetryScheduler {
         // Use distributed lock to ensure only one instance processes retries
         distributedLockService.executeWithLock("retry-scheduler", () -> {
             try {
-                List<StepExecution> retryableSteps = stepExecutionRepository.findRetryable(Instant.now());
+                List<StepExecution> retryableSteps = stepExecutionRepository.findScheduledRetries(Instant.now());
 
                 if (retryableSteps.isEmpty()) {
                     log.debug("No retryable steps found");
