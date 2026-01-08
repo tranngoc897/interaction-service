@@ -11,9 +11,10 @@ import java.util.UUID;
 public class ActionCommand {
     UUID instanceId;
     String action;
-    String actor;        // USER, ADMIN, SYSTEM, KAFKA
-    String requestId;    // idempotent
+    String actor; // USER, ADMIN, SYSTEM, KAFKA
+    String requestId; // idempotent
     String comment;
+    int recursionDepth;
     Instant occurredAt;
 
     public static ActionCommand user(UUID instanceId, String action, String requestId) {
@@ -23,6 +24,7 @@ public class ActionCommand {
                 .actor("USER")
                 .requestId(requestId)
                 .occurredAt(Instant.now())
+                .recursionDepth(0)
                 .build();
     }
 
@@ -34,6 +36,7 @@ public class ActionCommand {
                 .requestId(requestId)
                 .comment(operator)
                 .occurredAt(Instant.now())
+                .recursionDepth(0)
                 .build();
     }
 
@@ -44,6 +47,18 @@ public class ActionCommand {
                 .actor("SYSTEM")
                 .requestId(UUID.randomUUID().toString())
                 .occurredAt(Instant.now())
+                .recursionDepth(0)
+                .build();
+    }
+
+    public static ActionCommand system(UUID instanceId, String action, int recursionDepth) {
+        return ActionCommand.builder()
+                .instanceId(instanceId)
+                .action(action)
+                .actor("SYSTEM")
+                .requestId(UUID.randomUUID().toString())
+                .occurredAt(Instant.now())
+                .recursionDepth(recursionDepth)
                 .build();
     }
 

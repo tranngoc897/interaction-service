@@ -62,8 +62,11 @@ public class OnboardingEngine {
             log.info("State transitioned: {} -> {} for instance: {}",
                     instance.getCurrentState(), transition.getToState(), instance.getId());
 
+            // Persist state change immediately so recursive calls see the new state
+            instanceRepository.saveAndFlush(instance);
+
             // 6.1. Attempt auto-progression to next steps
-            attemptAutoProgression(instance);
+            attemptAutoProgression(instance, command);
         }
 
         // 7. Mark event as processed
@@ -206,12 +209,16 @@ public class OnboardingEngine {
      * Attempt to automatically progress to the next step if possible
      * This enables the workflow to continue automatically through multiple steps
      */
-    private void attemptAutoProgression(OnboardingInstance instance) {
-        // Prevent infinite loops
-        int autoProgressionDepth = getAutoProgressionDepth(instance);
-        if (autoProgressionDepth >= getMaxAutoProgressionSteps()) {
+    /**
+     * Attempt to automatically progress to the next step if possible
+     * This enables the workflow to continue automatically through multiple steps
+     */
+    private void attemptAutoProgression(OnboardingInstance instance, ActionCommand parentCommand) {
+        // Prevent infinite loops using explicit recursion depth
+        int currentDepth = parentCommand.getRecursionDepth();
+        if (currentDepth >= getMaxAutoProgressionSteps()) {
             log.warn("Stopping auto-progression after {} steps for instance: {}",
-                    autoProgressionDepth, instance.getId());
+                    currentDepth, instance.getId());
             return;
         }
 
@@ -231,14 +238,11 @@ public class OnboardingEngine {
         }
 
         try {
-            log.info("Attempting auto-progression from state: {} with action: {} for instance: {}",
-                    instance.getCurrentState(), autoAction, instance.getId());
+            log.info("Attempting auto-progression from state: {} with action: {} for instance: {} (depth: {})",
+                    instance.getCurrentState(), autoAction, instance.getId(), currentDepth + 1);
 
-            // Increment auto-progression depth
-            incrementAutoProgressionDepth(instance);
-
-            // Create auto-execution command
-            ActionCommand autoCommand = ActionCommand.system(instance.getId(), autoAction);
+            // Create auto-execution command with incremented depth
+            ActionCommand autoCommand = ActionCommand.system(instance.getId(), autoAction, currentDepth + 1);
 
             // Recursively handle the auto-progression
             // This will call handle() again, potentially leading to more auto-progression
@@ -248,7 +252,6 @@ public class OnboardingEngine {
             log.error("Auto-progression failed for instance: {} at state: {}",
                     instance.getId(), instance.getCurrentState(), ex);
             // Don't throw - auto-progression failure shouldn't stop the main flow
-            resetAutoProgressionDepth(instance);
         }
     }
 
@@ -289,38 +292,4 @@ public class OnboardingEngine {
         return 5; // Configurable via properties
     }
 
-    /**
-     * Track auto-progression depth to prevent infinite loops
-     */
-    private int getAutoProgressionDepth(OnboardingInstance instance) {
-        // In a real implementation, this would be stored in the instance or a separate
-        // tracking table
-        // For now, we'll use a simple counter based on state transitions
-        return calculateProgressionDepth(instance);
-    }
-
-    private void incrementAutoProgressionDepth(OnboardingInstance instance) {
-        // Track in instance metadata or separate table
-        log.debug("Incremented auto-progression depth for instance: {}", instance.getId());
-    }
-
-    private void resetAutoProgressionDepth(OnboardingInstance instance) {
-        // Reset counter
-        log.debug("Reset auto-progression depth for instance: {}", instance.getId());
-    }
-
-    private int calculateProgressionDepth(OnboardingInstance instance) {
-        // Simple calculation based on how many auto-executable states we've passed
-        String state = instance.getCurrentState();
-        switch (state) {
-            case "EKYC_APPROVED":
-                return 1;
-            case "AML_CLEARED":
-                return 2;
-            case "ACCOUNT_CREATED":
-                return 3;
-            default:
-                return 0;
-        }
-    }
 }
