@@ -1,0 +1,43 @@
+# Backpressure Configuration
+# Controls system capacity and overload protection
+
+backpressure:
+  # Maximum concurrent workflows allowed
+  # Adjust based on your system resources (CPU, Memory, DB connections)
+  # Recommended: 100 for 4 CPU cores, 8GB RAM
+  max-concurrent-workflows: 100
+  
+  # Maximum concurrent step executions
+  # Steps are lighter than full workflows
+  # Recommended: 5x workflows
+  max-concurrent-steps: 500
+  
+  # Timeout for acquiring permit (milliseconds)
+  # How long to wait before rejecting request
+  # Recommended: 5000ms (5 seconds)
+  acquire-timeout-ms: 5000
+
+# Example configurations for different environments:
+
+# Development (Low capacity)
+# backpressure:
+#   max-concurrent-workflows: 10
+#   max-concurrent-steps: 50
+#   acquire-timeout-ms: 3000
+
+# Staging (Medium capacity)
+# backpressure:
+#   max-concurrent-workflows: 50
+#   max-concurrent-steps: 250
+#   acquire-timeout-ms: 5000
+
+# Production (High capacity)
+# backpressure:
+#   max-concurrent-workflows: 200
+#   max-concurrent-steps: 1000
+#   acquire-timeout-ms: 10000
+
+# Kubernetes Auto-scaling triggers:
+# - Scale up when: loadPercentage > 70%
+# - Scale down when: loadPercentage < 30%
+# - Monitor: GET /admin/backpressure/metrics
