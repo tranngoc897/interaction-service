@@ -25,6 +25,9 @@ public interface OnboardingInstanceRepository extends JpaRepository<OnboardingIn
 
     List<OnboardingInstance> findByStatus(String status);
 
+    org.springframework.data.domain.Page<OnboardingInstance> findByStatus(String status,
+            org.springframework.data.domain.Pageable pageable);
+
     long countByStatus(String status);
 
     List<OnboardingInstance> findByUserIdAndStatus(String userId, String status);

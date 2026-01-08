@@ -24,6 +24,14 @@ public class WorkflowHistoryService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordEvent(UUID instanceId, String type, String name, Object payload, String actor) {
+        recordEvent(instanceId, type, name, payload, actor, 1); // Default to version 1
+    }
+
+    /**
+     * Record an event in the history with specific code version
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordEvent(UUID instanceId, String type, String name, Object payload, String actor, int codeVersion) {
         try {
             int nextSeq = eventRepository.findMaxSequenceNumber(instanceId) + 1;
 
@@ -33,6 +41,7 @@ public class WorkflowHistoryService {
                     .eventName(name)
                     .payload(objectMapper.writeValueAsString(payload))
                     .sequenceNumber(nextSeq)
+                    .codeVersion(codeVersion)
                     .createdBy(actor)
                     .build();
 

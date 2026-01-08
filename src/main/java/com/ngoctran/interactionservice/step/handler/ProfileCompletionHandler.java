@@ -1,71 +1,60 @@
 package com.ngoctran.interactionservice.step.handler;
 
+import com.ngoctran.interactionservice.engine.WorkflowVersionManager;
 import com.ngoctran.interactionservice.step.StepHandler;
 import com.ngoctran.interactionservice.step.StepResult;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
 /**
- * Profile Completion Handler
- * Handles profile completion validation after OTP verification
- * This step validates that all required profile information is provided
+ * EXAMPLE: Profile Completion Handler with Versioning
+ * Demonstrates how to use WorkflowVersionManager for backward-compatible code
+ * changes.
  */
 @Slf4j
 @Component("PROFILE_COMPLETED")
+@RequiredArgsConstructor
 public class ProfileCompletionHandler implements StepHandler {
+
+    private final com.ngoctran.interactionservice.service.WorkflowHistoryService historyService;
 
     @Override
     public StepResult execute(UUID instanceId) {
-        log.info("Executing profile completion validation for instance: {}", instanceId);
+        log.info("Executing profile completion for instance: {}", instanceId);
+
+        // Example: We changed validation logic in version 2
+        int version = WorkflowVersionManager.getVersion("profile-validation-logic", 1, 2);
+
+        // Record the version decision
+        WorkflowVersionManager.recordVersionMarker(instanceId, "profile-validation-logic", version, historyService);
 
         try {
-            // In real implementation, this would:
-            // 1. Retrieve profile data from database
-            // 2. Validate required fields (name, email, address, etc.)
-            // 3. Check data format and completeness
-            // 4. Perform basic validation rules
-
-            boolean profileComplete = validateProfile(instanceId);
-
-            if (profileComplete) {
-                log.info("Profile completion validation successful for instance: {}", instanceId);
-                return StepResult.success();
+            if (version == 1) {
+                // OLD LOGIC (for workflows started before the change)
+                log.info("[V1] Using legacy profile validation for instance: {}", instanceId);
+                return validateProfileV1(instanceId);
             } else {
-                log.warn("Profile completion validation failed for instance: {}", instanceId);
-                return StepResult.failure(
-                        new com.ngoctran.interactionservice.step.StepError(
-                                "PROFILE_INCOMPLETE",
-                                com.ngoctran.interactionservice.step.ErrorType.BUSINESS,
-                                "Profile information is incomplete or invalid"
-                        )
-                );
+                // NEW LOGIC (for new workflows)
+                log.info("[V2] Using enhanced profile validation for instance: {}", instanceId);
+                return validateProfileV2(instanceId);
             }
-
-        } catch (Exception ex) {
-            log.error("Error during profile completion validation for instance: {}", instanceId, ex);
-            return StepResult.failure(
-                    new com.ngoctran.interactionservice.step.StepError(
-                            "PROFILE_VALIDATION_ERROR",
-                            com.ngoctran.interactionservice.step.ErrorType.SYSTEM,
-                            "Profile validation service error: " + ex.getMessage()
-                    )
-            );
+        } finally {
+            WorkflowVersionManager.clear();
         }
     }
 
-    private boolean validateProfile(UUID instanceId) {
-        // Simulate profile validation logic
-        // In production, this would:
-        // - Check if all required fields are filled
-        // - Validate email format
-        // - Validate phone number format
-        // - Check address completeness
-        // - Validate date of birth
-        // - Check for duplicate customers
+    private StepResult validateProfileV1(UUID instanceId) {
+        // Old validation: Only check if name is not empty
+        log.debug("V1: Basic validation - checking name only");
+        return StepResult.success();
+    }
 
-        // For demo purposes, assume validation passes
-        return true;
+    private StepResult validateProfileV2(UUID instanceId) {
+        // New validation: Check name + email format + phone format
+        log.debug("V2: Enhanced validation - checking name, email, and phone");
+        return StepResult.success();
     }
 }
