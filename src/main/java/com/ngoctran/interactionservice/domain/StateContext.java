@@ -1,5 +1,7 @@
 package com.ngoctran.interactionservice.domain;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,7 +26,8 @@ public class StateContext {
     @Id
     private UUID instanceId;
 
-    @Column(columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "context_data")
     private String contextData; // JSON data like {"otp_status": "SUCCESS", "ekyc_score": 0.85}
 
     @Column(name = "updated_at")

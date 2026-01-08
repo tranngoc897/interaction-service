@@ -18,6 +18,8 @@ import java.util.UUID;
 public class AmlCallbackConsumer {
 
     private final OnboardingEngine onboardingEngine;
+    private final com.ngoctran.interactionservice.repo.StateContextRepository stateContextRepository;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @KafkaListener(topics = "aml-callback", groupId = "onboarding-service")
     public void consumeAmlCallback(@Payload Map<String, Object> event, Acknowledgment ack) {
@@ -35,6 +37,9 @@ public class AmlCallbackConsumer {
             }
 
             UUID instanceId = UUID.fromString(instanceIdStr);
+
+            // Save context data (aml status)
+            saveContextData(instanceId, result);
 
             // Determine action based on result
             String action = mapResultToAction(result);
@@ -81,6 +86,43 @@ public class AmlCallbackConsumer {
             default:
                 log.warn("Unknown AML result: {}, defaulting to FAIL", result);
                 return "AML_CALLBACK_FAIL";
+        }
+    }
+
+    private void saveContextData(UUID instanceId, String result) {
+        try {
+            com.ngoctran.interactionservice.domain.StateContext context = stateContextRepository.findById(instanceId)
+                    .orElse(com.ngoctran.interactionservice.domain.StateContext.builder()
+                            .instanceId(instanceId)
+                            .version(0L)
+                            .build());
+
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            if (context.getContextData() != null) {
+                try {
+                    data = objectMapper.readValue(context.getContextData(),
+                            new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                            });
+                } catch (Exception e) {
+                    log.warn("Failed to parse existing context data", e);
+                }
+            }
+
+            // Map result to a consistent status for RuleEngine
+            if ("CLEAR".equalsIgnoreCase(result) || "OK".equalsIgnoreCase(result) || "PASS".equalsIgnoreCase(result)) {
+                data.put("aml_status", "CLEAR");
+            } else {
+                data.put("aml_status", "REJECTED");
+            }
+
+            context.setContextData(objectMapper.writeValueAsString(data));
+            context.setUpdatedAt(java.time.Instant.now());
+
+            stateContextRepository.save(context);
+            log.info("Updated context with aml_status for instance: {}", instanceId);
+
+        } catch (Exception e) {
+            log.error("Failed to save context for instance: {}", instanceId, e);
         }
     }
 }

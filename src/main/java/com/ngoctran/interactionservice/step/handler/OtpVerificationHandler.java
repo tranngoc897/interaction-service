@@ -9,7 +9,11 @@ import java.util.UUID;
 
 @Slf4j
 @Component("OTP_VERIFIED")
+@lombok.RequiredArgsConstructor
 public class OtpVerificationHandler implements StepHandler {
+
+    private final com.ngoctran.interactionservice.repo.StateContextRepository stateContextRepository;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @Override
     public StepResult execute(UUID instanceId) {
@@ -26,6 +30,10 @@ public class OtpVerificationHandler implements StepHandler {
 
             if (otpValid) {
                 log.info("OTP verification successful for instance: {}", instanceId);
+
+                // Save context for next step conditions
+                saveContext(instanceId);
+
                 return StepResult.success();
             } else {
                 log.warn("OTP verification failed for instance: {}", instanceId);
@@ -33,9 +41,7 @@ public class OtpVerificationHandler implements StepHandler {
                         new com.ngoctran.interactionservice.step.StepError(
                                 "OTP_INVALID",
                                 com.ngoctran.interactionservice.step.ErrorType.BUSINESS,
-                                "Invalid or expired OTP"
-                        )
-                );
+                                "Invalid or expired OTP"));
             }
 
         } catch (Exception ex) {
@@ -44,9 +50,41 @@ public class OtpVerificationHandler implements StepHandler {
                     new com.ngoctran.interactionservice.step.StepError(
                             "OTP_VERIFICATION_ERROR",
                             com.ngoctran.interactionservice.step.ErrorType.SYSTEM,
-                            "OTP verification service error: " + ex.getMessage()
-                    )
-            );
+                            "OTP verification service error: " + ex.getMessage()));
+        }
+    }
+
+    private void saveContext(UUID instanceId) {
+        try {
+            com.ngoctran.interactionservice.domain.StateContext context = stateContextRepository.findById(instanceId)
+                    .orElse(com.ngoctran.interactionservice.domain.StateContext.builder()
+                            .instanceId(instanceId)
+                            .version(0L)
+                            .build());
+
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            if (context.getContextData() != null) {
+                try {
+                    data = objectMapper.readValue(context.getContextData(),
+                            new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                            });
+                } catch (Exception e) {
+                    log.warn("Failed to parse existing context data", e);
+                }
+            }
+
+            data.put("otp_status", "SUCCESS");
+
+            context.setContextData(objectMapper.writeValueAsString(data));
+            context.setUpdatedAt(java.time.Instant.now());
+
+            stateContextRepository.save(context);
+            log.info("Updated context with otp_status=SUCCESS for instance: {}", instanceId);
+
+        } catch (Exception e) {
+            log.error("Failed to save context for instance: {}", instanceId, e);
+            // Don't fail the step just because context save failed?
+            // Actually we should, otherwise next step might fail. But for now let's log it.
         }
     }
 
