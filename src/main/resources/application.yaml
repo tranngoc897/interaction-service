@@ -7,6 +7,14 @@ spring:
     username: postgres
     password: admin
     driver-class-name: org.postgresql.Driver
+    # HikariCP connection pool optimization
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 30000
+      pool-name: InteractionServiceHikariCP
+      max-lifetime: 1800000
+      connection-timeout: 30000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -105,6 +113,13 @@ otp:
 # Server Configuration
 server:
   port: 8081
+  # Tomcat thread pool optimization
+  tomcat:
+    threads:
+      max: 200 # Max concurrent requests
+      min-spare: 20 # Minimum idle threads
+    max-connections: 10000
+    accept-count: 100 # Queue size for connection requests
 
 # Logging
 logging:
