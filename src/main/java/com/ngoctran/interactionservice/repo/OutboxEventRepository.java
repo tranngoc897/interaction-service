@@ -15,6 +15,8 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
 
     List<OutboxEvent> findByStatus(String status);
 
+    List<OutboxEvent> findByStatusOrderByCreatedAtAsc(String status);
+
     @Query("SELECT e FROM OutboxEvent e WHERE e.status = 'PENDING' ORDER BY e.createdAt ASC")
     List<OutboxEvent> findPendingEvents();
 

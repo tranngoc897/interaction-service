@@ -26,8 +26,11 @@ public class OnboardingEngine {
     private final ActionValidator actionValidator;
     private final StepExecutor stepExecutor;
     private final OutboxService outboxService;
+    private final com.ngoctran.interactionservice.repo.StateSnapshotRepository snapshotRepository;
+    private final com.ngoctran.interactionservice.repo.StateContextRepository contextRepository;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
-    @Transactional
+    @org.springframework.transaction.annotation.Transactional
     public void handle(ActionCommand command) {
         log.info("Processing action: {} for instance: {}", command.getAction(), command.getInstanceId());
 
@@ -64,6 +67,9 @@ public class OnboardingEngine {
 
             // Persist state change immediately so recursive calls see the new state
             instanceRepository.saveAndFlush(instance);
+
+            // 6.2 Save state snapshot for auditing
+            saveSnapshot(instance);
 
             // 6.1. Attempt auto-progression to next steps
             attemptAutoProgression(instance, command);
@@ -286,6 +292,33 @@ public class OnboardingEngine {
                 return "NEXT"; // Auto-progress to account creation
             default:
                 return null;
+        }
+    }
+
+    /**
+     * Save a snapshot of the current state and context data
+     */
+    private void saveSnapshot(OnboardingInstance instance) {
+        try {
+            String snapshotData = objectMapper.writeValueAsString(instance);
+
+            String contextData = contextRepository.findById(instance.getId())
+                    .map(com.ngoctran.interactionservice.domain.StateContext::getContextData)
+                    .orElse("{}");
+
+            com.ngoctran.interactionservice.domain.StateSnapshot snapshot = com.ngoctran.interactionservice.domain.StateSnapshot
+                    .builder()
+                    .instanceId(instance.getId())
+                    .state(instance.getCurrentState())
+                    .snapshotData(snapshotData)
+                    .contextData(contextData)
+                    .createdAt(java.time.Instant.now())
+                    .build();
+
+            snapshotRepository.save(snapshot);
+            log.debug("Saved state snapshot for instance {} at state {}", instance.getId(), instance.getCurrentState());
+        } catch (Exception ex) {
+            log.error("Failed to save state snapshot for instance {}: {}", instance.getId(), ex.getMessage());
         }
     }
 

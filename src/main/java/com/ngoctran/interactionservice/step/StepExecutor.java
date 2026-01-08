@@ -18,9 +18,11 @@ import java.util.Map;
 public class StepExecutor {
 
     private final Map<String, StepHandler> handlers;
+    private final com.ngoctran.interactionservice.repo.IncidentRepository incidentRepository;
 
     /**
      * Execute a step with retry logic and error handling
+     * 
      * @return true if step completed successfully and can proceed to next state
      */
     @Transactional
@@ -38,6 +40,8 @@ public class StepExecutor {
         // Check if can retry
         if (execution.isFailed() && !execution.canRetry()) {
             log.warn("Step {} for instance {} has exhausted retries", instance.getCurrentState(), instance.getId());
+            createIncident(instance, "RETRIES_EXHAUSTED",
+                    "Maximum retries reached for state " + instance.getCurrentState());
             return false;
         }
 
@@ -55,7 +59,8 @@ public class StepExecutor {
 
             if (result.isSuccess()) {
                 execution.markSuccess();
-                log.info("Step {} completed successfully for instance {}", instance.getCurrentState(), instance.getId());
+                log.info("Step {} completed successfully for instance {}", instance.getCurrentState(),
+                        instance.getId());
                 return true;
             } else {
                 // Handle failure
@@ -67,8 +72,7 @@ public class StepExecutor {
             StepError error = new StepError(
                     "STEP_EXECUTION_EXCEPTION",
                     ErrorType.SYSTEM,
-                    ex.getMessage()
-            );
+                    ex.getMessage());
             return handleFailure(instance, execution, error, start);
         }
     }
@@ -86,7 +90,8 @@ public class StepExecutor {
         return execution;
     }
 
-    private boolean handleFailure(OnboardingInstance instance, StepExecution execution, StepError error, Instant start) {
+    private boolean handleFailure(OnboardingInstance instance, StepExecution execution, StepError error,
+            Instant start) {
         execution.incrementRetry();
         execution.setLastError(error.getCode(), error.getMessage());
 
@@ -98,13 +103,38 @@ public class StepExecutor {
             // Schedule next retry with exponential backoff
             Instant nextRetry = Instant.now().plusSeconds((long) Math.pow(2, execution.getRetryCount()));
             execution.scheduleNextRetry(nextRetry);
-            log.info("Scheduled retry for step {} instance {} at {}", instance.getCurrentState(), instance.getId(), nextRetry);
+            log.info("Scheduled retry for step {} instance {} at {}", instance.getCurrentState(), instance.getId(),
+                    nextRetry);
             return false;
         } else {
             // Permanent failure
             execution.markFailed();
-            log.error("Step {} permanently failed for instance {}: {}", instance.getCurrentState(), instance.getId(), error.getCode());
+            log.error("Step {} permanently failed for instance {}: {}", instance.getCurrentState(), instance.getId(),
+                    error.getCode());
+
+            createIncident(instance, error.getCode(), error.getMessage());
+
             return false;
+        }
+    }
+
+    private void createIncident(OnboardingInstance instance, String errorCode, String message) {
+        try {
+            com.ngoctran.interactionservice.domain.Incident incident = com.ngoctran.interactionservice.domain.Incident
+                    .builder()
+                    .incidentId(java.util.UUID.randomUUID())
+                    .instanceId(instance.getId())
+                    .state(instance.getCurrentState())
+                    .errorCode(errorCode)
+                    .severity("HIGH")
+                    .status("OPEN")
+                    .description(message)
+                    .createdAt(Instant.now())
+                    .build();
+            incidentRepository.save(incident);
+            log.info("Created incident for instance {} with error {}", instance.getId(), errorCode);
+        } catch (Exception e) {
+            log.error("Failed to create incident for instance {}", instance.getId(), e);
         }
     }
 }

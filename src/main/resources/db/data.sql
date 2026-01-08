@@ -13,7 +13,7 @@ INSERT INTO onboarding_transition (flow_version, from_state, action, to_state, i
 
 -- Profile and documents
 ('v1', 'PROFILE_COMPLETED', 'NEXT', 'DOC_UPLOADED', false, 'UI', ARRAY['USER'], 3, '[]'),
-('v1', 'DOC_UPLOADED', 'NEXT', 'EKYC_PENDING', false, 'UI', ARRAY['USER'], 3, '[]'),
+('v1', 'DOC_UPLOADED', 'NEXT', 'EKYC_PENDING', true, 'UI', ARRAY['USER'], 3, '[]'),
 
 -- eKYC async process
 ('v1', 'EKYC_PENDING', 'EKYC_CALLBACK_OK', 'EKYC_APPROVED', false, 'EKYC', ARRAY['SYSTEM', 'KAFKA'], 3, '[]'),
@@ -21,7 +21,7 @@ INSERT INTO onboarding_transition (flow_version, from_state, action, to_state, i
 ('v1', 'EKYC_PENDING', 'TIMEOUT', 'EKYC_TIMEOUT', false, 'SYSTEM', ARRAY['SYSTEM'], 3, '[]'),
 
 -- eKYC approved to AML
-('v1', 'EKYC_APPROVED', 'NEXT', 'AML_PENDING', false, 'UI', ARRAY['USER', 'SYSTEM'], 3, '[]'),
+('v1', 'EKYC_APPROVED', 'NEXT', 'AML_PENDING', true, 'UI', ARRAY['USER', 'SYSTEM'], 3, '[]'),
 
 -- AML async process
 ('v1', 'AML_PENDING', 'AML_CALLBACK_OK', 'AML_CLEARED', false, 'AML', ARRAY['SYSTEM', 'KAFKA'], 3, '[]'),
