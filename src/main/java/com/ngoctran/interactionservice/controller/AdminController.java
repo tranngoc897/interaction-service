@@ -24,6 +24,9 @@ public class AdminController {
 
     private final OnboardingEngine onboardingEngine;
     private final OnboardingInstanceRepository instanceRepository;
+    private final com.ngoctran.interactionservice.service.WorkflowDefinitionService workflowDefinitionService;
+    private final com.ngoctran.interactionservice.service.IncidentService incidentService;
+    private final com.ngoctran.interactionservice.repo.StateSnapshotRepository snapshotRepository;
 
     /**
      * Get dashboard summary
@@ -145,6 +148,50 @@ public class AdminController {
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Failed to get instance details",
                     "message", ex.getMessage()));
+        }
+    }
+
+    /**
+     * Get instance timeline (audit history)
+     */
+    @GetMapping("/{instanceId}/timeline")
+    public ResponseEntity<List<com.ngoctran.interactionservice.domain.StateSnapshot>> getInstanceTimeline(
+            @PathVariable UUID instanceId) {
+        return ResponseEntity.ok(snapshotRepository.findByInstanceIdOrderByCreatedAtDesc(instanceId));
+    }
+
+    /**
+     * Get workflow visual graph
+     */
+    @GetMapping("/definition/{version}")
+    public ResponseEntity<Map<String, Object>> getWorkflowDefinition(@PathVariable String version) {
+        return ResponseEntity.ok(workflowDefinitionService.getWorkflowGraph(version));
+    }
+
+    /**
+     * List all active incidents for monitoring
+     */
+    @GetMapping("/incidents")
+    public ResponseEntity<Map<String, Object>> listIncidents() {
+        return ResponseEntity.ok(incidentService.getIncidentStatistics());
+    }
+
+    /**
+     * Resolve an incident manually
+     */
+    @PostMapping("/incidents/{incidentId}/resolve")
+    public ResponseEntity<Map<String, Object>> resolveIncident(
+            @PathVariable UUID incidentId,
+            @RequestBody Map<String, String> request) {
+        String resolution = request.getOrDefault("resolution", "Resolved by admin");
+        String operator = request.getOrDefault("operator", "admin");
+
+        try {
+            incidentService.acknowledgeIncident(incidentId, operator);
+            incidentService.resolveIncident(incidentId, resolution);
+            return ResponseEntity.ok(Map.of("message", "Incident resolved successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
