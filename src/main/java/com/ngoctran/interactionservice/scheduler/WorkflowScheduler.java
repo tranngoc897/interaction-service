@@ -22,6 +22,7 @@ import java.util.List;
 public class WorkflowScheduler {
 
     private final OnboardingInstanceRepository instanceRepository;
+    private final com.ngoctran.interactionservice.repo.StepExecutionRepository stepExecutionRepository;
     private final OnboardingEngine onboardingEngine;
 
     /**
@@ -49,5 +50,25 @@ public class WorkflowScheduler {
                 }
             });
         }
+    }
+
+    /**
+     * Scan for steps scheduled for retry and trigger RETRY action
+     */
+    @Scheduled(fixedDelayString = "${scheduler.retry-interval:30000}")
+    public void processRetries() {
+        log.debug("Scanning for scheduled retries...");
+
+        stepExecutionRepository.findScheduledRetries(Instant.now()).forEach(execution -> {
+            log.info("Triggering automatic retry for instance: {} state: {}",
+                    execution.getInstanceId(), execution.getState());
+            try {
+                // Trigger 'RETRY' action which is defined in our transition table
+                ActionCommand command = ActionCommand.system(execution.getInstanceId(), "RETRY", 0);
+                onboardingEngine.handle(command);
+            } catch (Exception e) {
+                log.error("Failed to trigger retry for instance: {}", execution.getInstanceId(), e);
+            }
+        });
     }
 }

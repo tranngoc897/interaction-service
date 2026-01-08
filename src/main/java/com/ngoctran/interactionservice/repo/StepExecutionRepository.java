@@ -23,7 +23,7 @@ public interface StepExecutionRepository extends JpaRepository<StepExecution, St
     List<StepExecution> findByInstanceId(UUID instanceId);
 
     @Query("SELECT s FROM StepExecution s WHERE s.status = 'FAILED' AND s.nextRetryAt <= :now")
-    List<StepExecution> findRetryable(@Param("now") Instant now);
+    List<StepExecution> findScheduledRetries(@Param("now") Instant now);
 
     @Query("SELECT s FROM StepExecution s WHERE s.status = 'RUNNING' AND s.updatedAt < :stuckTime")
     List<StepExecution> findStuckRunning(@Param("stuckTime") Instant stuckTime);
