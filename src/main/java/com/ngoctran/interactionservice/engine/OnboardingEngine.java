@@ -126,12 +126,16 @@ public class OnboardingEngine {
         try {
             log.info("Handling sync step: {} for instance: {}", transition.getToState(), instance.getId());
 
-            // Get or create step execution
+            // Get or create step execution for auditing
             StepExecution execution = stepExecutionRepository.findById(
                     new com.ngoctran.interactionservice.domain.StepExecutionId(
                             instance.getId(),
                             instance.getCurrentState()))
-                    .orElse(null);
+                    .orElseGet(() -> {
+                        StepExecution newExec = createStepExecution(instance, transition);
+                        newExec.setStatus("RUNNING");
+                        return stepExecutionRepository.save(newExec);
+                    });
 
             // Execute the step
             boolean success = stepExecutor.execute(instance, execution, transition);
