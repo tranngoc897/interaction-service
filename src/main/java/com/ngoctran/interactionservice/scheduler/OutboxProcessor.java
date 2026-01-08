@@ -24,10 +24,19 @@ public class OutboxProcessor {
 
     private final OutboxEventRepository outboxRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final java.util.Optional<com.ngoctran.interactionservice.service.DistributedLockService> lockService;
 
     @Scheduled(fixedDelayString = "${scheduler.outbox-interval:5000}")
-    @Transactional
     public void processOutbox() {
+        if (lockService.isPresent()) {
+            lockService.get().runWithLock("lock:outbox:process", 0, 10, this::doProcessOutbox);
+        } else {
+            doProcessOutbox();
+        }
+    }
+
+    @Transactional
+    public void doProcessOutbox() {
         List<OutboxEvent> events = outboxRepository.findByStatusOrderByCreatedAtAsc("PENDING");
 
         if (events.isEmpty()) {

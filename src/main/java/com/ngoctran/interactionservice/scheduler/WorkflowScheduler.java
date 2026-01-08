@@ -24,6 +24,7 @@ public class WorkflowScheduler {
     private final OnboardingInstanceRepository instanceRepository;
     private final com.ngoctran.interactionservice.repo.StepExecutionRepository stepExecutionRepository;
     private final OnboardingEngine onboardingEngine;
+    private final java.util.Optional<com.ngoctran.interactionservice.service.DistributedLockService> lockService;
 
     /**
      * Scan for timed-out instances and trigger TIMEOUT action
@@ -31,6 +32,14 @@ public class WorkflowScheduler {
      */
     @Scheduled(fixedDelayString = "${scheduler.timeout-interval:60000}")
     public void processTimeouts() {
+        if (lockService.isPresent()) {
+            lockService.get().runWithLock("lock:workflow:timeout", 0, 50, this::doProcessTimeouts);
+        } else {
+            doProcessTimeouts();
+        }
+    }
+
+    private void doProcessTimeouts() {
         log.debug("Scanning for timed-out onboarding instances...");
 
         // Define timeout threshold (e.g., 5 minutes for demonstration)
@@ -57,6 +66,14 @@ public class WorkflowScheduler {
      */
     @Scheduled(fixedDelayString = "${scheduler.retry-interval:30000}")
     public void processRetries() {
+        if (lockService.isPresent()) {
+            lockService.get().runWithLock("lock:workflow:retry", 0, 25, this::doProcessRetries);
+        } else {
+            doProcessRetries();
+        }
+    }
+
+    private void doProcessRetries() {
         log.debug("Scanning for scheduled retries...");
 
         stepExecutionRepository.findScheduledRetries(Instant.now()).forEach(execution -> {

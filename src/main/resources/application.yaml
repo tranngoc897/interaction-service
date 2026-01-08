@@ -77,16 +77,16 @@ scheduler:
   resume:
     interval: 60000  # 60 seconds
 
-# Redis Configuration (for distributed locking - optional)
+# Redis Configuration (for distributed locking)
 redis:
-  enabled: false  # Set to true if running multiple pods
+  enabled: true  # Enabled for distributed locking across pods
   host: localhost
   port: 6379
   timeout: 2000ms
 
 # Redisson Configuration (for distributed locking)
 redisson:
-  enabled: false  # Set to true to enable distributed locking
+  enabled: true  # Set to true to enable distributed locking
   config: |
     singleServerConfig:
       address: redis://localhost:6379
@@ -120,6 +120,24 @@ server:
       min-spare: 20 # Minimum idle threads
     max-connections: 10000
     accept-count: 100 # Queue size for connection requests
+
+# Resilience4j Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      externalService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+  ratelimiter:
+    instances:
+      onboardingApi:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0
 
 # Logging
 logging:

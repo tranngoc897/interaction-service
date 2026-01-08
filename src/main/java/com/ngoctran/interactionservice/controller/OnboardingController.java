@@ -17,6 +17,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/onboarding")
 @RequiredArgsConstructor
+@io.github.resilience4j.ratelimiter.annotation.RateLimiter(name = "onboardingApi")
 public class OnboardingController {
 
     private final OnboardingService onboardingService;
@@ -52,8 +53,7 @@ public class OnboardingController {
             if (!effectiveUserId.startsWith("anonymous:") && onboardingService.hasActiveOnboarding(effectiveUserId)) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "error", "Active onboarding already exists",
-                        "message", "User already has an active onboarding process"
-                ));
+                        "message", "User already has an active onboarding process"));
             }
 
             // Start new onboarding through service
@@ -66,15 +66,13 @@ public class OnboardingController {
                     "userId", effectiveUserId,
                     "currentState", instance.getCurrentState(),
                     "isAnonymous", effectiveUserId.startsWith("anonymous:"),
-                    "message", "Onboarding started successfully"
-            ));
+                    "message", "Onboarding started successfully"));
 
         } catch (Exception ex) {
             log.error("Error starting onboarding: {}", ex.getMessage(), ex);
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Failed to start onboarding",
-                    "message", ex.getMessage()
-            ));
+                    "message", ex.getMessage()));
         }
     }
 
@@ -94,8 +92,7 @@ public class OnboardingController {
                     "status", status.getStatus(),
                     "progress", status.getProgress(),
                     "allowedActions", status.getAllowedActions(),
-                    "stateStartedAt", status.getStateStartedAt()
-            ));
+                    "stateStartedAt", status.getStateStartedAt()));
 
         } catch (IllegalArgumentException ex) {
             log.warn("Instance not found: {}", instanceId);
@@ -104,8 +101,7 @@ public class OnboardingController {
             log.error("Error getting status for instance {}: {}", instanceId, ex.getMessage(), ex);
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Failed to get status",
-                    "message", ex.getMessage()
-            ));
+                    "message", ex.getMessage()));
         }
     }
 
@@ -123,8 +119,7 @@ public class OnboardingController {
 
             if (action == null) {
                 return ResponseEntity.badRequest().body(Map.of(
-                        "error", "Action is required"
-                ));
+                        "error", "Action is required"));
             }
 
             log.info("Performing action {} on instance {}", action, instanceId);
@@ -140,8 +135,7 @@ public class OnboardingController {
                     "action", action,
                     "currentState", updatedStatus.getCurrentState(),
                     "progress", updatedStatus.getProgress(),
-                    "message", "Action processed successfully"
-            ));
+                    "message", "Action processed successfully"));
 
         } catch (IllegalArgumentException ex) {
             log.warn("Instance not found: {}", instanceId);
@@ -150,14 +144,12 @@ public class OnboardingController {
             log.warn("Invalid action for instance {}: {}", instanceId, ex.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Invalid action",
-                    "message", ex.getMessage()
-            ));
+                    "message", ex.getMessage()));
         } catch (Exception ex) {
             log.error("Error performing action on instance {}: {}", instanceId, ex.getMessage(), ex);
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Failed to perform action",
-                    "message", ex.getMessage()
-            ));
+                    "message", ex.getMessage()));
         }
     }
 
@@ -176,8 +168,7 @@ public class OnboardingController {
             return ResponseEntity.ok(Map.of(
                     "instanceId", instanceId,
                     "currentState", status.getCurrentState(),
-                    "actions", actions
-            ));
+                    "actions", actions));
 
         } catch (IllegalArgumentException ex) {
             log.warn("Instance not found: {}", instanceId);
@@ -186,8 +177,7 @@ public class OnboardingController {
             log.error("Error getting actions for instance {}: {}", instanceId, ex.getMessage(), ex);
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Failed to get actions",
-                    "message", ex.getMessage()
-            ));
+                    "message", ex.getMessage()));
         }
     }
 
@@ -208,8 +198,7 @@ public class OnboardingController {
             return ResponseEntity.ok(Map.of(
                     "instanceId", instanceId,
                     "status", "CANCELLED",
-                    "message", "Onboarding cancelled successfully"
-            ));
+                    "message", "Onboarding cancelled successfully"));
 
         } catch (IllegalArgumentException ex) {
             log.warn("Instance not found: {}", instanceId);
@@ -218,14 +207,12 @@ public class OnboardingController {
             log.warn("Cannot cancel instance {}: {}", instanceId, ex.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Cannot cancel",
-                    "message", ex.getMessage()
-            ));
+                    "message", ex.getMessage()));
         } catch (Exception ex) {
             log.error("Error cancelling instance {}: {}", instanceId, ex.getMessage(), ex);
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Failed to cancel",
-                    "message", ex.getMessage()
-            ));
+                    "message", ex.getMessage()));
         }
     }
 
@@ -241,16 +228,14 @@ public class OnboardingController {
                     uiActions.put("NEXT", Map.of(
                             "label", "Continue",
                             "type", "PRIMARY",
-                            "requiresConfirmation", false
-                    ));
+                            "requiresConfirmation", false));
                     break;
                 // Add more action mappings as needed
                 default:
                     uiActions.put(action, Map.of(
                             "label", action,
                             "type", "SECONDARY",
-                            "requiresConfirmation", false
-                    ));
+                            "requiresConfirmation", false));
             }
         }
 

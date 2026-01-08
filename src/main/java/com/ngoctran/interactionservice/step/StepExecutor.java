@@ -26,6 +26,7 @@ public class StepExecutor {
      * @return true if step completed successfully and can proceed to next state
      */
     @Transactional
+    @io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker(name = "externalService", fallbackMethod = "executeFallback")
     public boolean execute(OnboardingInstance instance, StepExecution execution, Transition transition) {
         // Initialize execution if first time
         if (execution == null || execution.isNew()) {
@@ -136,5 +137,17 @@ public class StepExecutor {
         } catch (Exception e) {
             log.error("Failed to create incident for instance {}", instance.getId(), e);
         }
+    }
+
+    /**
+     * Fallback method for Circuit Breaker
+     */
+    public boolean executeFallback(OnboardingInstance instance, StepExecution execution, Transition transition,
+            Throwable t) {
+        log.error("Circuit Breaker triggered for step {} instance {}: {}",
+                instance.getCurrentState(), instance.getId(), t.getMessage());
+
+        // Return false to stop progression, let the retry scheduler handle it later
+        return false;
     }
 }
