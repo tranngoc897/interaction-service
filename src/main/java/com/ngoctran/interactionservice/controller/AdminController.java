@@ -133,6 +133,9 @@ public class AdminController {
      */
     @GetMapping("/{instanceId}")
     public ResponseEntity<Map<String, Object>> getInstanceDetails(@PathVariable UUID instanceId) {
+        if (instanceId == null) {
+            return ResponseEntity.badRequest().build();
+        }
         try {
             OnboardingInstance instance = instanceRepository.findById(instanceId).orElse(null);
             if (instance == null) {

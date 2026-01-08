@@ -233,3 +233,19 @@ CREATE TRIGGER trg_update_step_execution
     BEFORE UPDATE ON step_execution
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- =============================================================================
+-- WORKFLOW EVENT STORE (For Replay & Audit)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS workflow_event (
+    id BIGSERIAL PRIMARY KEY,
+    instance_id UUID NOT NULL,
+    event_type VARCHAR(50) NOT NULL, -- ACTION_EXECUTION, STATE_TRANSITION, RECOVERY, INCIDENT
+    event_name VARCHAR(100) NOT NULL,
+    payload JSONB,
+    sequence_number INT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(50)
+);
+
+CREATE INDEX idx_workflow_event_instance ON workflow_event(instance_id, sequence_number);

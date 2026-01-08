@@ -26,6 +26,7 @@ import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 public class OtpService {
 
     private final RestTemplate restTemplate;
+    private final SideEffectExecutor sideEffectExecutor;
 
     @Value("${otp.provider.url:http://localhost:8081/mock/otp}")
     private String otpProviderUrl;
@@ -42,12 +43,12 @@ public class OtpService {
     @CircuitBreaker(name = "otp-service")
     @RateLimiter(name = "otp-service")
     @Bulkhead(name = "external-api-bulkhead")
-    public boolean sendOtp(String phoneNumber) {
+    public boolean sendOtp(UUID instanceId, String phoneNumber) {
         try {
             log.info("Sending OTP to phone: {}", phoneNumber);
 
-            // Generate OTP
-            String otpCode = generateOtp();
+            // Generate OTP deterministically (Using SideEffectExecutor)
+            String otpCode = sideEffectExecutor.execute(instanceId, "otp-generation", String.class, this::generateOtp);
 
             // Store OTP with expiry
             String key = "phone:" + phoneNumber;

@@ -29,15 +29,24 @@ public class OnboardingEngine {
     private final com.ngoctran.interactionservice.repo.StateSnapshotRepository snapshotRepository;
     private final com.ngoctran.interactionservice.repo.StateContextRepository contextRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final com.ngoctran.interactionservice.service.WorkflowHistoryService historyService;
+    private final com.ngoctran.interactionservice.service.SideEffectExecutor sideEffectExecutor;
 
     @org.springframework.transaction.annotation.Transactional
     public void handle(ActionCommand command) {
         log.info("Processing action: {} for instance: {}", command.getAction(), command.getInstanceId());
 
-        // 1. Idempotency check
-        if (processedEventRepository.existsByEventId(command.getRequestId())) {
+        // 1. Idempotency check (SKIP IF REPLAYING)
+        boolean isReplaying = WorkflowContext.get() != null && WorkflowContext.get().isReplaying();
+        if (!isReplaying && processedEventRepository.existsByEventId(command.getRequestId())) {
             log.warn("Duplicate event detected: {}", command.getRequestId());
             return;
+        }
+
+        // 1.1 Record action event for history/replay (SKIP IF REPLAYING)
+        if (!isReplaying) {
+            historyService.recordEvent(command.getInstanceId(), "ACTION_RECEIVED", command.getAction(), command,
+                    command.getActor());
         }
 
         // 2. Lock instance for update
@@ -71,12 +80,22 @@ public class OnboardingEngine {
             // 6.2 Save state snapshot for auditing
             saveSnapshot(instance);
 
+            // 6.3 Record transition event (SKIP IF REPLAYING)
+            if (!isReplaying) {
+                historyService.recordEvent(instance.getId(), "STATE_TRANSITION", transition.getToState(),
+                        Map.of("from", transition.getFromState(), "to", transition.getToState(), "action",
+                                transition.getAction()),
+                        command.getActor());
+            }
+
             // 6.1. Attempt auto-progression to next steps
             attemptAutoProgression(instance, command);
         }
 
-        // 7. Mark event as processed
-        processedEventRepository.save(command.getRequestId(), instance.getId(), "ACTION", command.getActor());
+        // 7. Mark event as processed (SKIP IF REPLAYING)
+        if (!isReplaying) {
+            processedEventRepository.save(command.getRequestId(), instance.getId(), "ACTION", command.getActor());
+        }
 
         log.info("Action processed successfully: {} for instance: {}", command.getAction(), command.getInstanceId());
     }
