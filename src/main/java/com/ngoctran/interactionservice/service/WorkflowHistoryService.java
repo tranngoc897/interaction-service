@@ -55,4 +55,44 @@ public class WorkflowHistoryService {
         }
     }
 
+    /**
+     * Replay workflow history to reconstruct state or validate logic changes.
+     * Re-executes all historical ACTION_RECEIVED events in replay mode.
+     */
+    public void replay(java.util.UUID instanceId, com.ngoctran.interactionservice.engine.OnboardingEngine engine) {
+        log.info("Starting replay for instance: {}", instanceId);
+
+        java.util.List<WorkflowEvent> history = eventRepository.findByInstanceIdOrderBySequenceNumberAsc(instanceId);
+
+        if (history.isEmpty()) {
+            log.warn("No history found for instance: {}", instanceId);
+            return;
+        }
+
+        com.ngoctran.interactionservice.engine.WorkflowContext ctx = new com.ngoctran.interactionservice.engine.WorkflowContext();
+        ctx.setReplaying(true);
+        ctx.setHistory(history);
+
+        com.ngoctran.interactionservice.engine.WorkflowContext.set(ctx);
+        try {
+            // Find all historical actions and re-run them
+            for (WorkflowEvent event : history) {
+                if ("ACTION_RECEIVED".equals(event.getEventType())) {
+                    try {
+                        com.ngoctran.interactionservice.engine.ActionCommand cmd = objectMapper.readValue(
+                                event.getPayload(), com.ngoctran.interactionservice.engine.ActionCommand.class);
+
+                        log.info("[REPLAY] Re-executing action: {}", cmd.getAction());
+                        engine.handle(cmd);
+                    } catch (Exception e) {
+                        log.error("[REPLAY] Error during replay of action {}: {}", event.getEventName(),
+                                e.getMessage());
+                    }
+                }
+            }
+        } finally {
+            com.ngoctran.interactionservice.engine.WorkflowContext.clear();
+            log.info("Replay finished for instance: {}", instanceId);
+        }
+    }
 }
