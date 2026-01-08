@@ -30,6 +30,7 @@ public class WorkflowMetrics {
     @Column(nullable = false)
     private Long value;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private Map<String, String> tags;
 

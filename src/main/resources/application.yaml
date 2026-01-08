@@ -3,7 +3,7 @@ spring:
   application:
     name: interaction-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/onboarding_workflow
+    url: jdbc:postgresql://localhost:5433/workflow
     username: postgres
     password: admin
     driver-class-name: org.postgresql.Driver
@@ -22,7 +22,7 @@ spring:
       write-dates-as-timestamps: false
     time-zone: UTC
   kafka:
-    bootstrap-servers: localhost:29092
+    bootstrap-servers: localhost:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer

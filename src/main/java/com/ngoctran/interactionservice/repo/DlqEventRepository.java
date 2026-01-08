@@ -21,6 +21,6 @@ public interface DlqEventRepository extends JpaRepository<DlqEvent, Long> {
     @Query("SELECT COUNT(d) FROM DlqEvent d WHERE d.status = :status")
     long countByStatus(@Param("status") String status);
 
-    @Query("SELECT COUNT(d) FROM DlqEvent d WHERE d.topic = :topic AND d.status = 'NEW'")
+    @Query("SELECT COUNT(d) FROM DlqEvent d WHERE d.topic = :topic AND d.status = :status")
     long countByTopicAndStatus(@Param("topic") String topic, @Param("status") String status);
 }

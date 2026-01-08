@@ -32,7 +32,7 @@ public class OnboardingEngine {
         log.info("Processing action: {} for instance: {}", command.getAction(), command.getInstanceId());
 
         // 1. Idempotency check
-        if (processedEventRepository.exists(command.getRequestId())) {
+        if (processedEventRepository.existsByEventId(command.getRequestId())) {
             log.warn("Duplicate event detected: {}", command.getRequestId());
             return;
         }
@@ -48,8 +48,7 @@ public class OnboardingEngine {
                 instance.getFlowVersion(),
                 instance.getCurrentState(),
                 command.getAction(),
-                instance.getId()
-        );
+                instance.getId());
 
         // 4. Validate action
         actionValidator.validate(instance, command, transition);
@@ -74,10 +73,12 @@ public class OnboardingEngine {
     }
 
     /**
-     * Execute step based on whether it's sync or async to avoid long-running transactions
+     * Execute step based on whether it's sync or async to avoid long-running
+     * transactions
      */
     /**
-     * Execute step based on whether it's sync or async to avoid long-running transactions
+     * Execute step based on whether it's sync or async to avoid long-running
+     * transactions
      * Async steps: Publish to outbox, execute later via Kafka consumers
      * Sync steps: Execute immediately but keep transaction short
      */
@@ -126,9 +127,8 @@ public class OnboardingEngine {
             StepExecution execution = stepExecutionRepository.findById(
                     new com.ngoctran.interactionservice.domain.StepExecutionId(
                             instance.getId(),
-                            instance.getCurrentState()
-                    )
-            ).orElse(null);
+                            instance.getCurrentState()))
+                    .orElse(null);
 
             // Execute the step
             boolean success = stepExecutor.execute(instance, execution, transition);
@@ -152,8 +152,7 @@ public class OnboardingEngine {
                     "step", transition.getToState(),
                     "flowVersion", instance.getFlowVersion(),
                     "timestamp", java.time.Instant.now().toString(),
-                    "correlationId", java.util.UUID.randomUUID().toString()
-            );
+                    "correlationId", java.util.UUID.randomUUID().toString());
 
             // Determine topic based on step type
             String topic = getTopicForStep(transition.getToState());
@@ -164,8 +163,7 @@ public class OnboardingEngine {
                     topic,
                     instance.getId().toString(),
                     event,
-                    "ASYNC_STEP_EXECUTION"
-            );
+                    "ASYNC_STEP_EXECUTION");
 
             log.info("Published async step {} to outbox for instance: {}", transition.getToState(), instance.getId());
 
@@ -180,9 +178,12 @@ public class OnboardingEngine {
      */
     private String getTopicForStep(String step) {
         switch (step) {
-            case "EKYC_PENDING": return "ekyc-request";
-            case "AML_PENDING": return "aml-request";
-            default: return "workflow-events";
+            case "EKYC_PENDING":
+                return "ekyc-request";
+            case "AML_PENDING":
+                return "aml-request";
+            default:
+                return "workflow-events";
         }
     }
 
@@ -292,7 +293,8 @@ public class OnboardingEngine {
      * Track auto-progression depth to prevent infinite loops
      */
     private int getAutoProgressionDepth(OnboardingInstance instance) {
-        // In a real implementation, this would be stored in the instance or a separate tracking table
+        // In a real implementation, this would be stored in the instance or a separate
+        // tracking table
         // For now, we'll use a simple counter based on state transitions
         return calculateProgressionDepth(instance);
     }
@@ -311,10 +313,14 @@ public class OnboardingEngine {
         // Simple calculation based on how many auto-executable states we've passed
         String state = instance.getCurrentState();
         switch (state) {
-            case "EKYC_APPROVED": return 1;
-            case "AML_CLEARED": return 2;
-            case "ACCOUNT_CREATED": return 3;
-            default: return 0;
+            case "EKYC_APPROVED":
+                return 1;
+            case "AML_CLEARED":
+                return 2;
+            case "ACCOUNT_CREATED":
+                return 3;
+            default:
+                return 0;
         }
     }
 }
