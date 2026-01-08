@@ -57,10 +57,10 @@ public class OnboardingEngine {
         actionValidator.validate(instance, command, transition);
 
         // 5. Execute step based on sync/async nature
-        boolean success = executeStepBasedOnType(instance, transition);
+        executeStepBasedOnType(instance, transition);
 
-        // 6. Move state if success and not same-state action
-        if (success && !transition.isSameState()) {
+        // 6. Move state if not same-state action
+        if (!transition.isSameState()) {
             instance.moveTo(transition.getToState());
             log.info("State transitioned: {} -> {} for instance: {}",
                     instance.getCurrentState(), transition.getToState(), instance.getId());
@@ -91,66 +91,46 @@ public class OnboardingEngine {
      * Async steps: Publish to outbox, execute later via Kafka consumers
      * Sync steps: Execute immediately but keep transaction short
      */
-    private boolean executeStepBasedOnType(OnboardingInstance instance, Transition transition) {
-        // For async steps, just mark as pending and publish to outbox
-        // Don't execute the actual business logic in transaction
+    private void executeStepBasedOnType(OnboardingInstance instance, Transition transition) {
         if (transition.isAsync()) {
-            return handleAsyncStep(instance, transition);
+            handleAsyncStep(instance, transition);
         } else {
-            // For sync steps, execute immediately but keep it fast
-            return handleSyncStep(instance, transition);
+            handleSyncStep(instance, transition);
         }
     }
 
     /**
      * Handle async steps - publish to outbox instead of executing immediately
      */
-    private boolean handleAsyncStep(OnboardingInstance instance, Transition transition) {
-        try {
-            log.info("Handling async step: {} for instance: {}", transition.getToState(), instance.getId());
+    private void handleAsyncStep(OnboardingInstance instance, Transition transition) {
+        log.info("Handling async step: {} for instance: {}", transition.getToState(), instance.getId());
 
-            // Create step execution record
-            StepExecution execution = createStepExecution(instance, transition);
-            stepExecutionRepository.save(execution);
+        // Create step execution record
+        StepExecution execution = createStepExecution(instance, transition);
+        stepExecutionRepository.save(execution);
 
-            // For async steps, we just mark as accepted and publish to outbox
-            // The actual execution will happen via Kafka consumers outside of transaction
-            publishAsyncStepToOutbox(instance, transition);
-
-            return true; // Async step accepted
-
-        } catch (Exception ex) {
-            log.error("Failed to handle async step {} for instance: {}", transition.getToState(), instance.getId(), ex);
-            return false;
-        }
+        // For async steps, we just mark as accepted and publish to outbox
+        publishAsyncStepToOutbox(instance, transition);
     }
 
-    /**
-     * Handle sync steps - execute immediately but keep transaction short
-     */
-    private boolean handleSyncStep(OnboardingInstance instance, Transition transition) {
-        try {
-            log.info("Handling sync step: {} for instance: {}", transition.getToState(), instance.getId());
+    private void handleSyncStep(OnboardingInstance instance, Transition transition) {
+        log.info("Handling sync step: {} for instance: {}", transition.getToState(), instance.getId());
 
-            // Get or create step execution for auditing
-            StepExecution execution = stepExecutionRepository.findById(
-                    new com.ngoctran.interactionservice.domain.StepExecutionId(
-                            instance.getId(),
-                            instance.getCurrentState()))
-                    .orElseGet(() -> {
-                        StepExecution newExec = createStepExecution(instance, transition);
-                        newExec.setStatus("RUNNING");
-                        return stepExecutionRepository.save(newExec);
-                    });
+        // Get or create step execution for auditing
+        StepExecution execution = stepExecutionRepository.findById(
+                new com.ngoctran.interactionservice.domain.StepExecutionId(
+                        instance.getId(),
+                        instance.getCurrentState()))
+                .orElseGet(() -> {
+                    StepExecution newExec = createStepExecution(instance, transition);
+                    newExec.setStatus("RUNNING");
+                    return stepExecutionRepository.save(newExec);
+                });
 
-            // Execute the step
-            boolean success = stepExecutor.execute(instance, execution, transition);
-
-            return success;
-
-        } catch (Exception ex) {
-            log.error("Failed to handle sync step {} for instance: {}", transition.getToState(), instance.getId(), ex);
-            return false;
+        // Execute the step (It throws exception on failure)
+        boolean success = stepExecutor.execute(instance, execution, transition);
+        if (!success) {
+            throw new RuntimeException("Sync step execution failed for " + instance.getCurrentState());
         }
     }
 

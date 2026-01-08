@@ -19,6 +19,7 @@ public class EkycCallbackConsumer {
 
     private final OnboardingEngine onboardingEngine;
     private final com.ngoctran.interactionservice.repo.StateContextRepository stateContextRepository;
+    private final com.ngoctran.interactionservice.repo.OnboardingInstanceRepository instanceRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @KafkaListener(topics = "ekyc-callback", groupId = "onboarding-service")
@@ -37,6 +38,24 @@ public class EkycCallbackConsumer {
             }
 
             UUID instanceId = UUID.fromString(instanceIdStr);
+
+            // Auto-fix: If user is stuck in DOC_UPLOADED, move them to EKYC_PENDING first
+            try {
+                instanceRepository.findById(instanceId).ifPresent(i -> {
+                    if ("DOC_UPLOADED".equals(i.getCurrentState())) {
+                        log.info("Consumer detected instance {} at DOC_UPLOADED, performing NEXT auto-fix...",
+                                instanceId);
+                        onboardingEngine.handle(ActionCommand.builder()
+                                .instanceId(instanceId)
+                                .action("NEXT")
+                                .actor("SYSTEM")
+                                .requestId(UUID.randomUUID().toString())
+                                .build());
+                    }
+                });
+            } catch (Exception e) {
+                log.warn("Auto-fix from consumer failed, might still work if state updated: {}", e.getMessage());
+            }
 
             // Save context data (score) if present
             saveContextData(instanceId, event);

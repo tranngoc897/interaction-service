@@ -19,6 +19,7 @@ public class AmlCallbackConsumer {
 
     private final OnboardingEngine onboardingEngine;
     private final com.ngoctran.interactionservice.repo.StateContextRepository stateContextRepository;
+    private final com.ngoctran.interactionservice.repo.OnboardingInstanceRepository instanceRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @KafkaListener(topics = "aml-callback", groupId = "onboarding-service")
@@ -37,6 +38,24 @@ public class AmlCallbackConsumer {
             }
 
             UUID instanceId = UUID.fromString(instanceIdStr);
+
+            // Auto-fix: If user is stuck in EKYC_APPROVED, move them to AML_PENDING first
+            try {
+                instanceRepository.findById(instanceId).ifPresent(i -> {
+                    if ("EKYC_APPROVED".equals(i.getCurrentState())) {
+                        log.info("Consumer detected instance {} at EKYC_APPROVED, performing NEXT auto-fix...",
+                                instanceId);
+                        onboardingEngine.handle(ActionCommand.builder()
+                                .instanceId(instanceId)
+                                .action("NEXT")
+                                .actor("SYSTEM")
+                                .requestId(UUID.randomUUID().toString())
+                                .build());
+                    }
+                });
+            } catch (Exception e) {
+                log.warn("Auto-fix from consumer failed: {}", e.getMessage());
+            }
 
             // Save context data (aml status)
             saveContextData(instanceId, result);
