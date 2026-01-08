@@ -19,6 +19,10 @@ public class WorkflowHistoryService {
     private final WorkflowEventRepository eventRepository;
     private final ObjectMapper objectMapper;
 
+    public WorkflowEventRepository getEventRepository() {
+        return eventRepository;
+    }
+
     /**
      * Record an event in the history
      */
