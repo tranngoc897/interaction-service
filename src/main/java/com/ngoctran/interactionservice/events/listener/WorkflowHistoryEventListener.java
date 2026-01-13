@@ -1,7 +1,7 @@
 package com.ngoctran.interactionservice.events.listener;
 
-import com.ngoctran.interactionservice.WorkflowHistoryEntity;
-import com.ngoctran.interactionservice.WorkflowHistoryRepository;
+import com.ngoctran.interactionservice.history.WorkflowHistoryEntity;
+import com.ngoctran.interactionservice.history.WorkflowHistoryRepository;
 import com.ngoctran.interactionservice.dto.WorkflowExecutionStatus;
 import com.ngoctran.interactionservice.events.*;
 import lombok.RequiredArgsConstructor;
