@@ -17,7 +17,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CaseEntity {
-
     @Id
     @Column(columnDefinition = "uuid")
     private UUID id;
@@ -56,7 +55,6 @@ public class CaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     private String sla;
 
-    // Onboarding Pattern Fields
     @Column(name = "resume_token", columnDefinition = "text")
     private String resumeToken;
 

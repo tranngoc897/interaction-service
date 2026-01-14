@@ -29,17 +29,6 @@ public class CaseDefinitionEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     private String caseSchema;
 
-/*
-    @Column(name = "interaction_flow_json", columnDefinition = "text")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private String interactionFlowJson;
-
-    @Column(name = "simple_steps_json", columnDefinition = "text")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private String simpleStepsJson; // From InteractionDefinitionEntity - simple UI flows
-*/
-
-
     // Onboarding Pattern Fields
     @Column(length = 255)
     private String name;
@@ -152,19 +141,4 @@ public class CaseDefinitionEntity {
         this.updatedBy = updatedBy;
     }
 
-/*    public String getInteractionFlowJson() {
-        return interactionFlowJson;
-    }
-
-    public void setInteractionFlowJson(String interactionFlowJson) {
-        this.interactionFlowJson = interactionFlowJson;
-    }
-
-    public String getSimpleStepsJson() {
-        return simpleStepsJson;
-    }
-
-    public void setSimpleStepsJson(String simpleStepsJson) {
-        this.simpleStepsJson = simpleStepsJson;
-    }*/
 }
