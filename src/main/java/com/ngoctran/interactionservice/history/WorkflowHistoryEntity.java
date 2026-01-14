@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice;
+package com.ngoctran.interactionservice.history;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ngoctran.interactionservice.dto.WorkflowExecutionStatus;

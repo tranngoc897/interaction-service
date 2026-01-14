@@ -1,4 +1,4 @@
-package com.ngoctran.interactionservice;
+package com.ngoctran.interactionservice.history;
 
 import com.ngoctran.interactionservice.dto.WorkflowExecutionStatus;
 import java.util.UUID;
