@@ -13,7 +13,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ngoctran.interactionservice.cases.CaseEntity;
+import com.ngoctran.interactionservice.cases.CaseRepository;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -30,6 +36,7 @@ public class CamundaExternalTaskWorker {
     private final WorkflowEventPublisher eventPublisher;
     private final CaseRepository caseRepository;
     private final ProcessMappingService processMappingService;
+    private final ObjectMapper objectMapper;
 
     @Component
     @ExternalTaskSubscription("data-validation")
@@ -105,21 +112,82 @@ public class CamundaExternalTaskWorker {
             String caseId = externalTask.getVariable("caseId");
             log.info("Processing Account Creation for Case: {}", caseId);
 
-            String accountNumber = "ACC" + System.currentTimeMillis();
+            final String[] accountNumberHolder = new String[1];
+            boolean created = false;
 
-            // 1. Cập nhật Case trong DB
             if (caseId != null) {
-                caseRepository.findById(UUID.fromString(caseId)).ifPresent(caseEntity -> {
-                    caseEntity.setStatus("APPROVED");
-                    caseRepository.save(caseEntity);
-                    log.info("Case {} updated to APPROVED", caseId);
-                });
+                try {
+                    UUID caseUuid = UUID.fromString(caseId);
+                    Optional<CaseEntity> caseOpt = caseRepository.findById(caseUuid);
 
-                // 2. Publish Events
+                    if (caseOpt.isPresent()) {
+                        CaseEntity caseEntity = caseOpt.get();
+
+                        // Parse caseData to check for existing account
+                        String caseDataJson = caseEntity.getCaseData();
+                        Map<String, Object> caseDataMap = new HashMap<>();
+                        if (caseDataJson != null && !caseDataJson.isBlank()) {
+                            try {
+                                caseDataMap = objectMapper.readValue(caseDataJson,
+                                        new TypeReference<Map<String, Object>>() {
+                                        });
+                            } catch (Exception e) {
+                                log.warn("Failed to parse case data for idempotency check", e);
+                            }
+                        }
+
+                        if (caseDataMap.containsKey("accountNumber")) {
+                            // Idempotency: Exists
+                            accountNumberHolder[0] = (String) caseDataMap.get("accountNumber");
+                            log.info("Idempotency match: Account {} already exists for Case {}", accountNumberHolder[0],
+                                    caseId);
+                        } else {
+                            // Create new
+                            String newAccount = "ACC" + System.currentTimeMillis();
+                            accountNumberHolder[0] = newAccount;
+
+                            // Save to DB
+                            caseDataMap.put("accountNumber", newAccount);
+                            caseEntity.setCaseData(objectMapper.writeValueAsString(caseDataMap));
+
+                            // Ensure status is updated
+                            if (!"APPROVED".equals(caseEntity.getStatus())) {
+                                caseEntity.setStatus("APPROVED");
+                            }
+
+                            caseRepository.save(caseEntity);
+                            created = true;
+                            log.info("Case {} updated to APPROVED with new Account {}", caseId, newAccount);
+                        }
+                    } else {
+                        // Fallback if case not found (rare)
+                        accountNumberHolder[0] = "ACC" + System.currentTimeMillis();
+                        log.warn("Case {} not found for Account Creation, proceeding with temporary account", caseId);
+                    }
+                } catch (Exception e) {
+                    log.error("Error during account creation idempotency check: {}", e.getMessage(), e);
+                    // Fail task? Or continue? Failing is safer to retry.
+                    // Throwing exception to retry
+                    throw new RuntimeException("Failed to process account creation", e);
+                }
+            } else {
+                accountNumberHolder[0] = "ACC" + System.currentTimeMillis();
+            }
+
+            String accountNumber = accountNumberHolder[0];
+
+            // 2. Publish Events
+            if (caseId != null) {
+                // Publish AccountCreatedEvent (Idempotency: safe to republish or can check
+                // 'created' flag)
+                // We republish to ensure downstream systems are notified even on retry
                 eventPublisher.publishAccountCreatedEvent(caseId, UUID.randomUUID().toString(), accountNumber,
                         "Customer", "SAVINGS");
-                eventPublisher.publishCaseUpdateEvent(caseId, "onboarding", Map.of("accountNumber", accountNumber),
-                        Map.of("status", "APPROVED"));
+
+                if (created) {
+                    eventPublisher.publishCaseUpdateEvent(caseId, "onboarding", Map.of("accountNumber", accountNumber),
+                            Map.of("status", "APPROVED"));
+                }
             }
 
             externalTaskService.complete(externalTask, Map.of("accountNumber", accountNumber, "accountCreated", true));
@@ -176,8 +244,7 @@ public class CamundaExternalTaskWorker {
                         "applicantId", applicantId,
                         "cleanupType", "GLOBAL_CANCEL",
                         "timestamp", java.time.Instant.now().toString(),
-                        "status", "COMPLETED"
-                );
+                        "status", "COMPLETED");
 
                 // Publish cancel event
                 eventPublisher.publishSystemErrorEvent(caseId, processInstanceId,
@@ -197,8 +264,7 @@ public class CamundaExternalTaskWorker {
                 Map<String, Object> variables = Map.of(
                         "cancelled", true,
                         "cancelTimestamp", java.time.Instant.now().toString(),
-                        "cleanupRecord", cleanupRecord
-                );
+                        "cleanupRecord", cleanupRecord);
 
                 externalTaskService.complete(externalTask, variables);
 
